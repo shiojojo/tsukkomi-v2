@@ -17,11 +17,15 @@ export default function AnswersRoute() {
     <div className="p-4 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold mb-4">大喜利 - 回答一覧</h1>
       <ul className="space-y-4">
-        {answers.map((a) => (
+        {answers.map(a => (
           <li key={a.id} className="p-4 border rounded-md">
-            <p className="text-sm text-gray-600">{new Date(a.created_at).toLocaleString()}</p>
+            <p className="text-sm text-gray-600">
+              {new Date(a.created_at).toLocaleString()}
+            </p>
             <p className="mt-2 text-lg">{a.text}</p>
-            {a.author ? <p className="mt-2 text-xs text-gray-500">— {a.author}</p> : null}
+            {a.author ? (
+              <p className="mt-2 text-xs text-gray-500">— {a.author}</p>
+            ) : null}
           </li>
         ))}
       </ul>
