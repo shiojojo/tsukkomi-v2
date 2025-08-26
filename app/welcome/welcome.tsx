@@ -68,6 +68,22 @@ const resources = [
     ),
   },
   {
+    href: '/answers',
+    text: '大喜利の回答一覧',
+    icon: (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        className="stroke-gray-600 group-hover:stroke-current dark:stroke-gray-300"
+      >
+        <path d="M3 6h18M3 12h18M3 18h18" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     href: "https://rmx.as/discord",
     text: "Join Discord",
     icon: (
