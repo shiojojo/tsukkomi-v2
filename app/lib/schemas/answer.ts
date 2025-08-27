@@ -7,6 +7,8 @@ export const AnswerSchema = z.object({
   id: z.number(),
   text: z.string().min(1).max(1000),
   author: z.string().optional(),
+  // topicId links an answer to a Topic.id. Accept string or number for compatibility.
+  topicId: z.union([z.string(), z.number()]).optional(),
   created_at: z.string(),
 });
 

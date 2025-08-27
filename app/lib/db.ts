@@ -1,6 +1,9 @@
 import { mockAnswers } from '../mock/answers';
-import { AnswerSchema } from './schemas/answer';
-import type { Answer } from './schemas/answer';
+import { mockTopics } from '../mock/topics';
+import { AnswerSchema } from '~/lib/schemas/answer';
+import { TopicSchema } from '~/lib/schemas/topic';
+import type { Answer } from '~/lib/schemas/answer';
+import type { Topic } from '~/lib/schemas/topic';
 
 const isDev = import.meta.env.DEV;
 
@@ -25,4 +28,31 @@ export async function getAnswers(): Promise<Answer[]> {
   // Production path: the project currently doesn't have a Supabase client scaffolded here.
   // Follow project conventions: create app/lib/supabase.ts and call supabase.from('answers')...
   throw new Error('getAnswers: production not implemented. Add app/lib/supabase.ts and implement DB fetch.');
+}
+
+/**
+ * getTopics
+ * Intent: return the list of Topics available in the app.
+ * Contract: returns Topic[] sorted by id asc.
+ * Environment:
+ *  - dev: returns copy of mockTopics
+ *  - prod: not implemented
+ */
+export async function getTopics(): Promise<Topic[]> {
+  if (isDev) {
+    const copy = [...mockTopics];
+    copy.sort((a, b) => (a.id > b.id ? 1 : -1));
+    return copy.map((t) => TopicSchema.parse(t));
+  }
+  throw new Error('getTopics: production not implemented');
+}
+
+/**
+ * getAnswersByTopic
+ * Intent: return answers that belong to a given topic id.
+ * Contract: topicId may be string or number. Comparison coerces both sides to string.
+ */
+export async function getAnswersByTopic(topicId: string | number) {
+  const answers = await getAnswers();
+  return answers.filter((a) => a.topicId != null && String(a.topicId) === String(topicId));
 }

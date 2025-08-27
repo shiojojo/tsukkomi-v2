@@ -9,7 +9,8 @@ import React from 'react';
 export default function ResponsiveNav() {
   const items = [
     { to: '/', label: 'Home', icon: HomeIcon },
-    { to: '/answers', label: 'Answers', icon: ListIcon },
+  { to: '/answers', label: 'Answers', icon: ListIcon },
+  { to: '/topics', label: 'お題', icon: TopicIcon },
     { to: '/test', label: 'Test', icon: TestIcon },
   ];
 
@@ -92,6 +93,16 @@ function TestIcon(props: React.SVGProps<SVGSVGElement>) {
     >
       <circle cx="12" cy="12" r="9" />
       <path d="M12 8v4l2 2" />
+    </svg>
+  );
+}
+
+function TopicIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M12 2v20" />
+      <path d="M5 7h14" />
+      <path d="M5 17h14" />
     </svg>
   );
 }
