@@ -8,6 +8,7 @@ import React from 'react';
  */
 export default function ResponsiveNav() {
   const items = [
+    { to: '/', label: 'Home', icon: HomeIcon },
     { to: '/answers', label: 'Answers', icon: ListIcon },
     { to: '/topics', label: 'お題', icon: TopicIcon },
     { to: '/test', label: 'Test', icon: TestIcon },
@@ -31,7 +32,13 @@ export default function ResponsiveNav() {
 
           <ul className="flex w-full md:w-auto md:items-center md:gap-4">
             {items.map(({ to, label, icon: Icon }) => (
-              <li key={to} className="flex-1 md:flex-initial md:inline-flex">
+              <li
+                key={to}
+                className={
+                  `flex-1 md:flex-initial md:inline-flex ` +
+                  (to === '/' ? 'md:hidden' : '')
+                }
+              >
                 <NavLink
                   to={to}
                   end={to === '/'}
