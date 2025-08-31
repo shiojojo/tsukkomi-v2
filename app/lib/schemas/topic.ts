@@ -7,6 +7,7 @@ export const TopicSchema = z.object({
   // id can be string (UUID/slug) or number (legacy/mock). Accept both for compatibility.
   id: z.union([z.string(), z.number()]),
   title: z.string().min(1).max(200),
+  created_at: z.string(),
 });
 
 export type Topic = z.infer<typeof TopicSchema>;

@@ -1,5 +1,7 @@
 import type { Route } from './+types/_index';
-import { Welcome } from '../welcome/welcome';
+import type { LoaderFunctionArgs } from 'react-router';
+import Home from './home';
+import { getTopics } from '~/lib/db';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -8,6 +10,12 @@ export function meta({}: Route.MetaArgs) {
   ];
 }
 
+export async function loader(_args: LoaderFunctionArgs) {
+  const topics = await getTopics();
+  const latest = topics.length ? topics[0] : null;
+  return { latest };
+}
+
 export default function Index() {
-  return <Welcome />;
+  return <Home />;
 }

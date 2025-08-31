@@ -41,7 +41,16 @@ export async function getAnswers(): Promise<Answer[]> {
 export async function getTopics(): Promise<Topic[]> {
   if (isDev) {
     const copy = [...mockTopics];
-    copy.sort((a, b) => (a.id > b.id ? 1 : -1));
+    // Sort topics by created_at desc when available. Fallback to id-based ordering.
+    copy.sort((a, b) => {
+      if (a.created_at && b.created_at) {
+        return a.created_at < b.created_at ? 1 : -1;
+      }
+      const an = Number(a.id as any);
+      const bn = Number(b.id as any);
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) return bn - an;
+      return String(b.id) > String(a.id) ? 1 : -1;
+    });
     return copy.map((t) => TopicSchema.parse(t));
   }
   throw new Error('getTopics: production not implemented');
