@@ -8,7 +8,6 @@ import React from 'react';
  */
 export default function ResponsiveNav() {
   const items = [
-    { to: '/', label: 'Home', icon: HomeIcon },
     { to: '/answers', label: 'Answers', icon: ListIcon },
     { to: '/topics', label: 'お題', icon: TopicIcon },
     { to: '/test', label: 'Test', icon: TestIcon },
@@ -22,7 +21,12 @@ export default function ResponsiveNav() {
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex items-center justify-between md:py-3 md:gap-6">
           <div className="hidden md:block">
-            <span className="font-semibold">Tsukkomi V2</span>
+            <NavLink
+              to="/"
+              className="font-semibold text-gray-800 dark:text-gray-100"
+            >
+              Tsukkomi V2
+            </NavLink>
           </div>
 
           <ul className="flex w-full md:w-auto md:items-center md:gap-4">
