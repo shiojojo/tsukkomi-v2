@@ -23,9 +23,11 @@ export default function TopicsRoute() {
               <div>
                 <h2 className="text-lg font-medium">{t.title}</h2>
               </div>
-              <Link to={`/topics/${t.id}`} className="text-sm text-blue-600">
-                閲覧
-              </Link>
+              <div className="flex gap-3 items-center">
+                <Link to={`/topics/${t.id}`} className="text-sm text-blue-600">
+                  回答を見る
+                </Link>
+              </div>
             </div>
           </li>
         ))}

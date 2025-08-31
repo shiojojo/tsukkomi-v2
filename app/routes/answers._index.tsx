@@ -1,22 +1,13 @@
 import type { LoaderFunctionArgs } from 'react-router';
-import { useLoaderData, Link, useLocation } from 'react-router';
-import { getAnswers, getTopics, getAnswersByTopic } from '~/lib/db';
+import { useLoaderData, Link } from 'react-router';
+import { getAnswers, getTopics } from '~/lib/db';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  const topicParam = url.searchParams.get('topic');
-
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
-
-  let answers = [] as any;
-  if (topicParam) {
-    answers = await getAnswersByTopic(topicParam);
-  } else {
-    answers = await getAnswers();
-  }
+  const answers = await getAnswers();
 
   return { answers, topicsById };
 }
@@ -26,31 +17,18 @@ export default function AnswersRoute() {
   const data = useLoaderData() as LoaderData;
   const answers: Answer[] = data?.answers ?? [];
   const topicsById: Record<string, Topic> = (data as any)?.topicsById ?? {};
-  const { search } = useLocation();
-  const params = new URLSearchParams(search);
-  const topicParam = params.get('topic');
-  const pinnedTopic = topicParam ? topicsById[String(topicParam)] : undefined;
+  // No pinned topic handling: topics are shown per-answer and topic-specific pages live under /topics/:id
 
   return (
     <div className="p-4 max-w-3xl mx-auto flex flex-col">
-      {/* Pinned header: shows selected topic or generic title. Sticky with responsive top offset so it won't be covered by the site's nav. */}
       <div className="sticky top-0 md:top-16 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
         <div className="p-4">
-          {pinnedTopic ? (
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">{pinnedTopic.title}</h2>
-              <Link to="/topics" className="text-sm text-blue-600">
-                お題一覧へ
-              </Link>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <h1 className="text-2xl font-semibold">大喜利 - 回答一覧</h1>
-              <Link to="/topics" className="text-sm text-blue-600">
-                お題一覧へ
-              </Link>
-            </div>
-          )}
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold">大喜利 - 回答一覧</h1>
+            <Link to="/topics" className="text-sm text-blue-600">
+              お題一覧へ
+            </Link>
+          </div>
         </div>
       </div>
 

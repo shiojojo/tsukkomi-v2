@@ -46,12 +46,7 @@ export default function Home() {
                 >
                   回答を見る
                 </Link>
-                <Link
-                  to={`/answers${latest ? `?topic=${latest.id}` : ''}`}
-                  className="inline-flex items-center px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md text-sm text-gray-700 dark:text-gray-200"
-                >
-                  全ての回答へ
-                </Link>
+                {/* '全ての回答へ' removed — use '回答を見る' which navigates to the topic page */}
               </div>
             </div>
           </section>
