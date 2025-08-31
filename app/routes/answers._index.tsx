@@ -7,7 +7,7 @@ import type { Topic } from '~/lib/schemas/topic';
 export async function loader(_args: LoaderFunctionArgs) {
   const answers = await getAnswers();
   const topics = await getTopics();
-  const topicsById = Object.fromEntries(topics.map((t) => [String(t.id), t]));
+  const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
   return { answers, topicsById };
 }
 
@@ -29,8 +29,11 @@ export default function AnswersRoute() {
             <p className="mt-2 text-lg">{a.text}</p>
             {a.topicId ? (
               <p className="mt-2 text-xs text-gray-500">
-                お題: {topicsById[String(a.topicId)] ? (
-                  <Link to={`/topics/${a.topicId}`} className="text-blue-600">{topicsById[String(a.topicId)].title}</Link>
+                お題:{' '}
+                {topicsById[String(a.topicId)] ? (
+                  <Link to={`/topics/${a.topicId}`} className="text-blue-600">
+                    {topicsById[String(a.topicId)].title}
+                  </Link>
                 ) : (
                   String(a.topicId)
                 )}

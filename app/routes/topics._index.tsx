@@ -17,7 +17,7 @@ export default function TopicsRoute() {
     <div className="p-4 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold mb-4">お題一覧</h1>
       <ul className="space-y-3">
-        {topics.map((t) => (
+        {topics.map(t => (
           <li key={t.id} className="p-4 border rounded-md">
             <div className="flex justify-between items-start">
               <div>

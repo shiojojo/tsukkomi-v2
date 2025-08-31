@@ -11,13 +11,15 @@ export async function loader({ params }: LoaderFunctionArgs) {
   }
 
   const topics = await getTopics();
-  const topic = topics.find((t) => Number((t as any).id) === id);
+  const topic = topics.find(t => Number((t as any).id) === id);
   if (!topic) {
     throw new Response('Not Found', { status: 404 });
   }
 
   const answers = await getAnswers();
-  const filtered = answers.filter((a) => a.topicId != null && Number((a as any).topicId) === id);
+  const filtered = answers.filter(
+    a => a.topicId != null && Number((a as any).topicId) === id
+  );
 
   return { topic, answers: filtered };
 }
@@ -32,16 +34,20 @@ export default function TopicDetailRoute() {
     <div className="p-4 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold">{topic.title}</h1>
-        <Link to="/topics" className="text-sm text-blue-600">お題一覧へ</Link>
+        <Link to="/topics" className="text-sm text-blue-600">
+          お題一覧へ
+        </Link>
       </div>
 
       {answers.length === 0 ? (
         <p className="text-gray-600">まだ回答が投稿されていません。</p>
       ) : (
         <ul className="space-y-4">
-          {answers.map((a) => (
+          {answers.map(a => (
             <li key={a.id} className="p-4 border rounded-md">
-              <p className="text-sm text-gray-600">{new Date(a.created_at).toLocaleString()}</p>
+              <p className="text-sm text-gray-600">
+                {new Date(a.created_at).toLocaleString()}
+              </p>
               <p className="mt-2 text-lg">{a.text}</p>
               {a.author ? (
                 <p className="mt-2 text-xs text-gray-500">— {a.author}</p>
