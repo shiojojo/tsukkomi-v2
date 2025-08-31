@@ -24,7 +24,17 @@ export default function AnswersRoute() {
       <div className="sticky top-0 md:top-16 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
         <div className="p-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">大喜利 - 回答一覧</h1>
+            <div className="flex items-center gap-3">
+              {/* Mobile: show Home button (visible on small screens, hidden on md+) */}
+              <Link
+                to="/"
+                className="inline-flex items-center justify-center w-10 h-10 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 md:hidden"
+                aria-label="ホームへ戻る"
+              >
+                ホーム
+              </Link>
+              <h1 className="text-2xl font-semibold">大喜利 - 回答一覧</h1>
+            </div>
             <Link to="/topics" className="text-sm text-blue-600">
               お題一覧へ
             </Link>
