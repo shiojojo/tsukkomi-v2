@@ -13,4 +13,11 @@ export const mockAnswers = [
   created_at: '2025-08-24T09:30:00.000Z',
   topicId: 2,
   },
+  {
+    id: 3,
+    text: 'ここは俺が奢るから、君はそのまま出て行ってくれ',
+    author: '酔っぱらいA',
+    created_at: '2025-08-26T19:00:00.000Z',
+    topicId: 4,
+  },
 ];

@@ -1,13 +1,23 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
-import { getAnswers, getTopics } from '~/lib/db';
+import { getAnswers, getTopics, getAnswersByTopic } from '~/lib/db';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 
-export async function loader(_args: LoaderFunctionArgs) {
-  const answers = await getAnswers();
+export async function loader({ request }: LoaderFunctionArgs) {
+  const url = new URL(request.url);
+  const topicParam = url.searchParams.get('topic');
+
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
+
+  let answers = [] as any;
+  if (topicParam) {
+    answers = await getAnswersByTopic(topicParam);
+  } else {
+    answers = await getAnswers();
+  }
+
   return { answers, topicsById };
 }
 
