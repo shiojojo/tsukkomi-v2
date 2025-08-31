@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
-import { getTopics, getAnswers } from '~/lib/db';
+import { getTopic, getAnswersByTopic } from '~/lib/db';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 
@@ -10,18 +10,16 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response('Invalid topic id', { status: 400 });
   }
 
-  const topics = await getTopics();
-  const topic = topics.find(t => String(t.id) === id);
+  const [topic, answers] = await Promise.all([
+    getTopic(id),
+    getAnswersByTopic(id),
+  ]);
+
   if (!topic) {
     throw new Response('Not Found', { status: 404 });
   }
 
-  const answers = await getAnswers();
-  const filtered = answers.filter(
-    a => a.topicId != null && String(a.topicId) === id
-  );
-
-  return { topic, answers: filtered };
+  return { topic, answers };
 }
 
 export default function TopicDetailRoute() {

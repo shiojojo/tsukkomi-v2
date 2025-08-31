@@ -48,6 +48,15 @@ export async function getTopics(): Promise<Topic[]> {
 }
 
 /**
+ * getTopic
+ * Intent: return a single Topic by id (string|number). Returns undefined when not found.
+ */
+export async function getTopic(id: string | number): Promise<Topic | undefined> {
+  const topics = await getTopics();
+  return topics.find((t) => String(t.id) === String(id));
+}
+
+/**
  * getAnswersByTopic
  * Intent: return answers that belong to a given topic id.
  * Contract: topicId may be string or number. Comparison coerces both sides to string.
