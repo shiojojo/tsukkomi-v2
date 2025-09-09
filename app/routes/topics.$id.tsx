@@ -64,7 +64,7 @@ export default function TopicDetailRoute() {
         <p className="text-gray-600">まだ回答が投稿されていません。</p>
       ) : (
         <ul className="space-y-5">
-          {answers.map((a) => {
+          {answers.map(a => {
             const votes = a.votes ?? { level1: 0, level2: 0, level3: 0 };
             return (
               <li
@@ -131,7 +131,7 @@ function NumericVoteButtons({
     if (prev === level) return; // toggle no-op (user keeps same)
 
     // update counts locally
-    setCounts((c) => {
+    setCounts(c => {
       const next = { ...c };
       if (prev === 1) next.level1 = Math.max(0, next.level1 - 1);
       if (prev === 2) next.level2 = Math.max(0, next.level2 - 1);

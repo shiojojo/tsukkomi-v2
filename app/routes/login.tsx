@@ -14,9 +14,11 @@ export default function LoginRoute() {
   return (
     <div className="p-4 max-w-md mx-auto">
       <h1 className="text-xl font-bold mb-4">ログイン（開発用）</h1>
-      <p className="text-sm text-gray-600 mb-4">ユーザーを選択して localStorage に設定します。</p>
+      <p className="text-sm text-gray-600 mb-4">
+        ユーザーを選択して localStorage に設定します。
+      </p>
       <ul className="space-y-2">
-        {users.map((u) => (
+        {users.map(u => (
           <li key={u.id}>
             <button
               onClick={() => {
