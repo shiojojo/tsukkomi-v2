@@ -1,9 +1,12 @@
 import { mockAnswers } from '../mock/answers';
+import { mockUsers } from '../mock/users';
 import { mockTopics } from '../mock/topics';
 import { AnswerSchema } from '~/lib/schemas/answer';
 import { TopicSchema } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
+import { UserSchema } from '~/lib/schemas/user';
+import type { User } from '~/lib/schemas/user';
 
 const isDev = import.meta.env.DEV;
 
@@ -57,6 +60,26 @@ export async function getTopics(): Promise<Topic[]> {
 }
 
 /**
+ * getUsers
+ * Intent: return available users in dev (mock). prod: not implemented
+ */
+export async function getUsers(): Promise<User[]> {
+  if (isDev) {
+    const copy = [...mockUsers];
+    return copy.map((u) => UserSchema.parse(u));
+  }
+  throw new Error('getUsers: production not implemented');
+}
+
+/**
+ * getUserById
+ */
+export async function getUserById(id: string): Promise<User | undefined> {
+  const users = await getUsers();
+  return users.find((u) => u.id === id);
+}
+
+/**
  * getTopic
  * Intent: return a single Topic by id (string|number). Returns undefined when not found.
  */
@@ -85,10 +108,12 @@ export async function voteAnswer({
   answerId,
   level,
   previousLevel,
+  userId,
 }: {
   answerId: number;
   level: 1 | 2 | 3;
   previousLevel?: number | null;
+  userId?: string | null;
 }): Promise<Answer> {
   if (!isDev) {
     throw new Error('voteAnswer: production not implemented');
@@ -97,21 +122,31 @@ export async function voteAnswer({
   const idx = mockAnswers.findIndex((a) => a.id === answerId);
   if (idx === -1) throw new Error('Answer not found');
 
-  const ans = mockAnswers[idx];
+  const ans: any = mockAnswers[idx];
   // ensure votes object exists
   ans.votes = ans.votes ?? { level1: 0, level2: 0, level3: 0 };
+  ans.votesBy = ans.votesBy ?? {};
 
-  // If previousLevel provided and different, decrement it (guard to non-negative)
-  if (previousLevel && [1, 2, 3].includes(previousLevel)) {
-    if (previousLevel === 1) ans.votes.level1 = Math.max(0, (ans.votes.level1 || 0) - 1);
-    else if (previousLevel === 2) ans.votes.level2 = Math.max(0, (ans.votes.level2 || 0) - 1);
-    else if (previousLevel === 3) ans.votes.level3 = Math.max(0, (ans.votes.level3 || 0) - 1);
+  // If userId provided and previousLevel not provided, derive it from votesBy
+  const derivedPrev = typeof userId === 'string' && ans.votesBy && ans.votesBy[userId] ? Number(ans.votesBy[userId]) : undefined;
+  const prevToUse = previousLevel ?? derivedPrev;
+
+  // If previousLevel provided or derived and different, decrement it (guard to non-negative)
+  if (typeof prevToUse === 'number' && prevToUse !== level && [1, 2, 3].includes(prevToUse)) {
+    if (prevToUse === 1) ans.votes.level1 = Math.max(0, (ans.votes.level1 || 0) - 1);
+    else if (prevToUse === 2) ans.votes.level2 = Math.max(0, (ans.votes.level2 || 0) - 1);
+    else if (prevToUse === 3) ans.votes.level3 = Math.max(0, (ans.votes.level3 || 0) - 1);
   }
 
   // Add the new vote
   if (level === 1) ans.votes.level1 = (ans.votes.level1 || 0) + 1;
   else if (level === 2) ans.votes.level2 = (ans.votes.level2 || 0) + 1;
   else if (level === 3) ans.votes.level3 = (ans.votes.level3 || 0) + 1;
+
+  // record user selection
+  if (typeof userId === 'string') {
+    ans.votesBy[userId] = level;
+  }
 
   // return validated copy
   return AnswerSchema.parse({ ...ans });

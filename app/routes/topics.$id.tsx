@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, Link, Form, useFetcher } from 'react-router';
+import { useLoaderData, Link } from 'react-router';
+import { useState, useEffect } from 'react';
 import { getTopic, getAnswersByTopic, voteAnswer } from '~/lib/db';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
@@ -29,11 +30,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const previousLevel = form.get('previousLevel')
     ? Number(form.get('previousLevel'))
     : undefined;
+  const userId = form.get('userId') ? String(form.get('userId')) : null;
   if (!answerId || ![1, 2, 3].includes(level)) {
     return new Response('Invalid vote', { status: 400 });
   }
+  if (!userId) {
+    return new Response('Unauthorized', { status: 401 });
+  }
 
-  const updated = await voteAnswer({ answerId, level, previousLevel });
+  const updated = await voteAnswer({ answerId, level, previousLevel, userId });
   return { ok: true, answer: updated };
 }
 
@@ -42,7 +47,7 @@ export default function TopicDetailRoute() {
   const data = useLoaderData() as LoaderData;
   const topic: Topic = data.topic;
   const answers: Answer[] = data.answers ?? [];
-  const fetcher = useFetcher();
+  // votes are handled locally for now; no server roundtrip on click.
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
@@ -59,19 +64,8 @@ export default function TopicDetailRoute() {
         <p className="text-gray-600">まだ回答が投稿されていません。</p>
       ) : (
         <ul className="space-y-5">
-          {answers.map(a => {
-            // optimistic votes from fetcher (if this answer was just voted on)
-            const pending =
-              fetcher.formData &&
-              Number(fetcher.formData.get('answerId')) === a.id
-                ? Number(fetcher.formData.get('level'))
-                : null;
+          {answers.map((a) => {
             const votes = a.votes ?? { level1: 0, level2: 0, level3: 0 };
-            const updating =
-              fetcher.state !== 'idle' &&
-              fetcher.formData &&
-              Number(fetcher.formData.get('answerId')) === a.id;
-
             return (
               <li
                 key={a.id}
@@ -90,13 +84,8 @@ export default function TopicDetailRoute() {
                 ) : null}
 
                 <div className="mt-4 flex items-center gap-3">
-                  {/* numeric unified buttons; client enforces single selection via localStorage */}
-                  <NumericVoteButtons
-                    answerId={a.id}
-                    votes={votes}
-                    fetcher={fetcher}
-                    updating={!!updating}
-                  />
+                  {/* numeric unified buttons; client enforces single selection via localStorage and local state */}
+                  <NumericVoteButtons answerId={a.id} initialVotes={votes} />
                 </div>
               </li>
             );
@@ -109,19 +98,15 @@ export default function TopicDetailRoute() {
 
 function NumericVoteButtons({
   answerId,
-  votes,
-  fetcher,
-  updating,
+  initialVotes,
 }: {
   answerId: number;
-  votes: { level1: number; level2: number; level3: number };
-  fetcher: any;
-  updating: boolean;
+  initialVotes: { level1: number; level2: number; level3: number };
 }) {
-  // localStorage key per answer
+  // local state for counts and selection. This intentionally keeps votes client-side only for now.
   const key = `vote:answer:${answerId}`;
-  // read current selection
-  const getStored = () => {
+
+  const readStored = () => {
     try {
       const v = localStorage.getItem(key);
       return v ? (Number(v) as 1 | 2 | 3) : null;
@@ -130,25 +115,39 @@ function NumericVoteButtons({
     }
   };
 
+  const [selection, setSelection] = useState<1 | 2 | 3 | null>(
+    typeof window !== 'undefined' ? readStored() : null
+  );
+
+  const [counts, setCounts] = useState(() => ({ ...initialVotes }));
+
+  useEffect(() => {
+    // sync initial votes when component mounts
+    setCounts({ ...initialVotes });
+  }, [initialVotes.level1, initialVotes.level2, initialVotes.level3]);
+
   const handleVote = (level: 1 | 2 | 3) => {
-    const prev = getStored();
-    if (prev === level) return; // no-op if choosing same
+    const prev = selection;
+    if (prev === level) return; // toggle no-op (user keeps same)
 
-    // submit form with previousLevel so server can decrement
-    const form = new FormData();
-    form.set('answerId', String(answerId));
-    form.set('level', String(level));
-    if (prev) form.set('previousLevel', String(prev));
+    // update counts locally
+    setCounts((c) => {
+      const next = { ...c };
+      if (prev === 1) next.level1 = Math.max(0, next.level1 - 1);
+      if (prev === 2) next.level2 = Math.max(0, next.level2 - 1);
+      if (prev === 3) next.level3 = Math.max(0, next.level3 - 1);
 
-    // optimistic store
+      if (level === 1) next.level1 = (next.level1 || 0) + 1;
+      if (level === 2) next.level2 = (next.level2 || 0) + 1;
+      if (level === 3) next.level3 = (next.level3 || 0) + 1;
+      return next;
+    });
+
     try {
       localStorage.setItem(key, String(level));
     } catch {}
-
-    fetcher.submit(form, { method: 'post' });
+    setSelection(level);
   };
-
-  const current = typeof window !== 'undefined' ? getStored() : null;
 
   const btnBase =
     'w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium border';
@@ -159,32 +158,31 @@ function NumericVoteButtons({
     <div className="flex items-center gap-2">
       <button
         onClick={() => handleVote(1)}
-        className={`${btnBase} ${current === 1 ? active : inactive}`}
-        aria-pressed={current === 1}
+        className={`${btnBase} ${selection === 1 ? active : inactive}`}
+        aria-pressed={selection === 1}
         aria-label="投票1"
         type="button"
       >
-        1<span className="sr-only">: {votes.level1}</span>
+        1<span className="sr-only">: {counts.level1}</span>
       </button>
       <button
         onClick={() => handleVote(2)}
-        className={`${btnBase} ${current === 2 ? active : inactive}`}
-        aria-pressed={current === 2}
+        className={`${btnBase} ${selection === 2 ? active : inactive}`}
+        aria-pressed={selection === 2}
         aria-label="投票2"
         type="button"
       >
-        2<span className="sr-only">: {votes.level2}</span>
+        2<span className="sr-only">: {counts.level2}</span>
       </button>
       <button
         onClick={() => handleVote(3)}
-        className={`${btnBase} ${current === 3 ? active : inactive}`}
-        aria-pressed={current === 3}
+        className={`${btnBase} ${selection === 3 ? active : inactive}`}
+        aria-pressed={selection === 3}
         aria-label="投票3"
         type="button"
       >
-        3<span className="sr-only">: {votes.level3}</span>
+        3<span className="sr-only">: {counts.level3}</span>
       </button>
-      {updating ? <span className="text-sm text-gray-500">投票中…</span> : null}
     </div>
   );
 }
