@@ -10,6 +10,15 @@ export const AnswerSchema = z.object({
   // topicId links an answer to a Topic.id. Accept string or number for compatibility.
   topicId: z.union([z.string(), z.number()]).optional(),
   created_at: z.string(),
+  // votes: three-level rating counts. Defaults to zeros when missing.
+  votes: z
+    .object({
+      level1: z.number().int().nonnegative(),
+      level2: z.number().int().nonnegative(),
+      level3: z.number().int().nonnegative(),
+    })
+    .optional()
+    .default({ level1: 0, level2: 0, level3: 0 }),
 });
 
 export type Answer = z.infer<typeof AnswerSchema>;

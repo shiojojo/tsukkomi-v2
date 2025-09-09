@@ -74,3 +74,45 @@ export async function getAnswersByTopic(topicId: string | number) {
   const answers = await getAnswers();
   return answers.filter((a) => a.topicId != null && String(a.topicId) === String(topicId));
 }
+
+/**
+ * voteAnswer
+ * Intent: record a three-level vote for an answer.
+ * Contract: accepts answerId and level (1|2|3). Returns the updated Answer.
+ * Environment: dev mutates in-memory mockAnswers and returns the parsed Answer. prod: not implemented.
+ */
+export async function voteAnswer({
+  answerId,
+  level,
+  previousLevel,
+}: {
+  answerId: number;
+  level: 1 | 2 | 3;
+  previousLevel?: number | null;
+}): Promise<Answer> {
+  if (!isDev) {
+    throw new Error('voteAnswer: production not implemented');
+  }
+
+  const idx = mockAnswers.findIndex((a) => a.id === answerId);
+  if (idx === -1) throw new Error('Answer not found');
+
+  const ans = mockAnswers[idx];
+  // ensure votes object exists
+  ans.votes = ans.votes ?? { level1: 0, level2: 0, level3: 0 };
+
+  // If previousLevel provided and different, decrement it (guard to non-negative)
+  if (previousLevel && [1, 2, 3].includes(previousLevel)) {
+    if (previousLevel === 1) ans.votes.level1 = Math.max(0, (ans.votes.level1 || 0) - 1);
+    else if (previousLevel === 2) ans.votes.level2 = Math.max(0, (ans.votes.level2 || 0) - 1);
+    else if (previousLevel === 3) ans.votes.level3 = Math.max(0, (ans.votes.level3 || 0) - 1);
+  }
+
+  // Add the new vote
+  if (level === 1) ans.votes.level1 = (ans.votes.level1 || 0) + 1;
+  else if (level === 2) ans.votes.level2 = (ans.votes.level2 || 0) + 1;
+  else if (level === 3) ans.votes.level3 = (ans.votes.level3 || 0) + 1;
+
+  // return validated copy
+  return AnswerSchema.parse({ ...ans });
+}
