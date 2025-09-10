@@ -13,9 +13,11 @@ export default function LoginRoute() {
 
   return (
     <div className="p-4 max-w-md mx-auto">
-      <h1 className="text-xl font-bold mb-4">ログイン（開発用）</h1>
-      <p className="text-sm text-gray-600 mb-4">
-        ユーザーを選択して localStorage に設定します。
+      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+        ログイン（開発用）
+      </h1>
+      <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
+        ユーザーを選択すると、このブラウザにログイン情報が保存されます。表示される名前で操作が行われます。
       </p>
       <ul className="space-y-2">
         {users.map(u => (
@@ -24,13 +26,14 @@ export default function LoginRoute() {
               onClick={() => {
                 try {
                   localStorage.setItem('currentUserId', u.id);
+                  localStorage.setItem('currentUserName', u.name);
                   // quick feedback: navigate back
                   window.location.href = '/';
                 } catch {
                   // noop
                 }
               }}
-              className="w-full text-left px-3 py-2 rounded bg-white border hover:bg-gray-50"
+              className="w-full text-left px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
               {u.name}
             </button>

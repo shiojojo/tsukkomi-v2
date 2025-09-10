@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 /**
  * Responsive navigation component.
@@ -20,13 +20,16 @@ export default function ResponsiveNav() {
     >
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex items-center justify-between md:py-3 md:gap-6">
-          <div className="hidden md:block">
+          <div className="hidden md:flex items-center gap-4">
             <NavLink
               to="/"
               className="font-semibold text-gray-800 dark:text-gray-100"
             >
               Tsukkomi V2
             </NavLink>
+            <div className="ml-4 text-sm text-gray-700 dark:text-gray-200">
+              <UserBadge />
+            </div>
           </div>
 
           <ul className="flex w-full md:w-auto md:items-center md:gap-4">
@@ -53,10 +56,101 @@ export default function ResponsiveNav() {
                 </NavLink>
               </li>
             ))}
+            <li className={`flex-1 md:flex-initial md:hidden`}>
+              <MobileUserButton />
+            </li>
           </ul>
         </div>
       </div>
     </nav>
+  );
+}
+
+function UserBadge() {
+  const [name, setName] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      setName(localStorage.getItem('currentUserName'));
+    } catch {
+      setName(null);
+    }
+  }, []);
+
+  if (name) {
+    return (
+      <NavLink
+        to="/me"
+        className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline"
+      >
+        <span>{name}</span>
+      </NavLink>
+    );
+  }
+
+  return (
+    <NavLink to="/login" className="text-sm text-blue-600">
+      ログイン
+    </NavLink>
+  );
+}
+
+function MobileUserButton() {
+  const [name, setName] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      setName(localStorage.getItem('currentUserName'));
+    } catch {
+      setName(null);
+    }
+  }, []);
+
+  if (name) {
+    return (
+      <NavLink
+        to="/me"
+        className="group flex flex-col items-center justify-center gap-1 py-2 px-3 text-sm leading-none w-full text-blue-600"
+      >
+        <svg
+          className="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        <span className="text-xs font-medium">{name}</span>
+      </NavLink>
+    );
+  }
+
+  return (
+    <NavLink
+      to="/login"
+      className={({ isActive }) =>
+        `group flex flex-col items-center justify-center gap-1 py-2 px-3 text-sm leading-none w-full ` +
+        (isActive
+          ? 'text-blue-600 dark:text-blue-400'
+          : 'text-gray-700 dark:text-gray-200')
+      }
+    >
+      <svg
+        className="w-5 h-5"
+        viewBox="0 0 24 24"
+        fill="none"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+        <path d="M10 17l5-5-5-5v10z" />
+      </svg>
+      <span className="text-xs">ログイン</span>
+    </NavLink>
   );
 }
 
