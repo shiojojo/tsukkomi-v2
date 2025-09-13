@@ -64,7 +64,16 @@ export async function getCommentsByAnswer(answerId: string | number): Promise<Co
     .eq('answer_id', Number(answerId))
     .order('created_at', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((c: any) => CommentSchema.parse(c));
+  // Normalize DB (snake_case) -> application shape (camelCase) before zod parsing
+  const rows = (data ?? []).map((c: any) => ({
+    id: typeof c.id === 'string' ? Number(c.id) : c.id,
+    answerId: c.answer_id ?? c.answerId,
+    text: c.text,
+    author: c.author_name ?? c.author,
+    authorId: c.author_id ?? c.authorId,
+    created_at: c.created_at ?? c.createdAt,
+  }));
+  return rows.map((c: any) => CommentSchema.parse(c));
 }
 
   // production
@@ -105,7 +114,16 @@ export async function addComment(input: { answerId: string | number; text: strin
     .select('*')
     .single();
   if (error) throw error;
-  return CommentSchema.parse(data as any);
+  // Normalize returned row before parsing
+  const row = {
+    id: typeof data.id === 'string' ? Number(data.id) : data.id,
+    answerId: data.answer_id ?? data.answerId,
+    text: data.text,
+    author: data.author_name ?? data.author,
+    authorId: data.author_id ?? data.authorId,
+    created_at: data.created_at ?? data.createdAt,
+  };
+  return CommentSchema.parse(row as any);
 }
 
 /**
