@@ -1,7 +1,7 @@
 import type { Route } from './+types/_index';
 import type { LoaderFunctionArgs } from 'react-router';
 import Home from './home';
-import { getTopics } from '~/lib/db';
+import { getTopics, getUsers, getUserGivenScoreSummary } from '~/lib/db';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -13,7 +13,17 @@ export function meta({}: Route.MetaArgs) {
 export async function loader(_args: LoaderFunctionArgs) {
   const topics = await getTopics();
   const latest = topics.length ? topics[0] : null;
-  return { latest };
+
+  // compute user summaries so Home component (rendered here) can use useLoaderData()
+  const users = await getUsers();
+  const summaries = await Promise.all(
+    users.map(async (u) => {
+      const s = await getUserGivenScoreSummary(u.id, 10);
+      return { user: u, summary: s };
+    })
+  );
+
+  return { latest, summaries };
 }
 
 export default function Index() {

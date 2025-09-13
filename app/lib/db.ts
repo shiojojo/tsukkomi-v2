@@ -151,3 +151,45 @@ export async function voteAnswer({
   // return validated copy
   return AnswerSchema.parse({ ...ans });
 }
+
+/**
+ * getUserGivenScoreSummary
+ * Intent: calculate how many points a given user has given to answers.
+ *
+ * Contract:
+ *  - Input: userId (string). recentTopicLimit: number (defaults to 10).
+ *  - Output: { allTime: number, recentTopics: number }
+ *
+ * Behavior:
+ *  - allTime: sum of the numeric level values the user has assigned across all answers (votesBy[userId]).
+ *  - recentTopics: same sum but restricted to answers whose topicId is within the most recently created `recentTopicLimit` topics (by created_at desc).
+ *
+ * Environment: works against dev mock data via getAnswers()/getTopics(). prod: will work once getAnswers/getTopics return prod data.
+ * Errors: will throw if underlying calls (getAnswers/getTopics) throw or if userId is falsy.
+ */
+export async function getUserGivenScoreSummary(userId: string, recentTopicLimit = 10): Promise<{ allTime: number; recentTopics: number }> {
+  if (!userId) throw new Error('getUserGivenScoreSummary: userId required');
+
+  const [answers, topics] = await Promise.all([getAnswers(), getTopics()]);
+
+  // compute all-time total
+  let allTime = 0;
+  for (const a of answers) {
+    const v = a.votesBy?.[userId];
+    if (typeof v === 'number' && [1, 2, 3].includes(v)) allTime += v;
+  }
+
+  // determine recent topic ids (created_at desc)
+  const sortedTopics = [...topics].sort((a, b) => (a.created_at && b.created_at ? (a.created_at < b.created_at ? 1 : -1) : 0));
+  const recent = sortedTopics.slice(0, recentTopicLimit).map((t) => String(t.id));
+
+  let recentTopics = 0;
+  for (const a of answers) {
+    if (a.topicId == null) continue;
+    if (!recent.includes(String(a.topicId))) continue;
+    const v = a.votesBy?.[userId];
+    if (typeof v === 'number' && [1, 2, 3].includes(v)) recentTopics += v;
+  }
+
+  return { allTime, recentTopics };
+}
