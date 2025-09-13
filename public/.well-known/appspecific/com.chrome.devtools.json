@@ -1,0 +1,5 @@
+{
+  "name": "tsukkomi-v2",
+  "description": "Devtools helper manifest to avoid router 404 on /.well-known/appspecific/com.chrome.devtools.json",
+  "version": "1.0"
+}
