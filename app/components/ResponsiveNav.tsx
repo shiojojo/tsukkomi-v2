@@ -4,12 +4,11 @@ import React, { useEffect, useState } from 'react';
 /**
  * Responsive navigation component.
  * Intent: show a bottom sticky footer nav on small screens, and a top header on md+ screens.
- * Contract: renders NavLinks for /, /answers, /topics and adapts styles responsively.
+ * Contract: renders NavLinks for / and /topics and adapts styles responsively.
  */
 export default function ResponsiveNav() {
   const items = [
     { to: '/', label: 'Home', icon: HomeIcon },
-    { to: '/answers', label: 'Answers', icon: ListIcon },
     { to: '/topics', label: 'お題', icon: TopicIcon },
   ];
 
@@ -170,20 +169,7 @@ function HomeIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function ListIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      {...props}
-    >
-      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-    </svg>
-  );
-}
+// ListIcon was removed because the /answers route was deleted.
 
 function TopicIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
