@@ -5,6 +5,11 @@ import { getTopic, getAnswersByTopic, voteAnswer, getUsers } from '~/lib/db';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 
+// Shared button styles (mobile-first)
+const CONTROL_BTN_BASE = 'inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-md text-sm font-medium border';
+const CONTROL_BTN_ACTIVE = 'bg-blue-600 text-white border-blue-600';
+const CONTROL_BTN_INACTIVE = 'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100';
+
 export async function loader({ params }: LoaderFunctionArgs) {
   const id = String(params.id || '');
   if (!id) {
@@ -135,11 +140,9 @@ function NumericVoteButtons({
     setSelection(level);
   };
 
-  const btnBase =
-    'inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium border';
-  const active = 'bg-blue-600 text-white border-blue-600';
-  const inactive =
-    'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100';
+  const btnBase = CONTROL_BTN_BASE + ' gap-2 px-3';
+  const active = CONTROL_BTN_ACTIVE;
+  const inactive = CONTROL_BTN_INACTIVE;
 
   return (
     <div className="flex items-center gap-2">
@@ -180,31 +183,35 @@ function AnswerCard({ answer }: { answer: any }) {
   const a = answer;
   const votes = a.votes ?? { level1: 0, level2: 0, level3: 0 };
   const [open, setOpen] = useState(false);
+  const detailsId = `answer-details-${a.id}`;
 
   return (
     <li className="p-4 md:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-md shadow-sm">
       <div className="flex flex-col gap-3">
-        <p className="mt-0 text-lg md:text-2xl leading-relaxed text-gray-800 dark:text-gray-100">
+  <p className="mt-0 text-2xl md:text-4xl leading-relaxed text-gray-800 dark:text-gray-100">
           {a.text}
         </p>
 
-        <div className="flex items-start justify-between">
-          <div />
-          <div className="flex flex-col items-end gap-2">
-            <NumericVoteButtons answerId={a.id} initialVotes={votes} />
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1">
             <button
               type="button"
-              onClick={() => setOpen(s => !s)}
-              className="text-sm text-blue-600 hover:underline"
+              onClick={() => setOpen((s) => !s)}
+              className={`w-full md:w-auto ${CONTROL_BTN_BASE} text-blue-600 bg-transparent hover:bg-blue-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
               aria-expanded={open}
+              aria-controls={detailsId}
             >
               {open ? '詳細を閉じる' : '詳細を見る'}
             </button>
           </div>
+
+          <div className="flex-shrink-0">
+            <NumericVoteButtons answerId={a.id} initialVotes={votes} />
+          </div>
         </div>
 
         {open ? (
-          <div className="mt-3">
+    <div id={detailsId} className="mt-3">
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {new Date(a.created_at).toLocaleString()}
             </p>
