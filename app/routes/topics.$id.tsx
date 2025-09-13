@@ -6,9 +6,11 @@ import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 
 // Shared button styles (mobile-first)
-const CONTROL_BTN_BASE = 'inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-md text-sm font-medium border';
+const CONTROL_BTN_BASE =
+  'inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-md text-sm font-medium border';
 const CONTROL_BTN_ACTIVE = 'bg-blue-600 text-white border-blue-600';
-const CONTROL_BTN_INACTIVE = 'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100';
+const CONTROL_BTN_INACTIVE =
+  'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100';
 
 export async function loader({ params }: LoaderFunctionArgs) {
   const id = String(params.id || '');
@@ -188,7 +190,7 @@ function AnswerCard({ answer }: { answer: any }) {
   return (
     <li className="p-4 md:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-md shadow-sm">
       <div className="flex flex-col gap-3">
-  <p className="mt-0 text-2xl md:text-4xl leading-relaxed text-gray-800 dark:text-gray-100">
+        <p className="mt-0 text-2xl md:text-4xl leading-relaxed text-gray-800 dark:text-gray-100">
           {a.text}
         </p>
 
@@ -196,7 +198,7 @@ function AnswerCard({ answer }: { answer: any }) {
           <div className="flex-1">
             <button
               type="button"
-              onClick={() => setOpen((s) => !s)}
+              onClick={() => setOpen(s => !s)}
               className={`w-full md:w-auto ${CONTROL_BTN_BASE} text-blue-600 bg-transparent hover:bg-blue-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
               aria-expanded={open}
               aria-controls={detailsId}
@@ -211,7 +213,7 @@ function AnswerCard({ answer }: { answer: any }) {
         </div>
 
         {open ? (
-    <div id={detailsId} className="mt-3">
+          <div id={detailsId} className="mt-3">
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {new Date(a.created_at).toLocaleString()}
             </p>
