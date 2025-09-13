@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react';
 export default function ResponsiveNav() {
   const items = [
     { to: '/', label: 'Home', icon: HomeIcon },
+    { to: '/answers', label: '検索', icon: SearchIcon },
     { to: '/topics', label: 'お題', icon: TopicIcon },
   ];
 
@@ -169,7 +170,22 @@ function HomeIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-// ListIcon was removed because the /answers route was deleted.
+// Search icon for the answers/search route
+function SearchIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <circle cx="11" cy="11" r="6" />
+      <path d="M21 21l-4.35-4.35" />
+    </svg>
+  );
+}
 
 function TopicIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
