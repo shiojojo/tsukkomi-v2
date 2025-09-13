@@ -14,11 +14,10 @@ export default function LoginRoute() {
   return (
     <div className="p-4 max-w-md mx-auto">
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-        \u30ed\u30b0\u30a4\u30f3\uff08\u958b\u767a\u7528\uff09
+        ログイン（開発用）
       </h1>
       <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-        \u30e6\u30fc\u30b6\u30fc\u3092\u9078\u629e\u3059\u308b\u3068\u3001\u3053\u306e\u30d6\u30e9\u30a6\u30b6\u306b\u30ed\u30b0\u30a4\u30f3\u60c5\u5831\u304c\u4fdd\u5b58\u3055\u308c\u307e\u3059\u3002\n+
-        \u4e26\u3079\u3066\u30b5\u30d6\u30e6\u30fc\u30b6\u30fc\u3082\u4f7f\u3044\u307e\u3059\u3002
+        ユーザーを選択すると、このブラウザにログイン情報が保存されます。並べてサブユーザーも使います。
       </p>
       <ul className="space-y-4">
         {users.map(u => (
