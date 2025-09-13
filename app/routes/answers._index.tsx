@@ -326,8 +326,23 @@ export default function AnswersRoute() {
       return b.score - a.score;
     });
 
+  // Pagination (mobile-first)
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+  // reset page when any filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [query, minScore, hasComments, onlyFavorited, dateFrom, dateTo, sortBy]);
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, page), pageCount);
+  const paged = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
   return (
-    <div className="p-4 max-w-3xl mx-auto flex flex-col">
+    <div className="p-4 pb-24 md:pb-4 max-w-3xl mx-auto flex flex-col">
       <div className="sticky top-0 md:top-16 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
         <div className="p-4">
           <div className="flex items-center justify-between">
@@ -418,7 +433,7 @@ export default function AnswersRoute() {
             {
               // Group answers by topicId so the topic title appears above its answers
               Object.values(
-                filtered.reduce(
+                paged.reduce(
                   (acc, { answer, score }) => {
                     const tid = answer.topicId ?? null;
                     const key = tid === null ? 'none' : String(tid);
@@ -450,6 +465,29 @@ export default function AnswersRoute() {
             }
           </div>
         )}
+      </div>
+
+      {/* Mobile pagination controls */}
+      <div className="flex items-center justify-between mt-4 md:hidden px-4">
+        <button
+          onClick={() => setPage(p => Math.max(1, p - 1))}
+          disabled={currentPage <= 1}
+          aria-label="前のページ"
+          className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+        >
+          前へ
+        </button>
+
+        <div className="text-sm">{`ページ ${currentPage} / ${pageCount}`}</div>
+
+        <button
+          onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+          disabled={currentPage >= pageCount}
+          aria-label="次のページ"
+          className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+        >
+          次へ
+        </button>
       </div>
     </div>
   );
