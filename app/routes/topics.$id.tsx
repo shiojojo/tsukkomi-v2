@@ -37,7 +37,16 @@ export async function loader({ params }: LoaderFunctionArgs) {
   }
 
   // annotate answers with voter details (name + level) so UI can show who voted what
-  const usersMap = new Map(users.map(u => [u.id, u.name]));
+  // include subUsers in the map so names resolve for voter ids like "user-1#sub-1"
+  const usersMap = new Map<string, string>();
+  for (const u of users) {
+    usersMap.set(u.id, u.name);
+    if (u.subUsers && Array.isArray(u.subUsers)) {
+      for (const s of u.subUsers) {
+        usersMap.set(s.id, s.name);
+      }
+    }
+  }
   const answersWithVoters = answers.map(a => ({
     ...a,
     voters: Object.entries(a.votesBy || {}).map(([userId, lvl]) => ({
@@ -64,7 +73,10 @@ function FavoriteButton({ answerId }: { answerId: number }) {
 
   useEffect(() => {
     try {
-      const uid = localStorage.getItem('currentUserId');
+      // prefer an explicitly selected sub-user identity when present
+      const uid =
+        localStorage.getItem('currentSubUserId') ??
+        localStorage.getItem('currentUserId');
       setCurrentUserId(uid);
       if (uid) {
         const key = `favorite:answer:${answerId}:user:${uid}`;
@@ -239,10 +251,14 @@ function NumericVoteButtons({
 }) {
   // local state for counts and selection. This intentionally keeps votes client-side only for now.
   const key = `vote:answer:${answerId}`;
-
   const readStored = () => {
     try {
-      const v = localStorage.getItem(key);
+      const uid =
+        localStorage.getItem('currentSubUserId') ??
+        localStorage.getItem('currentUserId');
+      if (!uid) return null;
+      const k = `vote:answer:${answerId}:user:${uid}`;
+      const v = localStorage.getItem(k);
       return v ? (Number(v) as 1 | 2 | 3) : null;
     } catch {
       return null;
@@ -274,7 +290,18 @@ function NumericVoteButtons({
     });
 
     try {
-      localStorage.setItem(key, String(level));
+      const uid =
+        localStorage.getItem('currentSubUserId') ??
+        localStorage.getItem('currentUserId');
+      if (!uid) {
+        // require login / selection
+        try {
+          window.location.href = '/login';
+        } catch {}
+        return;
+      }
+      const k = `vote:answer:${answerId}:user:${uid}`;
+      localStorage.setItem(k, String(level));
     } catch {}
     setSelection(level);
   };
@@ -331,8 +358,15 @@ function AnswerCard({
 
   useEffect(() => {
     try {
-      setCurrentUserId(localStorage.getItem('currentUserId'));
-      setCurrentUserName(localStorage.getItem('currentUserName'));
+      // prefer sub-user selection when present
+      setCurrentUserId(
+        localStorage.getItem('currentSubUserId') ??
+          localStorage.getItem('currentUserId')
+      );
+      setCurrentUserName(
+        localStorage.getItem('currentSubUserName') ??
+          localStorage.getItem('currentUserName')
+      );
     } catch {
       setCurrentUserId(null);
       setCurrentUserName(null);

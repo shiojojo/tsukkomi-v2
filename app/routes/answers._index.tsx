@@ -57,8 +57,15 @@ export default function AnswersRoute() {
 
   useEffect(() => {
     try {
-      setCurrentUserId(localStorage.getItem('currentUserId'));
-      setCurrentUserName(localStorage.getItem('currentUserName'));
+      // prefer selected sub-user identity when available
+      setCurrentUserId(
+        localStorage.getItem('currentSubUserId') ??
+          localStorage.getItem('currentUserId')
+      );
+      setCurrentUserName(
+        localStorage.getItem('currentSubUserName') ??
+          localStorage.getItem('currentUserName')
+      );
     } catch {
       setCurrentUserId(null);
       setCurrentUserName(null);

@@ -9,7 +9,7 @@ import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 import { UserSchema } from '~/lib/schemas/user';
-import type { User } from '~/lib/schemas/user';
+import type { User, SubUser } from '~/lib/schemas/user';
 
 const isDev = import.meta.env.DEV;
 
@@ -117,6 +117,48 @@ export async function getUsers(): Promise<User[]> {
 export async function getUserById(id: string): Promise<User | undefined> {
   const users = await getUsers();
   return users.find((u) => u.id === id);
+}
+
+/**
+ * getSubUsers
+ * Intent: return subUsers for a parent user id in dev
+ */
+export async function getSubUsers(parentId: string): Promise<SubUser[] | undefined> {
+  if (!isDev) throw new Error('getSubUsers: production not implemented');
+  const parent = mockUsers.find((u) => u.id === parentId);
+  return parent?.subUsers;
+}
+
+/**
+ * addSubUser
+ * Intent: create a new sub-user in dev and return it
+ * Contract: name validated elsewhere. id is generated to be unique within mockUsers.
+ */
+export async function addSubUser(input: { parentId: string; name: string }): Promise<SubUser> {
+  if (!isDev) throw new Error('addSubUser: production not implemented');
+  const parent = mockUsers.find((u) => u.id === input.parentId);
+  if (!parent) throw new Error('Parent user not found');
+  parent.subUsers = parent.subUsers ?? [];
+  // generate a simple unique id using timestamp + length
+  const id = `${parent.id}#sub-${Date.now()}-${parent.subUsers.length + 1}`;
+  const sub = { id, name: input.name };
+  parent.subUsers.push(sub);
+  return sub;
+}
+
+/**
+ * removeSubUser
+ * Intent: delete a sub-user from parent in dev and return boolean
+ */
+export async function removeSubUser(parentId: string, subId: string): Promise<boolean> {
+  if (!isDev) throw new Error('removeSubUser: production not implemented');
+  const parent = mockUsers.find((u) => u.id === parentId);
+  if (!parent || !parent.subUsers) return false;
+  const idx = parent.subUsers.findIndex((s) => s.id === subId);
+  if (idx === -1) return false;
+  parent.subUsers.splice(idx, 1);
+  // also clear any localStorage references is left to client; server-side returns success
+  return true;
 }
 
 /**
