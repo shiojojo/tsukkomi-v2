@@ -58,28 +58,54 @@ export async function loader({ params }: LoaderFunctionArgs) {
 }
 
 function FavoriteButton({ answerId }: { answerId: number }) {
-  const key = `favorite:answer:${answerId}`;
-  const [fav, setFav] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(key) === '1';
-    } catch {
-      return false;
-    }
-  });
+  // read current user from localStorage (development login helper stores these)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [fav, setFav] = useState<boolean>(false);
 
   useEffect(() => {
     try {
+      const uid = localStorage.getItem('currentUserId');
+      setCurrentUserId(uid);
+      if (uid) {
+        const key = `favorite:answer:${answerId}:user:${uid}`;
+        setFav(localStorage.getItem(key) === '1');
+      }
+    } catch {
+      setCurrentUserId(null);
+      setFav(false);
+    }
+  }, [answerId]);
+
+  useEffect(() => {
+    try {
+      if (!currentUserId) return;
+      const key = `favorite:answer:${answerId}:user:${currentUserId}`;
       localStorage.setItem(key, fav ? '1' : '0');
-    } catch {}
-  }, [fav, key]);
+    } catch {
+      // noop
+    }
+  }, [fav, answerId, currentUserId]);
+
+  const handleClick = () => {
+    if (!currentUserId) {
+      // redirect to login page in dev scaffold
+      try {
+        window.location.href = '/login';
+      } catch {
+        // noop
+      }
+      return;
+    }
+    setFav((s) => !s);
+  };
 
   return (
     <button
       type="button"
       aria-pressed={fav}
-      onClick={() => setFav(s => !s)}
+      onClick={handleClick}
       className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400'} hover:opacity-90`}
-      title={fav ? 'お気に入り解除' : 'お気に入り'}
+      title={!currentUserId ? 'ログインしてお気に入り登録' : fav ? 'お気に入り解除' : 'お気に入り'}
     >
       {fav ? (
         <svg
