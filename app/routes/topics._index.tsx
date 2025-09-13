@@ -21,12 +21,23 @@ export default function TopicsRoute() {
           <li key={t.id}>
             <Link
               to={`/topics/${t.id}`}
-              className="block p-4 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="block p-0 border rounded-md overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               aria-label={`お題 ${t.title} の回答を見る`}
             >
-              <div>
-                <h2 className="text-lg font-medium">{t.title}</h2>
-              </div>
+              {t.image ? (
+                // Image-only topic: show the entire photo (no cropping).
+                <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                  <img
+                    src={t.image}
+                    alt={t.title}
+                    className="w-full h-auto max-h-60 object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <h2 className="text-lg font-medium">{t.title}</h2>
+                </div>
+              )}
             </Link>
           </li>
         ))}

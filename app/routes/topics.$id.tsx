@@ -109,13 +109,23 @@ export default function TopicDetailRoute() {
     <div className="p-4 max-w-3xl mx-auto">
       {/* Sticky header */}
       <div className="sticky top-0 z-30 bg-white dark:bg-gray-950 pt-4 pb-2">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl md:text-3xl font-extrabold leading-tight text-gray-900 dark:text-gray-100">
-            {topic.title}
-          </h1>
-          <Link to="/topics" className="text-sm text-blue-600">
-            お題一覧へ
-          </Link>
+        <div className="flex items-center justify-between mb-4 gap-4">
+          <div className="flex items-center gap-4">
+            {topic.image ? (
+              // Photo-only topic: center the image horizontally and keep accessible alt text.
+              <div className="flex justify-center">
+                <img
+                  src={topic.image}
+                  alt={topic.title}
+                  className="max-w-full h-auto max-h-[50vh] rounded-md mx-auto"
+                />
+              </div>
+            ) : (
+              <h1 className="text-2xl md:text-3xl font-extrabold leading-tight text-gray-900 dark:text-gray-100">
+                {topic.title}
+              </h1>
+            )}
+          </div>
         </div>
       </div>
 

@@ -8,6 +8,8 @@ export const TopicSchema = z.object({
   id: z.union([z.string(), z.number()]),
   title: z.string().min(1).max(200),
   created_at: z.string(),
+  // optional image URL for image-based topics (thumbnail or full image)
+  image: z.string().url().optional(),
 });
 
 export type Topic = z.infer<typeof TopicSchema>;
