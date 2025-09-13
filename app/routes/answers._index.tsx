@@ -81,7 +81,10 @@ export default function AnswersRoute() {
 
     useEffect(() => {
       try {
-        const uid = localStorage.getItem('currentUserId');
+        // prefer selected sub-user identity when available so favorites are stored per-subuser
+        const uid =
+          localStorage.getItem('currentSubUserId') ??
+          localStorage.getItem('currentUserId');
         setCurrentUserIdLocal(uid);
         if (uid) {
           const key = `favorite:answer:${answerId}:user:${uid}`;

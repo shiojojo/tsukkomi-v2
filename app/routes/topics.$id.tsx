@@ -253,6 +253,7 @@ function NumericVoteButtons({
   const key = `vote:answer:${answerId}`;
   const readStored = () => {
     try {
+      // prefer selected sub-user id so votes are attributed to sub-accounts
       const uid =
         localStorage.getItem('currentSubUserId') ??
         localStorage.getItem('currentUserId');
