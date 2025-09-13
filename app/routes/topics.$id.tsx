@@ -57,6 +57,55 @@ export async function loader({ params }: LoaderFunctionArgs) {
   return { topic, answers: answersWithVoters, commentsByAnswer };
 }
 
+function FavoriteButton({ answerId }: { answerId: number }) {
+  const key = `favorite:answer:${answerId}`;
+  const [fav, setFav] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(key) === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, fav ? '1' : '0');
+    } catch {}
+  }, [fav, key]);
+
+  return (
+    <button
+      type="button"
+      aria-pressed={fav}
+      onClick={() => setFav(s => !s)}
+      className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400'} hover:opacity-90`}
+      title={fav ? 'お気に入り解除' : 'お気に入り'}
+    >
+      {fav ? (
+        <svg
+          className="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden
+        >
+          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        </svg>
+      ) : (
+        <svg
+          className="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          aria-hidden
+        >
+          <path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 export async function action({ request, params }: ActionFunctionArgs) {
   const form = await request.formData();
   // comment submission (no auth required in this scaffold)
@@ -282,7 +331,10 @@ function AnswerCard({
           </div>
 
           <div className="flex-shrink-0">
-            <NumericVoteButtons answerId={a.id} initialVotes={votes} />
+            <div className="flex items-center gap-2">
+              <FavoriteButton answerId={a.id} />
+              <NumericVoteButtons answerId={a.id} initialVotes={votes} />
+            </div>
           </div>
         </div>
 
