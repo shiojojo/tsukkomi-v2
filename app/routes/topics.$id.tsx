@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
 import { useState, useEffect } from 'react';
-import { getTopic, getAnswersByTopic, voteAnswer } from '~/lib/db';
+import { getTopic, getAnswersByTopic, voteAnswer, getUsers } from '~/lib/db';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 
@@ -11,16 +11,28 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response('Invalid topic id', { status: 400 });
   }
 
-  const [topic, answers] = await Promise.all([
+  const [topic, answers, users] = await Promise.all([
     getTopic(id),
     getAnswersByTopic(id),
+    getUsers(),
   ]);
 
   if (!topic) {
     throw new Response('Not Found', { status: 404 });
   }
 
-  return { topic, answers };
+  // annotate answers with voter details (name + level) so UI can show who voted what
+  const usersMap = new Map(users.map(u => [u.id, u.name]));
+  const answersWithVoters = answers.map(a => ({
+    ...a,
+    voters: Object.entries(a.votesBy || {}).map(([userId, lvl]) => ({
+      id: userId,
+      name: usersMap.get(userId) ?? userId,
+      level: Number(lvl),
+    })),
+  }));
+
+  return { topic, answers: answersWithVoters };
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
@@ -46,7 +58,8 @@ export default function TopicDetailRoute() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
   const data = useLoaderData() as LoaderData;
   const topic: Topic = data.topic;
-  const answers: Answer[] = data.answers ?? [];
+  // answers may be annotated with `voters: { id, name, level }[]`
+  const answers: any[] = data.answers ?? [];
   // votes are handled locally for now; no server roundtrip on click.
 
   return (
@@ -64,32 +77,9 @@ export default function TopicDetailRoute() {
         <p className="text-gray-600">まだ回答が投稿されていません。</p>
       ) : (
         <ul className="space-y-5">
-          {answers.map(a => {
-            const votes = a.votes ?? { level1: 0, level2: 0, level3: 0 };
-            return (
-              <li
-                key={a.id}
-                className="p-4 md:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-md shadow-sm"
-              >
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {new Date(a.created_at).toLocaleString()}
-                </p>
-                <p className="mt-2 text-base md:text-lg leading-relaxed text-gray-800 dark:text-gray-100">
-                  {a.text}
-                </p>
-                {a.author ? (
-                  <p className="mt-3 text-sm font-medium text-gray-600 dark:text-gray-400">
-                    — {a.author}
-                  </p>
-                ) : null}
-
-                <div className="mt-4 flex items-center gap-3">
-                  {/* numeric unified buttons; client enforces single selection via localStorage and local state */}
-                  <NumericVoteButtons answerId={a.id} initialVotes={votes} />
-                </div>
-              </li>
-            );
-          })}
+          {answers.map(a => (
+            <AnswerCard key={a.id} answer={a} />
+          ))}
         </ul>
       )}
     </div>
@@ -119,12 +109,8 @@ function NumericVoteButtons({
     typeof window !== 'undefined' ? readStored() : null
   );
 
+  // counts are intentionally not shown in the UI; keep local state for potential future use
   const [counts, setCounts] = useState(() => ({ ...initialVotes }));
-
-  useEffect(() => {
-    // sync initial votes when component mounts
-    setCounts({ ...initialVotes });
-  }, [initialVotes.level1, initialVotes.level2, initialVotes.level3]);
 
   const handleVote = (level: 1 | 2 | 3) => {
     const prev = selection;
@@ -150,9 +136,10 @@ function NumericVoteButtons({
   };
 
   const btnBase =
-    'w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium border';
+    'inline-flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium border';
   const active = 'bg-blue-600 text-white border-blue-600';
-  const inactive = 'bg-white text-gray-800 border-gray-200';
+  const inactive =
+    'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100';
 
   return (
     <div className="flex items-center gap-2">
@@ -163,8 +150,9 @@ function NumericVoteButtons({
         aria-label="投票1"
         type="button"
       >
-        1<span className="sr-only">: {counts.level1}</span>
+        <span>1</span>
       </button>
+
       <button
         onClick={() => handleVote(2)}
         className={`${btnBase} ${selection === 2 ? active : inactive}`}
@@ -172,8 +160,9 @@ function NumericVoteButtons({
         aria-label="投票2"
         type="button"
       >
-        2<span className="sr-only">: {counts.level2}</span>
+        <span>2</span>
       </button>
+
       <button
         onClick={() => handleVote(3)}
         className={`${btnBase} ${selection === 3 ? active : inactive}`}
@@ -181,8 +170,63 @@ function NumericVoteButtons({
         aria-label="投票3"
         type="button"
       >
-        3<span className="sr-only">: {counts.level3}</span>
+        <span>3</span>
       </button>
     </div>
+  );
+}
+
+function AnswerCard({ answer }: { answer: any }) {
+  const a = answer;
+  const votes = a.votes ?? { level1: 0, level2: 0, level3: 0 };
+  const [open, setOpen] = useState(false);
+
+  return (
+    <li className="p-4 md:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-md shadow-sm">
+      <div className="flex flex-col gap-3">
+        <p className="mt-0 text-lg md:text-2xl leading-relaxed text-gray-800 dark:text-gray-100">
+          {a.text}
+        </p>
+
+        <div className="flex items-start justify-between">
+          <div />
+          <div className="flex flex-col items-end gap-2">
+            <NumericVoteButtons answerId={a.id} initialVotes={votes} />
+            <button
+              type="button"
+              onClick={() => setOpen(s => !s)}
+              className="text-sm text-blue-600 hover:underline"
+              aria-expanded={open}
+            >
+              {open ? '詳細を閉じる' : '詳細を見る'}
+            </button>
+          </div>
+        </div>
+
+        {open ? (
+          <div className="mt-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {new Date(a.created_at).toLocaleString()}
+            </p>
+            {a.author ? (
+              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+                — {a.author}
+              </p>
+            ) : null}
+
+            {a.voters && a.voters.length > 0 ? (
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                投票者:{' '}
+                {a.voters.map((v: any, i: number) => (
+                  <span key={v.id} className="mr-3">
+                    {v.name} ({v.level}){i < a.voters.length - 1 ? ',' : ''}
+                  </span>
+                ))}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </li>
   );
 }
