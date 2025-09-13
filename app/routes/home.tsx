@@ -21,7 +21,6 @@ export default function Home() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
   const data = useLoaderData() as LoaderData;
   const latest: Topic | null = data?.latest ?? null;
-  
 
   return (
     <main className="p-4">
@@ -57,7 +56,7 @@ export default function Home() {
           </div>
         )}
 
-  {/* User ranking removed */}
+        {/* User ranking removed */}
       </div>
     </main>
   );
