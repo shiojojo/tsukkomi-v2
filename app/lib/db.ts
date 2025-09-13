@@ -1,10 +1,13 @@
 import { mockAnswers } from '../mock/answers';
 import { mockUsers } from '../mock/users';
 import { mockTopics } from '../mock/topics';
+import { mockComments } from '../mock/comments';
 import { AnswerSchema } from '~/lib/schemas/answer';
 import { TopicSchema } from '~/lib/schemas/topic';
+import { CommentSchema } from '~/lib/schemas/comment';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
+import type { Comment } from '~/lib/schemas/comment';
 import { UserSchema } from '~/lib/schemas/user';
 import type { User } from '~/lib/schemas/user';
 
@@ -31,6 +34,43 @@ export async function getAnswers(): Promise<Answer[]> {
   // Production path: the project currently doesn't have a Supabase client scaffolded here.
   // Follow project conventions: create app/lib/supabase.ts and call supabase.from('answers')...
   throw new Error('getAnswers: production not implemented. Add app/lib/supabase.ts and implement DB fetch.');
+}
+
+/**
+ * getCommentsByAnswer
+ * Intent: return comments for a given answer id (dev: from mockComments).
+ * Contract: answerId coerced to string for comparison. Returns Comment[] sorted by created_at asc.
+ */
+export async function getCommentsByAnswer(answerId: string | number): Promise<Comment[]> {
+  if (isDev) {
+    const copy = mockComments.filter((c) => String(c.answerId) === String(answerId));
+    copy.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+    return copy.map((c) => CommentSchema.parse(c));
+  }
+  throw new Error('getCommentsByAnswer: production not implemented');
+}
+
+/**
+ * addComment
+ * Intent: add a comment to an answer in dev (in-memory). Returns the created Comment.
+ * Contract: input validated via CommentSchema (partial). In dev the function assigns an id and created_at.
+ */
+export async function addComment(input: { answerId: string | number; text: string; author?: string; authorId?: string; }): Promise<Comment> {
+  if (!isDev) throw new Error('addComment: production not implemented');
+
+  const nextId = mockComments.length ? Math.max(...mockComments.map((c) => Number(c.id))) + 1 : 1;
+  const now = new Date().toISOString();
+  const raw = {
+    id: nextId,
+    // store numeric answerId in mockComments for consistency
+    answerId: Number(input.answerId),
+    text: input.text,
+    author: input.author ?? '',
+    authorId: input.authorId ?? '',
+    created_at: now,
+  } as const;
+  mockComments.push(raw);
+  return CommentSchema.parse(raw);
 }
 
 /**

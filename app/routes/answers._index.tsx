@@ -1,15 +1,46 @@
-import type { LoaderFunctionArgs } from 'react-router';
-import { useLoaderData, Link } from 'react-router';
+import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
+import { useLoaderData, Link, Form, useFetcher } from 'react-router';
+import { useEffect, useState } from 'react';
 import { getAnswers, getTopics } from '~/lib/db';
+import { getCommentsByAnswer, addComment } from '~/lib/db';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
+import type { Comment } from '~/lib/schemas/comment';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
   const answers = await getAnswers();
+  // collect comments per-answer in dev
+  const commentsByAnswer: Record<string, Comment[]> = {};
+  for (const a of answers) {
+    const comments = await getCommentsByAnswer(a.id);
+    commentsByAnswer[String(a.id)] = comments;
+  }
 
-  return { answers, topicsById };
+  return { answers, topicsById, commentsByAnswer };
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const form = await request.formData();
+  const answerId = form.get('answerId');
+  const text = String(form.get('text') || '');
+  const authorId = form.get('authorId')
+    ? String(form.get('authorId'))
+    : undefined;
+  const authorName = form.get('authorName')
+    ? String(form.get('authorName'))
+    : undefined;
+  if (!answerId || !text) {
+    return { ok: false };
+  }
+  await addComment({
+    answerId: String(answerId),
+    text,
+    author: authorName,
+    authorId,
+  });
+  return { ok: true };
 }
 
 export default function AnswersRoute() {
@@ -17,7 +48,22 @@ export default function AnswersRoute() {
   const data = useLoaderData() as LoaderData;
   const answers: Answer[] = data?.answers ?? [];
   const topicsById: Record<string, Topic> = (data as any)?.topicsById ?? {};
+  const commentsByAnswer: Record<string, Comment[]> =
+    (data as any)?.commentsByAnswer ?? {};
   // No pinned topic handling: topics are shown per-answer and topic-specific pages live under /topics/:id
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      setCurrentUserId(localStorage.getItem('currentUserId'));
+      setCurrentUserName(localStorage.getItem('currentUserName'));
+    } catch {
+      setCurrentUserId(null);
+      setCurrentUserName(null);
+    }
+  }, []);
 
   return (
     <div className="p-4 max-w-3xl mx-auto flex flex-col">
@@ -78,6 +124,49 @@ export default function AnswersRoute() {
                 {a.author ? (
                   <p className="mt-2 text-xs text-gray-500">— {a.author}</p>
                 ) : null}
+                {/* comments list */}
+                <div className="mt-3">
+                  <h4 className="text-sm font-medium">コメント</h4>
+                  <ul className="mt-2 space-y-2 text-sm">
+                    {(commentsByAnswer[String(a.id)] || []).map(c => (
+                      <li key={c.id} className="text-gray-700">
+                        {c.text}{' '}
+                        <span className="text-xs text-gray-400">
+                          — {c.author || '名無し'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* comment form */}
+                <div className="mt-3">
+                  <div className="text-muted mb-2">
+                    コメントとして: {currentUserName ?? '名無し'}
+                  </div>
+                  <Form method="post" className="flex gap-2" replace>
+                    <input type="hidden" name="answerId" value={String(a.id)} />
+                    <input
+                      type="hidden"
+                      name="authorId"
+                      value={currentUserId ?? ''}
+                    />
+                    <input
+                      type="hidden"
+                      name="authorName"
+                      value={currentUserName ?? ''}
+                    />
+                    <input
+                      name="text"
+                      className="form-input flex-1"
+                      placeholder="コメントを追加"
+                      aria-label="コメント入力"
+                    />
+                    <button className="btn-inline" aria-label="コメントを送信">
+                      送信
+                    </button>
+                  </Form>
+                </div>
               </li>
             ))}
           </ul>

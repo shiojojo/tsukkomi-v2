@@ -1,7 +1,15 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, Link } from 'react-router';
+import { useLoaderData, Link, Form } from 'react-router';
 import { useState, useEffect } from 'react';
-import { getTopic, getAnswersByTopic, voteAnswer, getUsers } from '~/lib/db';
+import {
+  getTopic,
+  getAnswersByTopic,
+  voteAnswer,
+  getUsers,
+  getCommentsByAnswer,
+  addComment,
+} from '~/lib/db';
+import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 
@@ -39,11 +47,37 @@ export async function loader({ params }: LoaderFunctionArgs) {
     })),
   }));
 
-  return { topic, answers: answersWithVoters };
+  // attach comments per answer (dev mock)
+  const commentsByAnswer: Record<string, Comment[]> = {};
+  for (const a of answersWithVoters) {
+    const cs = await getCommentsByAnswer(a.id);
+    commentsByAnswer[String(a.id)] = cs;
+  }
+
+  return { topic, answers: answersWithVoters, commentsByAnswer };
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const form = await request.formData();
+  // comment submission (no auth required in this scaffold)
+  const commentText = form.get('commentText');
+  if (commentText) {
+    const answerIdRaw = form.get('answerId');
+    const authorId = form.get('authorId')
+      ? String(form.get('authorId'))
+      : undefined;
+    const authorName = form.get('authorName')
+      ? String(form.get('authorName'))
+      : undefined;
+    if (!answerIdRaw) return new Response('Invalid', { status: 400 });
+    await addComment({
+      answerId: String(answerIdRaw),
+      text: String(commentText),
+      author: authorName,
+      authorId,
+    });
+    return { ok: true };
+  }
   const answerId = Number(form.get('answerId'));
   const level = Number(form.get('level')) as 1 | 2 | 3;
   const previousLevel = form.get('previousLevel')
@@ -67,6 +101,8 @@ export default function TopicDetailRoute() {
   const topic: Topic = data.topic;
   // answers may be annotated with `voters: { id, name, level }[]`
   const answers: any[] = data.answers ?? [];
+  const commentsByAnswer: Record<string, Comment[]> =
+    (data as any)?.commentsByAnswer ?? {};
   // votes are handled locally for now; no server roundtrip on click.
 
   return (
@@ -85,7 +121,11 @@ export default function TopicDetailRoute() {
       ) : (
         <ul className="space-y-5">
           {answers.map(a => (
-            <AnswerCard key={a.id} answer={a} />
+            <AnswerCard
+              key={a.id}
+              answer={a}
+              comments={commentsByAnswer[String(a.id)]}
+            />
           ))}
         </ul>
       )}
@@ -181,8 +221,26 @@ function NumericVoteButtons({
   );
 }
 
-function AnswerCard({ answer }: { answer: any }) {
+function AnswerCard({
+  answer,
+  comments,
+}: {
+  answer: any;
+  comments?: Comment[];
+}) {
   const a = answer;
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      setCurrentUserId(localStorage.getItem('currentUserId'));
+      setCurrentUserName(localStorage.getItem('currentUserName'));
+    } catch {
+      setCurrentUserId(null);
+      setCurrentUserName(null);
+    }
+  }, []);
   const votes = a.votes ?? { level1: 0, level2: 0, level3: 0 };
   const [open, setOpen] = useState(false);
   const detailsId = `answer-details-${a.id}`;
@@ -221,6 +279,50 @@ function AnswerCard({ answer }: { answer: any }) {
               <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-400">
                 — {a.author}
               </p>
+            ) : null}
+            {/* comments */}
+            {open ? (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium">コメント</h4>
+                <ul className="mt-2 space-y-2 text-sm">
+                  {(comments || []).map(c => (
+                    <li key={c.id} className="text-gray-700">
+                      {c.text}{' '}
+                      <span className="text-xs text-gray-400">
+                        — {c.author || '名無し'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-3">
+                  <div className="text-muted mb-2">
+                    コメントとして: {currentUserName ?? '名無し'}
+                  </div>
+                  <Form method="post" className="flex gap-2">
+                    <input type="hidden" name="answerId" value={String(a.id)} />
+                    <input
+                      type="hidden"
+                      name="authorId"
+                      value={currentUserId ?? ''}
+                    />
+                    <input
+                      type="hidden"
+                      name="authorName"
+                      value={currentUserName ?? ''}
+                    />
+                    <input
+                      name="commentText"
+                      className="form-input flex-1"
+                      placeholder="コメントを追加"
+                      aria-label="コメント入力"
+                    />
+                    <button className="btn-inline" aria-label="コメントを送信">
+                      送信
+                    </button>
+                  </Form>
+                </div>
+              </div>
             ) : null}
 
             {a.voters && a.voters.length > 0 ? (
