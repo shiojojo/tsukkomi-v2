@@ -332,13 +332,6 @@ export default function AnswersRoute() {
         <div className="p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link
-                to="/"
-                className="inline-flex items-center justify-center w-10 h-10 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 md:hidden"
-                aria-label="ホームへ戻る"
-              >
-                ホーム
-              </Link>
               <h1 className="text-2xl font-semibold">大喜利 - 回答一覧</h1>
             </div>
             {/* removed link to /topics per UX: not needed on search screen */}
