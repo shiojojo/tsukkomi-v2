@@ -34,9 +34,7 @@ export default function TopicDetailRoute() {
     <div className="p-4 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-semibold">{topic.title}</h1>
-        <Link to="/topics" className="text-sm text-blue-600">
-          お題一覧へ
-        </Link>
+        {/* removed: no need for topics index link here */}
       </div>
 
       {answers.length === 0 ? (

@@ -331,9 +331,7 @@ export default function AnswersRoute() {
               </Link>
               <h1 className="text-2xl font-semibold">大喜利 - 回答一覧</h1>
             </div>
-            <Link to="/topics" className="text-sm text-blue-600">
-              お題一覧へ
-            </Link>
+            {/* removed link to /topics per UX: not needed on search screen */}
           </div>
 
           {/* Filters: search, min score, comments, favorited, date range, sort */}
