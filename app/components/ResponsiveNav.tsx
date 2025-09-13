@@ -27,9 +27,6 @@ export default function ResponsiveNav() {
             >
               Tsukkomi V2
             </NavLink>
-            <div className="ml-4 text-sm text-gray-700 dark:text-gray-200">
-              <UserBadge />
-            </div>
           </div>
 
           <ul className="flex w-full md:w-auto md:items-center md:gap-4">
@@ -60,6 +57,9 @@ export default function ResponsiveNav() {
               <MobileUserButton />
             </li>
           </ul>
+          <div className="hidden md:flex items-center">
+            <UserBadge />
+          </div>
         </div>
       </div>
     </nav>
