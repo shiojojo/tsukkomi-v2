@@ -96,7 +96,7 @@ function FavoriteButton({ answerId }: { answerId: number }) {
       }
       return;
     }
-    setFav((s) => !s);
+    setFav(s => !s);
   };
 
   return (
@@ -105,7 +105,13 @@ function FavoriteButton({ answerId }: { answerId: number }) {
       aria-pressed={fav}
       onClick={handleClick}
       className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400'} hover:opacity-90`}
-      title={!currentUserId ? 'ログインしてお気に入り登録' : fav ? 'お気に入り解除' : 'お気に入り'}
+      title={
+        !currentUserId
+          ? 'ログインしてお気に入り登録'
+          : fav
+            ? 'お気に入り解除'
+            : 'お気に入り'
+      }
     >
       {fav ? (
         <svg
