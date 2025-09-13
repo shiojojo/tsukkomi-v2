@@ -1,9 +1,8 @@
 import type { Route } from './+types/home';
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
-import { getTopics, getUsers, getUserGivenScoreSummary } from '~/lib/db';
+import { getTopics } from '~/lib/db';
 import type { Topic } from '~/lib/schemas/topic';
-import type { User } from '~/lib/schemas/user';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -15,27 +14,14 @@ export function meta({}: Route.MetaArgs) {
 export async function loader(_args: LoaderFunctionArgs) {
   const topics = await getTopics();
   const latest = topics.length ? topics[0] : null;
-
-  // fetch users and compute score summaries
-  const users = await getUsers();
-  const summaries = await Promise.all(
-    users.map(async u => {
-      const s = await getUserGivenScoreSummary(u.id, 10);
-      return { user: u, summary: s };
-    })
-  );
-
-  return { latest, summaries };
+  return { latest };
 }
 
 export default function Home() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
   const data = useLoaderData() as LoaderData;
   const latest: Topic | null = data?.latest ?? null;
-  const summaries: {
-    user: User;
-    summary: { allTime: number; recentTopics: number };
-  }[] = data?.summaries ?? [];
+  
 
   return (
     <main className="p-4">
@@ -71,37 +57,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Ranking by all-time total (descending) */}
-        <section className="mt-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-lg p-6">
-          <h3 className="text-lg font-semibold mb-4">ユーザーランキング</h3>
-          {summaries.length === 0 ? (
-            <div className="text-sm text-gray-600">ユーザーがいません。</div>
-          ) : (
-            <ol className="space-y-3">
-              {summaries
-                .slice()
-                .sort((a, b) => b.summary.allTime - a.summary.allTime)
-                .map(({ user, summary }, idx) => (
-                  <li
-                    key={user.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="font-medium">
-                        {idx + 1}. {user.name}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        直近10トピック合計: {summary.recentTopics}
-                      </div>
-                    </div>
-                    <div className="text-sm font-semibold">
-                      合計: {summary.allTime}
-                    </div>
-                  </li>
-                ))}
-            </ol>
-          )}
-        </section>
+  {/* User ranking removed */}
       </div>
     </main>
   );
