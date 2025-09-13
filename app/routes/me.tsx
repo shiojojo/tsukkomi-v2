@@ -77,7 +77,7 @@ export default function MeRoute() {
                       window.location.reload();
                     } catch {}
                   }}
-                  className="w-full text-left px-3 py-2 rounded bg-white border"
+                  className="btn-switch"
                 >
                   メインとして操作 ({parent.name})
                 </button>
@@ -93,7 +93,7 @@ export default function MeRoute() {
                         window.location.reload();
                       } catch {}
                     }}
-                    className="w-full text-left px-3 py-2 rounded bg-gray-100"
+                    className="btn-switch btn-switch--sub"
                   >
                     {s.name}
                   </button>
