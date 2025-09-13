@@ -71,7 +71,11 @@ function UserBadge() {
 
   useEffect(() => {
     try {
-      setName(localStorage.getItem('currentUserName'));
+      // prefer sub-user when present
+      setName(
+        localStorage.getItem('currentSubUserName') ??
+          localStorage.getItem('currentUserName')
+      );
     } catch {
       setName(null);
     }
@@ -100,7 +104,11 @@ function MobileUserButton() {
 
   useEffect(() => {
     try {
-      setName(localStorage.getItem('currentUserName'));
+      // prefer sub-user when present
+      setName(
+        localStorage.getItem('currentSubUserName') ??
+          localStorage.getItem('currentUserName')
+      );
     } catch {
       setName(null);
     }
@@ -112,18 +120,10 @@ function MobileUserButton() {
         to="/me"
         className="group flex flex-col items-center justify-center gap-1 py-2 px-3 text-sm leading-none w-full text-blue-600"
       >
-        <svg
-          className="w-5 h-5"
-          viewBox="0 0 24 24"
-          fill="none"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-          <circle cx="12" cy="7" r="4" />
-        </svg>
-        <span className="text-xs font-medium">{name}</span>
+        {/* render the selected sub-user's name in the SVG spot */}
+        <div className="w-20 h-6 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-700 text-xs font-medium text-blue-700 dark:text-white truncate">
+          {name}
+        </div>
       </NavLink>
     );
   }
