@@ -107,28 +107,34 @@ export default function TopicDetailRoute() {
 
   return (
     <div className="p-4 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl md:text-3xl font-extrabold leading-tight text-gray-900 dark:text-gray-100">
-          {topic.title}
-        </h1>
-        <Link to="/topics" className="text-sm text-blue-600">
-          お題一覧へ
-        </Link>
+      {/* Sticky header */}
+      <div className="sticky top-0 z-30 bg-white dark:bg-gray-950 pt-4 pb-2">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl md:text-3xl font-extrabold leading-tight text-gray-900 dark:text-gray-100">
+            {topic.title}
+          </h1>
+          <Link to="/topics" className="text-sm text-blue-600">
+            お題一覧へ
+          </Link>
+        </div>
       </div>
 
-      {answers.length === 0 ? (
-        <p className="text-gray-600">まだ回答が投稿されていません。</p>
-      ) : (
-        <ul className="space-y-5">
-          {answers.map(a => (
-            <AnswerCard
-              key={a.id}
-              answer={a}
-              comments={commentsByAnswer[String(a.id)]}
-            />
-          ))}
-        </ul>
-      )}
+      {/* Scrollable answers region */}
+      <div className="mt-2 overflow-auto max-h-[calc(100vh-140px)]">
+        {answers.length === 0 ? (
+          <p className="text-gray-600">まだ回答が投稿されていません。</p>
+        ) : (
+          <ul className="space-y-5 px-1">
+            {answers.map(a => (
+              <AnswerCard
+                key={a.id}
+                answer={a}
+                comments={commentsByAnswer[String(a.id)]}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
