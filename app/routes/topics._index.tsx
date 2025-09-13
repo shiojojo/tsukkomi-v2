@@ -18,17 +18,16 @@ export default function TopicsRoute() {
       <h1 className="text-2xl font-semibold mb-4">お題一覧</h1>
       <ul className="space-y-3">
         {topics.map(t => (
-          <li key={t.id} className="p-4 border rounded-md">
-            <div className="flex justify-between items-start">
+          <li key={t.id}>
+            <Link
+              to={`/topics/${t.id}`}
+              className="block p-4 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              aria-label={`お題 ${t.title} の回答を見る`}
+            >
               <div>
                 <h2 className="text-lg font-medium">{t.title}</h2>
               </div>
-              <div className="flex gap-3 items-center">
-                <Link to={`/topics/${t.id}`} className="text-sm text-blue-600">
-                  回答を見る
-                </Link>
-              </div>
-            </div>
+            </Link>
           </li>
         ))}
       </ul>
