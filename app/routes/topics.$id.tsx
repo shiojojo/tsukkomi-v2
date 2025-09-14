@@ -198,17 +198,25 @@ export default function TopicDetailRoute() {
   return (
     <div className="p-4 max-w-3xl mx-auto">
       {/* Sticky header */}
-      <div className="sticky top-0 z-30 bg-white dark:bg-gray-950 pt-4 pb-2">
-        <div className="flex items-center justify-between mb-4 gap-4">
-          <div className="flex items-center gap-4">
+      <div
+        className={`sticky top-0 z-30 ${
+          topic.image
+            ? 'bg-transparent pt-0 pb-0'
+            : 'bg-white dark:bg-gray-950 pt-4 pb-2'
+        }`}
+      >
+        <div className="mb-4">
+          <div className="w-full">
             {topic.image ? (
-              // Photo-only topic: center the image horizontally and keep accessible alt text.
-              <div className="flex justify-center">
-                <img
-                  src={topic.image}
-                  alt={topic.title}
-                  className="max-w-full h-auto max-h-[50vh] rounded-md mx-auto"
-                />
+              // Photo-only topic: use the same layout as the topics list so the image centers the same way.
+              <div className="block p-0 border rounded-md overflow-hidden">
+                <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                  <img
+                    src={topic.image}
+                    alt={topic.title}
+                    className="w-full h-auto max-h-60 object-contain"
+                  />
+                </div>
               </div>
             ) : (
               <h1 className="text-2xl md:text-3xl font-extrabold leading-tight text-gray-900 dark:text-gray-100">
