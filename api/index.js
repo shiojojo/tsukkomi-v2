@@ -1,41 +1,32 @@
 import { Readable } from 'node:stream';
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export default async function (req, res) {
   let handler;
   try {
-    // Try common path first
-    try {
-      const built = await import('../build/server/index.js');
+    // Prefer the simple path: build/server/index.js
+    const root = process.cwd();
+    const simple = path.join(root, 'build', 'server', 'index.js');
+    if (fs.existsSync(simple)) {
+      const built = await import(pathToFileURL(simple).href);
       handler = built?.default;
-    } catch {
-      // Fallback: look for platform-specific subdirectory created by the vercel preset
-      const fs = await import('node:fs');
-      const path = await import('node:path');
-      const serverDir = path.resolve(
-        path.join(
-          import.meta.url.replace('file://', ''),
-          '..',
-          '..',
-          'build',
-          'server'
-        )
-      );
-      let found;
-      try {
+    } else {
+      // Look for platform-specific subfolder: build/server/<platform>/index.js
+      const serverDir = path.join(root, 'build', 'server');
+      if (fs.existsSync(serverDir)) {
         const entries = fs.readdirSync(serverDir, { withFileTypes: true });
         for (const e of entries) {
           if (e.isDirectory()) {
             const candidate = path.join(serverDir, e.name, 'index.js');
             if (fs.existsSync(candidate)) {
-              found = candidate;
+              const built = await import(pathToFileURL(candidate).href);
+              handler = built?.default;
               break;
             }
           }
         }
-      } catch {}
-      if (found) {
-        const built = await import(found);
-        handler = built?.default;
       }
     }
   } catch (e) {
