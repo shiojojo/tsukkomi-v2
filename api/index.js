@@ -24,7 +24,13 @@ export default async function (req, res) {
       body: req.method === 'GET' || req.method === 'HEAD' ? null : req,
     });
 
-    const response = await handler(request, 200, new Headers(), { isSpaMode: false }, {});
+    const response = await handler(
+      request,
+      200,
+      new Headers(),
+      { isSpaMode: false },
+      {}
+    );
 
     res.statusCode = response.status;
     for (const [k, v] of response.headers) res.setHeader(k, v);
@@ -44,7 +50,7 @@ export default async function (req, res) {
           } catch (err) {
             this.destroy(err);
           }
-        }
+        },
       });
 
       nodeStream.pipe(res);

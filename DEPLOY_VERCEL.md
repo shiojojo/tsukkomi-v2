@@ -9,11 +9,12 @@ Quick steps to deploy to Vercel
 2. In the Vercel dashboard, set the following Environment Variables (Project > Settings > Environment Variables):
    - VITE_SUPABASE_URL = https://<your-project>.supabase.co
    - VITE_SUPABASE_KEY = <your-anon-or-public-key>
-   - SUPABASE_KEY = <your-service-role-key>  (optional: only if server-side service key is needed)
+   - SUPABASE_KEY = <your-service-role-key> (optional: only if server-side service key is needed)
 
 3. Push to Git (main) and import the repo in Vercel. Vercel will run `npm run build`.
 
 Notes and troubleshooting
+
 - If build fails with Supabase errors, ensure the Vercel Build Environment variables include the `VITE_SUPABASE_*` values. In development the project uses `mock/` data when `import.meta.env.DEV === true`.
 - Static assets (files with an extension) are served from `build/client` directly. All other paths are routed to the serverless function for SSR.
 
