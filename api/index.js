@@ -3,8 +3,41 @@ import { Readable } from 'node:stream';
 export default async function (req, res) {
   let handler;
   try {
-    const built = await import('../build/server/index.js');
-    handler = built?.default;
+    // Try common path first
+    try {
+      const built = await import('../build/server/index.js');
+      handler = built?.default;
+    } catch {
+      // Fallback: look for platform-specific subdirectory created by the vercel preset
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const serverDir = path.resolve(
+        path.join(
+          import.meta.url.replace('file://', ''),
+          '..',
+          '..',
+          'build',
+          'server'
+        )
+      );
+      let found;
+      try {
+        const entries = fs.readdirSync(serverDir, { withFileTypes: true });
+        for (const e of entries) {
+          if (e.isDirectory()) {
+            const candidate = path.join(serverDir, e.name, 'index.js');
+            if (fs.existsSync(candidate)) {
+              found = candidate;
+              break;
+            }
+          }
+        }
+      } catch {}
+      if (found) {
+        const built = await import(found);
+        handler = built?.default;
+      }
+    }
   } catch (e) {
     console.error('Failed to import built server:', e);
   }
