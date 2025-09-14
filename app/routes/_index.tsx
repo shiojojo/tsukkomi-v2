@@ -1,7 +1,6 @@
 import type { Route } from './+types/_index';
 import type { LoaderFunctionArgs } from 'react-router';
 import Home from './home';
-import { getTopics } from '~/lib/db';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -11,6 +10,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function loader(_args: LoaderFunctionArgs) {
+  const { getTopics } = await import('~/lib/db');
   const topics = await getTopics();
   const latest = topics.length ? topics[0] : null;
   return { latest };

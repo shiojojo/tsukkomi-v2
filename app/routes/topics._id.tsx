@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
-import { getTopics, getAnswers } from '~/lib/db';
+// server-only imports are done inside loader to avoid shipping Supabase client to the browser
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 
@@ -10,6 +10,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response('Invalid topic id', { status: 400 });
   }
 
+  const { getTopics, getAnswers } = await import('~/lib/db');
   const topics = await getTopics();
   const topic = topics.find(t => Number((t as any).id) === id);
   if (!topic) {

@@ -1,17 +1,13 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
 import { useEffect, useState } from 'react';
-import {
-  getAnswers,
-  getTopics,
-  getCommentsForAnswers,
-  addComment,
-} from '~/lib/db';
+// server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 
 export async function loader({ request }: LoaderFunctionArgs) {
+  const { getTopics, getAnswers, getCommentsForAnswers } = await import('~/lib/db');
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
   const answers = await getAnswers();
@@ -35,6 +31,7 @@ export async function action({ request }: ActionFunctionArgs) {
   if (!answerId || !text) {
     return { ok: false };
   }
+  const { addComment } = await import('~/lib/db');
   await addComment({
     answerId: String(answerId),
     text,

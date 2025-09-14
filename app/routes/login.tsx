@@ -1,8 +1,7 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
-import { getUsers } from '~/lib/db';
-
 export async function loader(_args: LoaderFunctionArgs) {
+  const { getUsers } = await import('~/lib/db');
   const users = await getUsers();
   return { users };
 }

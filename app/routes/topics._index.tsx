@@ -1,10 +1,11 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
 import { useState, useMemo, useEffect } from 'react';
-import { getTopics } from '~/lib/db';
+// server-only import
 import type { Topic } from '~/lib/schemas/topic';
 
 export async function loader(_args: LoaderFunctionArgs) {
+  const { getTopics } = await import('~/lib/db');
   const topics = await getTopics();
   return { topics };
 }

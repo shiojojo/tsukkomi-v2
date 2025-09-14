@@ -1,17 +1,12 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Form } from 'react-router';
 import { Link } from 'react-router';
-import {
-  getUserById,
-  getSubUsers,
-  addSubUser,
-  removeSubUser,
-  getUsers,
-} from '~/lib/db';
+// server-only imports will be dynamically loaded inside loader/action
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 import { z } from 'zod';
 
 export async function loader({}: LoaderFunctionArgs) {
+  const { getUsers } = await import('~/lib/db');
   // return all users so UI can render subUsers for the selected parent client-side
   const users = await getUsers();
   return { users };
@@ -28,14 +23,16 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!parsed.success) {
       return { ok: false, errors: parsed.error.format() };
     }
-    const sub = await addSubUser(parsed.data);
+  const { addSubUser } = await import('~/lib/db');
+  const sub = await addSubUser(parsed.data);
     return { ok: true, sub };
   }
 
   if (intent === 'remove-subuser') {
     const parentId = String(form.get('parentId') || '');
     const subId = String(form.get('subId') || '');
-    const ok = await removeSubUser(parentId, subId);
+  const { removeSubUser } = await import('~/lib/db');
+  const ok = await removeSubUser(parentId, subId);
     return { ok };
   }
 

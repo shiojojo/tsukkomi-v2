@@ -1,14 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form } from 'react-router';
 import { useState, useEffect } from 'react';
-import {
-  getTopic,
-  getAnswersByTopic,
-  voteAnswer,
-  getUsers,
-  getCommentsByAnswer,
-  addComment,
-} from '~/lib/db';
+// server-only imports are dynamically loaded inside loader/action
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
@@ -26,6 +19,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response('Invalid topic id', { status: 400 });
   }
 
+  const { getTopic, getAnswersByTopic, getUsers, getCommentsByAnswer } = await import('~/lib/db');
   const [topic, answers, users] = await Promise.all([
     getTopic(id),
     getAnswersByTopic(id),
@@ -163,7 +157,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
       ? String(form.get('authorName'))
       : undefined;
     if (!answerIdRaw) return new Response('Invalid', { status: 400 });
-    await addComment({
+  const { addComment, voteAnswer } = await import('~/lib/db');
+  await addComment({
       answerId: String(answerIdRaw),
       text: String(commentText),
       author: authorName,
@@ -184,6 +179,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return new Response('Unauthorized', { status: 401 });
   }
 
+  const { voteAnswer } = await import('~/lib/db');
   const updated = await voteAnswer({ answerId, level, previousLevel, userId });
   return { ok: true, answer: updated };
 }
