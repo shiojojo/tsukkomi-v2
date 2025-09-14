@@ -98,19 +98,20 @@ export async function getAnswers(): Promise<Answer[]> {
         }
       } else {
         // fallback: aggregate from votes table in one query
+        // Fallback: fetch raw vote rows and aggregate client-side to avoid relying on
+        // database-side GROUP BY syntax which can vary across PostgREST endpoints.
         const { data: agg, error: aggErr } = await supabase
           .from('votes')
-          .select('answer_id, level, count', { head: false })
+          .select('answer_id, level', { head: false })
           .in('answer_id', ids);
         if (aggErr) throw aggErr;
         for (const row of agg ?? []) {
           const aid = Number(row.answer_id);
           countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
           const lv = Number(row.level);
-          const cnt = Number(row.count ?? 0);
-          if (lv === 1) countsMap[aid].level1 = cnt;
-          else if (lv === 2) countsMap[aid].level2 = cnt;
-          else if (lv === 3) countsMap[aid].level3 = cnt;
+          if (lv === 1) countsMap[aid].level1 += 1;
+          else if (lv === 2) countsMap[aid].level2 += 1;
+          else if (lv === 3) countsMap[aid].level3 += 1;
         }
       }
     }
@@ -415,13 +416,22 @@ export async function getTopics(): Promise<Topic[]> {
  */
 export async function getUsers(): Promise<User[]> {
   if (isDev) {
-    const copy = [...mockUsers];
-    return copy.map((u) => UserSchema.parse(u));
+  // copy mock users but strip sensitive external identifiers (line_id) before returning
+  const copy = [...mockUsers];
+  const sanitized = copy.map((u) => ({ id: u.id, name: u.name, subUsers: u.subUsers ?? undefined }));
+  return sanitized.map((u) => UserSchema.parse(u));
   }
   return getCached<User[]>('users:all', await getEdgeNumber('ttl_users_ms', 10_000), async () => {
+    // Do NOT select line_id for the public users list to avoid leaking external identifiers.
     const { data, error } = await supabase.from('profiles').select('id, name, sub_users');
     if (error) throw error;
-    return UserSchema.array().parse(data ?? []);
+    // normalize returned rows to match schema shape; intentionally omit line_id
+    const rows = (data ?? []).map((r: any) => ({
+      id: String(r.id),
+      name: r.name,
+      subUsers: r.sub_users ?? undefined,
+    }));
+    return UserSchema.array().parse(rows as any);
   });
 }
 
@@ -435,10 +445,25 @@ export async function getUserById(id: string): Promise<User | undefined> {
   }
 
   await ensureConnection();
+  // Default public getter: do NOT return line_id. Use getUserByIdPrivate for server-only access.
   const { data, error } = await supabase.from('profiles').select('id, name, sub_users').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return undefined;
-  return UserSchema.parse(data as any);
+  const normalized = { id: String(data.id), name: data.name, subUsers: data.sub_users ?? undefined };
+  return UserSchema.parse(normalized as any);
+}
+
+/**
+ * getUserByIdPrivate
+ * Server-only: returns user's profile including line_id for integration workflows.
+ */
+export async function getUserByIdPrivate(id: string): Promise<User | undefined> {
+  await ensureConnection();
+  const { data, error } = await supabase.from('profiles').select('id, name, sub_users, line_id').eq('id', id).maybeSingle();
+  if (error) throw error;
+  if (!data) return undefined;
+  const normalized = { id: String(data.id), name: data.name, line_id: data.line_id ?? undefined, subUsers: data.sub_users ?? undefined };
+  return UserSchema.parse(normalized as any);
 }
 
 /**
@@ -454,10 +479,11 @@ export async function getSubUsers(parentId: string): Promise<SubUser[] | undefin
   await ensureConnection();
   const { data, error } = await supabase
     .from('sub_users')
-    .select('*')
+    .select('id, parent_id, name')
     .eq('parent_id', parentId);
   if (error) throw error;
-  return data ?? undefined;
+  // ensure shape matches SubUser type (id, name)
+  return (data ?? []).map((r: any) => ({ id: String(r.id), name: r.name }));
 }
 
 /**
@@ -570,19 +596,19 @@ export async function getAnswersByTopic(topicId: string | number) {
         };
       }
     } else {
+      // Fallback: fetch raw vote rows and aggregate client-side to avoid GROUP BY
       const { data: agg, error: aggErr } = await supabase
         .from('votes')
-        .select('answer_id, level, count', { head: false })
+        .select('answer_id, level', { head: false })
         .in('answer_id', ids);
       if (aggErr) throw aggErr;
       for (const row of agg ?? []) {
         const aid = Number(row.answer_id);
         countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
         const lv = Number(row.level);
-        const cnt = Number(row.count ?? 0);
-        if (lv === 1) countsMap[aid].level1 = cnt;
-        else if (lv === 2) countsMap[aid].level2 = cnt;
-        else if (lv === 3) countsMap[aid].level3 = cnt;
+        if (lv === 1) countsMap[aid].level1 += 1;
+        else if (lv === 2) countsMap[aid].level2 += 1;
+        else if (lv === 3) countsMap[aid].level3 += 1;
       }
     }
   }
@@ -683,19 +709,19 @@ export async function voteAnswer({
 
   // If counts view missing or empty, compute from votes table (single aggregate query)
   if (!counts) {
+    // Fetch raw vote rows for the answer and aggregate client-side to avoid
+    // relying on DB-level GROUP BY via PostgREST which may return 'count' only
     const { data: agg, error: aggErr } = await supabase
       .from('votes')
-      .select('level, count', { head: false })
+      .select('level', { head: false })
       .eq('answer_id', answerId);
     if (aggErr) throw aggErr;
-    // normalize aggregate to levels
     const mapped: any = { level1: 0, level2: 0, level3: 0 };
     for (const row of agg ?? []) {
       const lv = Number(row.level);
-      const cnt = Number(row.count ?? 0);
-      if (lv === 1) mapped.level1 = cnt;
-      else if (lv === 2) mapped.level2 = cnt;
-      else if (lv === 3) mapped.level3 = cnt;
+      if (lv === 1) mapped.level1 += 1;
+      else if (lv === 2) mapped.level2 += 1;
+      else if (lv === 3) mapped.level3 += 1;
     }
     Object.assign((counts as any) ?? {}, mapped);
   }

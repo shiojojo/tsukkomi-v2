@@ -5,6 +5,7 @@ export const mockUsers = [
   {
     id: 'user-1',
     name: 'Alice',
+  line_id: 'U1234567890alice',
     subUsers: [
       { id: 'user-1#sub-1', name: 'Alice (bot)' },
       { id: 'user-1#sub-2', name: 'Alice (alt)' },
@@ -13,6 +14,7 @@ export const mockUsers = [
   {
     id: 'user-2',
     name: 'Bob',
+  line_id: 'U2345678901bob',
     subUsers: [
       { id: 'user-2#sub-1', name: 'Bob (alt)' },
     ],
