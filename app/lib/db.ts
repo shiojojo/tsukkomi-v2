@@ -11,6 +11,7 @@ import type { Comment } from '~/lib/schemas/comment';
 import { UserSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { supabase, ensureConnection } from './supabase';
+import { getEdgeNumber } from './edge-config';
 
 // Use mock data only when running in DEV and no Supabase key is provided.
 // This lets local dev point at a real Supabase instance by setting VITE_SUPABASE_KEY or SUPABASE_KEY.
@@ -59,6 +60,7 @@ export async function getAnswers(): Promise<Answer[]> {
   // Production path
   // cache answers for a short duration to avoid repeated heavy list queries
   const loader = async () => {
+    const ttl = await getEdgeNumber('ttl_answers_ms', 5000);
     await ensureConnection();
     const { data: answerRows, error: answerErr } = await supabase
       .from('answers')
@@ -121,7 +123,7 @@ export async function getAnswers(): Promise<Answer[]> {
 
     return AnswerSchema.array().parse(normalized as any);
   };
-  return getCached<Answer[]>('answers:all', 5000, loader);
+  return getCached<Answer[]>('answers:all', await getEdgeNumber('ttl_answers_ms', 5000), loader);
 }
 
 /**
@@ -304,7 +306,7 @@ export async function getTopics(): Promise<Topic[]> {
     });
     return copy.map((t) => TopicSchema.parse(t));
   }
-  return getCached<Topic[]>('topics:all', 10_000, async () => {
+  return getCached<Topic[]>('topics:all', await getEdgeNumber('ttl_topics_ms', 10_000), async () => {
     const { data, error } = await supabase
       .from('topics')
       .select('id, title, created_at, image')
@@ -323,7 +325,7 @@ export async function getUsers(): Promise<User[]> {
     const copy = [...mockUsers];
     return copy.map((u) => UserSchema.parse(u));
   }
-  return getCached<User[]>('users:all', 10_000, async () => {
+  return getCached<User[]>('users:all', await getEdgeNumber('ttl_users_ms', 10_000), async () => {
     const { data, error } = await supabase.from('profiles').select('id, name, sub_users');
     if (error) throw error;
     return UserSchema.array().parse(data ?? []);
