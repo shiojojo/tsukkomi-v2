@@ -7,17 +7,31 @@ import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { getTopics, getAnswers, getCommentsForAnswers } = await import(
+  const url = new URL(request.url);
+  const params = url.searchParams;
+  const q = params.get('q') ?? undefined;
+  const page = Number(params.get('page') ?? '1');
+  const pageSize = Number(params.get('pageSize') ?? '20');
+  const sortBy = (params.get('sortBy') as any) ?? 'newest';
+  const topicId = params.get('topicId') ?? undefined;
+
+  const { getTopics, searchAnswers, getCommentsForAnswers } = await import(
     '~/lib/db'
   );
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
-  const answers = await getAnswers();
-  // collect comments per-answer using a batched query to avoid N+1
+
+  const { answers, total } = await searchAnswers({
+    q,
+    topicId,
+    page,
+    pageSize,
+    sortBy,
+  });
   const answerIds = answers.map(a => a.id);
   const commentsByAnswer = await getCommentsForAnswers(answerIds);
 
-  return { answers, topicsById, commentsByAnswer };
+  return { answers, topicsById, commentsByAnswer, total, page, pageSize };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -242,16 +256,20 @@ export default function AnswersRoute() {
     );
   }
 
-  // Filter UI state (client-side filtering)
+  // Filter UI state (server-driven via GET form)
   const [query, setQuery] = useState('');
-  const [minScore, setMinScore] = useState<number | ''>('');
-  const [hasComments, setHasComments] = useState(false);
-  const [onlyFavorited, setOnlyFavorited] = useState(false);
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'scoreDesc'>(
     'newest'
   );
+
+  // initialize from current URL so form inputs reflect current server filters
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      setQuery(params.get('q') ?? '');
+      setSortBy((params.get('sortBy') as any) ?? 'newest');
+    } catch {}
+  }, []);
 
   // helper: compute a numeric score from votes object
   const computeScore = (a: Answer) => {
@@ -274,72 +292,13 @@ export default function AnswersRoute() {
     }
   };
 
-  // memoized filtered list
-  const filtered = answers
-    .map(a => ({ answer: a, score: computeScore(a) }))
-    .filter(({ answer, score }) => {
-      // text query (in answer text or author)
-      if (query.trim()) {
-        const q = query.trim().toLowerCase();
-        if (
-          !String(answer.text).toLowerCase().includes(q) &&
-          !String(answer.author || '')
-            .toLowerCase()
-            .includes(q)
-        )
-          return false;
-      }
-      // minScore
-      if (minScore !== '' && score < Number(minScore)) return false;
-      // hasComments
-      if (hasComments) {
-        const cs = commentsByAnswer[String(answer.id)] || [];
-        if (cs.length === 0) return false;
-      }
-      // favorited
-      if (onlyFavorited) {
-        if (!isFavoritedByCurrentUser(answer)) return false;
-      }
-      // date range
-      if (dateFrom) {
-        const from = new Date(dateFrom + 'T00:00:00');
-        if (new Date(answer.created_at) < from) return false;
-      }
-      if (dateTo) {
-        const to = new Date(dateTo + 'T23:59:59');
-        if (new Date(answer.created_at) > to) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'newest')
-        return (
-          new Date(b.answer.created_at).getTime() -
-          new Date(a.answer.created_at).getTime()
-        );
-      if (sortBy === 'oldest')
-        return (
-          new Date(a.answer.created_at).getTime() -
-          new Date(b.answer.created_at).getTime()
-        );
-      // scoreDesc
-      return b.score - a.score;
-    });
-
-  // Pagination (mobile-first)
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 20;
-  // reset page when any filter changes
-  useEffect(() => {
-    setPage(1);
-  }, [query, minScore, hasComments, onlyFavorited, dateFrom, dateTo, sortBy]);
-
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const currentPage = Math.min(Math.max(1, page), pageCount);
-  const paged = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
-  );
+  // Server-driven pagination: answers returned by the loader are already paged
+  const serverPage = (data as any)?.page ?? 1;
+  const serverPageSize = (data as any)?.pageSize ?? 20;
+  const total = (data as any)?.total ?? answers.length;
+  const pageCount = Math.max(1, Math.ceil(total / serverPageSize));
+  const currentPage = Math.min(Math.max(1, serverPage), pageCount);
+  const paged = answers.map(a => ({ answer: a, score: computeScore(a) }));
 
   return (
     <div className="p-4 pb-24 md:pb-4 max-w-3xl mx-auto flex flex-col">
@@ -352,62 +311,20 @@ export default function AnswersRoute() {
             {/* removed link to /topics per UX: not needed on search screen */}
           </div>
 
-          {/* Filters: search, min score, comments, favorited, date range, sort */}
-          <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
-            <input
-              type="search"
-              placeholder="検索: テキスト or 作者"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              className="form-input w-full"
-              aria-label="回答検索"
-            />
-
-            <div className="flex gap-2 items-center">
+          {/* Filters: search and sort (server-driven via GET) */}
+          <div className="mt-3">
+            <Form method="get" className="flex gap-2 items-center">
               <input
-                type="number"
-                placeholder="最小スコア"
-                value={minScore === '' ? '' : String(minScore)}
-                onChange={e =>
-                  setMinScore(
-                    e.target.value === '' ? '' : Number(e.target.value)
-                  )
-                }
-                className="form-input w-28"
-                aria-label="最小スコア"
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={hasComments}
-                  onChange={e => setHasComments(e.target.checked)}
-                />
-                コメントあり
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={onlyFavorited}
-                  onChange={e => setOnlyFavorited(e.target.checked)}
-                />
-                お気に入り
-              </label>
-            </div>
-
-            <div className="flex flex-wrap gap-2 items-center justify-end">
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={e => setDateFrom(e.target.value)}
-                className="form-input w-32"
-              />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={e => setDateTo(e.target.value)}
-                className="form-input w-32"
+                name="q"
+                type="search"
+                placeholder="検索: テキスト or 作者"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                className="form-input w-full"
+                aria-label="回答検索"
               />
               <select
+                name="sortBy"
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
                 className="form-select w-36"
@@ -416,7 +333,10 @@ export default function AnswersRoute() {
                 <option value="oldest">古い順</option>
                 <option value="scoreDesc">スコア順</option>
               </select>
-            </div>
+              <button type="submit" className="btn-inline">
+                検索
+              </button>
+            </Form>
           </div>
         </div>
       </div>
@@ -426,7 +346,7 @@ export default function AnswersRoute() {
           - On md+ we subtract the top nav (approx 64px). These are reasonable assumptions based on the app's nav sizes.
         */}
       <div className="overflow-auto px-0 py-4 space-y-4 w-full max-h-[calc(100vh-112px)] md:max-h-[calc(100vh-64px)]">
-        {filtered.length === 0 ? (
+        {paged.length === 0 ? (
           <p className="text-gray-600 px-4">表示される回答がありません。</p>
         ) : (
           <div className="space-y-8 px-4">
@@ -467,27 +387,25 @@ export default function AnswersRoute() {
         )}
       </div>
 
-      {/* Mobile pagination controls */}
+      {/* Mobile pagination controls (link-based) */}
       <div className="flex items-center justify-between mt-4 md:hidden px-4">
-        <button
-          onClick={() => setPage(p => Math.max(1, p - 1))}
-          disabled={currentPage <= 1}
+        <a
+          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.max(1, currentPage - 1)}`}
           aria-label="前のページ"
           className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
         >
           前へ
-        </button>
+        </a>
 
         <div className="text-sm">{`ページ ${currentPage} / ${pageCount}`}</div>
 
-        <button
-          onClick={() => setPage(p => Math.min(pageCount, p + 1))}
-          disabled={currentPage >= pageCount}
+        <a
+          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.min(pageCount, currentPage + 1)}`}
           aria-label="次のページ"
           className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
         >
           次へ
-        </button>
+        </a>
       </div>
     </div>
   );

@@ -127,6 +127,99 @@ export async function getAnswers(): Promise<Answer[]> {
 }
 
 /**
+ * searchAnswers
+ * Server-side paginated search to avoid loading all answers into memory.
+ * Supports simple full-text (ilike) on text/author, topic filter, sorting and pagination.
+ * Returns { answers, total } where total is the total matching count.
+ */
+export async function searchAnswers(opts: {
+  q?: string;
+  topicId?: string | number;
+  page?: number;
+  pageSize?: number;
+  sortBy?: 'newest' | 'oldest' | 'scoreDesc';
+  minScore?: number | undefined;
+  hasComments?: boolean;
+}): Promise<{ answers: Answer[]; total: number }> {
+  const { q, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments } = opts;
+  if (isDev) {
+    // Filter mockAnswers in memory but page the result
+    let arr = [...mockAnswers];
+    if (topicId != null) arr = arr.filter(a => String(a.topicId) === String(topicId));
+    if (q) {
+      const low = q.toLowerCase();
+      arr = arr.filter(a => String(a.text).toLowerCase().includes(low) || String(a.author ?? '').toLowerCase().includes(low));
+    }
+    // compute score and comments presence
+    const withScore = arr.map(a => ({ a, score: ((a as any).votes?.level1 || 0) * 1 + ((a as any).votes?.level2 || 0) * 2 + ((a as any).votes?.level3 || 0) * 3 }));
+    if (minScore != null) withScore.splice(0, withScore.length, ...withScore.filter(w => w.score >= minScore));
+    if (hasComments) withScore.splice(0, withScore.length, ...withScore.filter(w => mockComments.some(c => String(c.answerId) === String((w.a as any).id))));
+    if (sortBy === 'newest') withScore.sort((x, y) => new Date((y.a as any).created_at).getTime() - new Date((x.a as any).created_at).getTime());
+    else if (sortBy === 'oldest') withScore.sort((x, y) => new Date((x.a as any).created_at).getTime() - new Date((y.a as any).created_at).getTime());
+    else withScore.sort((x, y) => y.score - x.score);
+
+    const total = withScore.length;
+    const start = (page - 1) * pageSize;
+    const pageSlice = withScore.slice(start, start + pageSize).map(w => AnswerSchema.parse(w.a));
+    return { answers: pageSlice, total };
+  }
+
+  await ensureConnection();
+  const offset = (page - 1) * pageSize;
+  // build query
+  let query = supabase.from('answers').select('id, text, author_name, author_id, topic_id, created_at', { count: 'exact' });
+  if (topicId != null) query = query.eq('topic_id', Number(topicId));
+  if (q) {
+    // ilike on text and author_name
+    query = query.or(`text.ilike.*${q}*,author_name.ilike.*${q}*`);
+  }
+  // ordering
+  if (sortBy === 'newest') query = query.order('created_at', { ascending: false });
+  else if (sortBy === 'oldest') query = query.order('created_at', { ascending: true });
+  // pagination
+  const { data: rows, error, count } = await query.range(offset, offset + pageSize - 1);
+  if (error) throw error;
+
+  const answers = (rows ?? []).map((a: any) => ({
+    id: typeof a.id === 'string' ? Number(a.id) : a.id,
+    text: a.text,
+    author: a.author_name ?? undefined,
+    authorId: a.author_id ?? undefined,
+    topicId: a.topic_id ?? undefined,
+    created_at: a.created_at ?? a.createdAt,
+    votes: { level1: 0, level2: 0, level3: 0 },
+    votesBy: {},
+  }));
+
+  // fetch counts in bulk
+  const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
+  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
+  if (ids.length) {
+    const { data: countsData, error: countsErr } = await supabase
+      .from('answer_vote_counts')
+      .select('answer_id, level1, level2, level3')
+      .in('answer_id', ids);
+    if (!countsErr && countsData && countsData.length) {
+      for (const c of countsData) {
+        countsMap[Number(c.answer_id)] = {
+          level1: Number(c.level1 ?? 0),
+          level2: Number(c.level2 ?? 0),
+          level3: Number(c.level3 ?? 0),
+        };
+      }
+    }
+  }
+
+  const normalized = answers.map((a: any) => ({
+    ...a,
+    votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+    votesBy: {},
+  }));
+
+  return { answers: AnswerSchema.array().parse(normalized as any), total: Number(count ?? normalized.length) };
+}
+
+/**
  * getCommentsByAnswer
  * Intent: return comments for a given answer id (dev: from mockComments).
  * Contract: answerId coerced to string for comparison. Returns Comment[] sorted by created_at asc.
