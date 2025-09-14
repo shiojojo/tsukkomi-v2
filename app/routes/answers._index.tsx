@@ -14,6 +14,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const pageSize = Number(params.get('pageSize') ?? '20');
   const sortBy = (params.get('sortBy') as any) ?? 'newest';
   const topicId = params.get('topicId') ?? undefined;
+  const minScore = params.get('minScore')
+    ? Number(params.get('minScore'))
+    : undefined;
+  const hasComments = params.get('hasComments')
+    ? params.get('hasComments') === '1' || params.get('hasComments') === 'true'
+    : undefined;
 
   const { getTopics, searchAnswers, getCommentsForAnswers } = await import(
     '~/lib/db'
@@ -27,6 +33,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     page,
     pageSize,
     sortBy,
+    minScore: Number.isNaN(minScore) ? undefined : minScore,
+    hasComments: hasComments ?? false,
   });
   const answerIds = answers.map(a => a.id);
   const commentsByAnswer = await getCommentsForAnswers(answerIds);
@@ -261,6 +269,8 @@ export default function AnswersRoute() {
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'scoreDesc'>(
     'newest'
   );
+  const [minScore, setMinScore] = useState<string>('');
+  const [hasComments, setHasComments] = useState<boolean>(false);
 
   // initialize from current URL so form inputs reflect current server filters
   useEffect(() => {
@@ -268,6 +278,11 @@ export default function AnswersRoute() {
       const params = new URLSearchParams(window.location.search);
       setQuery(params.get('q') ?? '');
       setSortBy((params.get('sortBy') as any) ?? 'newest');
+      setMinScore(params.get('minScore') ?? '');
+      setHasComments(
+        params.get('hasComments') === '1' ||
+          params.get('hasComments') === 'true'
+      );
     } catch {}
   }, []);
 
@@ -333,6 +348,26 @@ export default function AnswersRoute() {
                 <option value="oldest">古い順</option>
                 <option value="scoreDesc">スコア順</option>
               </select>
+              <input
+                name="minScore"
+                type="number"
+                min={0}
+                placeholder="min score"
+                value={minScore}
+                onChange={e => setMinScore(e.target.value)}
+                className="form-input w-28"
+              />
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  name="hasComments"
+                  type="checkbox"
+                  checked={hasComments}
+                  onChange={e => setHasComments(e.target.checked)}
+                  value="1"
+                  className="w-4 h-4"
+                />
+                <span className="text-sm">has comments</span>
+              </label>
               <button type="submit" className="btn-inline">
                 検索
               </button>
@@ -390,7 +425,7 @@ export default function AnswersRoute() {
       {/* Mobile pagination controls (link-based) */}
       <div className="flex items-center justify-between mt-4 md:hidden px-4">
         <a
-          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.max(1, currentPage - 1)}`}
+          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.max(1, currentPage - 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}`}
           aria-label="前のページ"
           className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
         >
@@ -400,7 +435,7 @@ export default function AnswersRoute() {
         <div className="text-sm">{`ページ ${currentPage} / ${pageCount}`}</div>
 
         <a
-          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.min(pageCount, currentPage + 1)}`}
+          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.min(pageCount, currentPage + 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}`}
           aria-label="次のページ"
           className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
         >
