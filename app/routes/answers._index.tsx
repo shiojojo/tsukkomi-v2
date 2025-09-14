@@ -1,8 +1,12 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
 import { useEffect, useState } from 'react';
-import { getAnswers, getTopics } from '~/lib/db';
-import { getCommentsByAnswer, addComment } from '~/lib/db';
+import {
+  getAnswers,
+  getTopics,
+  getCommentsForAnswers,
+  addComment,
+} from '~/lib/db';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
@@ -11,12 +15,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
   const answers = await getAnswers();
-  // collect comments per-answer in dev
-  const commentsByAnswer: Record<string, Comment[]> = {};
-  for (const a of answers) {
-    const comments = await getCommentsByAnswer(a.id);
-    commentsByAnswer[String(a.id)] = comments;
-  }
+  // collect comments per-answer using a batched query to avoid N+1
+  const answerIds = answers.map(a => a.id);
+  const commentsByAnswer = await getCommentsForAnswers(answerIds);
 
   return { answers, topicsById, commentsByAnswer };
 }

@@ -76,6 +76,66 @@ export async function getCommentsByAnswer(answerId: string | number): Promise<Co
   return rows.map((c: any) => CommentSchema.parse(c));
 }
 
+/**
+ * getCommentsForAnswers
+ * Intent: fetch comments for multiple answer ids in a single query to avoid N+1 queries
+ * Contract:
+ *  - Input: array of answer ids (string|number)
+ *  - Output: Record<string, Comment[]> mapped by String(answerId)
+ * Environment:
+ *  - dev: filter `mockComments` and group them client-side
+ *  - prod: single Supabase .in('answer_id', ids) query, normalized and grouped
+ */
+export async function getCommentsForAnswers(
+  answerIds: Array<string | number>
+): Promise<Record<string, Comment[]>> {
+  const result: Record<string, Comment[]> = {};
+  if (!answerIds || answerIds.length === 0) return result;
+
+  if (isDev) {
+    const filtered = mockComments.filter((c) =>
+      answerIds.map((id) => String(id)).includes(String(c.answerId))
+    );
+    filtered.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
+    for (const c of filtered) {
+      const key = String(c.answerId);
+      result[key] = result[key] ?? [];
+      result[key].push(CommentSchema.parse(c));
+    }
+    // ensure every requested id has an array
+    for (const id of answerIds) result[String(id)] = result[String(id)] ?? [];
+    return result;
+  }
+
+  await ensureConnection();
+  const numericIds = answerIds.map((id) => Number(id));
+  const { data, error } = await supabase
+    .from('comments')
+    .select('*')
+    .in('answer_id', numericIds)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+
+  const rows = (data ?? []).map((c: any) => ({
+    id: typeof c.id === 'string' ? Number(c.id) : c.id,
+    answerId: c.answer_id ?? c.answerId,
+    text: c.text,
+    author: c.author_name ?? c.author,
+    authorId: c.author_id ?? c.authorId,
+    created_at: c.created_at ?? c.createdAt,
+  }));
+
+  for (const r of rows) {
+    const key = String(r.answerId);
+    result[key] = result[key] ?? [];
+    result[key].push(CommentSchema.parse(r as any));
+  }
+
+  // ensure every requested id has an array
+  for (const id of answerIds) result[String(id)] = result[String(id)] ?? [];
+  return result;
+}
+
   // production
   // unreachable in current source order; placed here to keep diff minimal
 
