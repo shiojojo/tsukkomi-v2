@@ -41,3 +41,6 @@ service-account*.json
 
 # If you prefer to ignore all scripts (uncomment)
 # /scripts/
+
+.env.example
+*.sql
