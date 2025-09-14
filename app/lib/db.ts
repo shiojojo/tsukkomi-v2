@@ -59,13 +59,67 @@ export async function getAnswers(): Promise<Answer[]> {
   // Production path
   // cache answers for a short duration to avoid repeated heavy list queries
   const loader = async () => {
-    const { data, error } = await supabase
+    await ensureConnection();
+    const { data: answerRows, error: answerErr } = await supabase
       .from('answers')
-      // select only needed fields to reduce payload
-      .select('id, text, author_name, author_id, topic_id, created_at, votes, votes_by')
+      // select only existing, minimal fields to reduce payload
+      .select('id, text, author_name, author_id, topic_id, created_at')
       .order('created_at', { ascending: false });
-    if (error) throw error;
-    return AnswerSchema.array().parse(data ?? []);
+    if (answerErr) throw answerErr;
+
+    const answers = (answerRows ?? []).map((a: any) => ({
+      id: typeof a.id === 'string' ? Number(a.id) : a.id,
+      text: a.text,
+      author: a.author_name ?? undefined,
+      authorId: a.author_id ?? undefined,
+      topicId: a.topic_id ?? undefined,
+      created_at: a.created_at ?? a.createdAt,
+    }));
+
+    // collect ids and fetch aggregated counts in one query (use materialized view if present)
+    const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
+    const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
+    if (ids.length) {
+      // try counts view first
+      const { data: countsData, error: countsErr } = await supabase
+        .from('answer_vote_counts')
+        .select('answer_id, level1, level2, level3')
+        .in('answer_id', ids);
+
+      if (!countsErr && countsData && countsData.length) {
+        for (const c of countsData) {
+          countsMap[Number(c.answer_id)] = {
+            level1: Number(c.level1 ?? 0),
+            level2: Number(c.level2 ?? 0),
+            level3: Number(c.level3 ?? 0),
+          };
+        }
+      } else {
+        // fallback: aggregate from votes table in one query
+        const { data: agg, error: aggErr } = await supabase
+          .from('votes')
+          .select('answer_id, level, count', { head: false })
+          .in('answer_id', ids);
+        if (aggErr) throw aggErr;
+        for (const row of agg ?? []) {
+          const aid = Number(row.answer_id);
+          countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
+          const lv = Number(row.level);
+          const cnt = Number(row.count ?? 0);
+          if (lv === 1) countsMap[aid].level1 = cnt;
+          else if (lv === 2) countsMap[aid].level2 = cnt;
+          else if (lv === 3) countsMap[aid].level3 = cnt;
+        }
+      }
+    }
+
+    const normalized = answers.map((a: any) => ({
+      ...a,
+      votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+      votesBy: {},
+    }));
+
+    return AnswerSchema.array().parse(normalized as any);
   };
   return getCached<Answer[]>('answers:all', 5000, loader);
 }
@@ -137,8 +191,8 @@ export async function getCommentsForAnswers(
   const numericIds = answerIds.map((id) => Number(id));
   const { data, error } = await supabase
     .from('comments')
-  // select minimal fields
-  .select('id, answer_id, text, author_name, author_id, created_at')
+    // select minimal fields
+    .select('id, answer_id, text, author_name, author_id, created_at')
     .in('answer_id', numericIds)
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -202,20 +256,22 @@ export async function addComment(input: { answerId: string | number; text: strin
     author_name: input.author ?? null,
     author_id: input.authorId ?? null,
   } as const;
+  await ensureConnection();
   const { data, error } = await supabase
     .from('comments')
     .insert(payload)
-    .select('*')
+    .select('id, answer_id, text, author_name, author_id, created_at')
     .single();
   if (error) throw error;
   // Normalize returned row before parsing
+  const d = data as any;
   const row = {
-    id: typeof data.id === 'string' ? Number(data.id) : data.id,
-    answerId: data.answer_id ?? data.answerId,
-    text: data.text,
-    author: data.author_name ?? data.author,
-    authorId: data.author_id ?? data.authorId,
-    created_at: data.created_at ?? data.createdAt,
+    id: typeof d.id === 'string' ? Number(d.id) : d.id,
+    answerId: d.answer_id ?? d.answerId,
+    text: d.text,
+    author: d.author_name ?? d.author,
+    authorId: d.author_id ?? d.authorId,
+    created_at: d.created_at ?? d.createdAt,
   };
   // clear related caches after successful insert
   try {
@@ -278,8 +334,16 @@ export async function getUsers(): Promise<User[]> {
  * getUserById
  */
 export async function getUserById(id: string): Promise<User | undefined> {
-  const users = await getUsers();
-  return users.find((u) => u.id === id);
+  if (isDev) {
+    const users = await getUsers();
+    return users.find((u) => u.id === id);
+  }
+
+  await ensureConnection();
+  const { data, error } = await supabase.from('profiles').select('id, name, sub_users').eq('id', id).maybeSingle();
+  if (error) throw error;
+  if (!data) return undefined;
+  return UserSchema.parse(data as any);
 }
 
 /**
@@ -372,8 +436,69 @@ export async function getTopic(id: string | number): Promise<Topic | undefined> 
  * Contract: topicId may be string or number. Comparison coerces both sides to string.
  */
 export async function getAnswersByTopic(topicId: string | number) {
-  const answers = await getAnswers();
-  return answers.filter((a) => a.topicId != null && String(a.topicId) === String(topicId));
+  if (isDev) {
+    const answers = await getAnswers();
+    return answers.filter((a) => a.topicId != null && String(a.topicId) === String(topicId));
+  }
+
+  await ensureConnection();
+  const numericTopic = Number(topicId);
+  const { data: answerRows, error: answerErr } = await supabase
+    .from('answers')
+    .select('id, text, author_name, author_id, topic_id, created_at')
+    .eq('topic_id', numericTopic)
+    .order('created_at', { ascending: false });
+  if (answerErr) throw answerErr;
+
+  const answers = (answerRows ?? []).map((a: any) => ({
+    id: typeof a.id === 'string' ? Number(a.id) : a.id,
+    text: a.text,
+    author: a.author_name ?? undefined,
+    authorId: a.author_id ?? undefined,
+    topicId: a.topic_id ?? undefined,
+    created_at: a.created_at ?? a.createdAt,
+  }));
+
+  const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
+  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
+  if (ids.length) {
+    const { data: countsData, error: countsErr } = await supabase
+      .from('answer_vote_counts')
+      .select('answer_id, level1, level2, level3')
+      .in('answer_id', ids);
+    if (!countsErr && countsData && countsData.length) {
+      for (const c of countsData) {
+        countsMap[Number(c.answer_id)] = {
+          level1: Number(c.level1 ?? 0),
+          level2: Number(c.level2 ?? 0),
+          level3: Number(c.level3 ?? 0),
+        };
+      }
+    } else {
+      const { data: agg, error: aggErr } = await supabase
+        .from('votes')
+        .select('answer_id, level, count', { head: false })
+        .in('answer_id', ids);
+      if (aggErr) throw aggErr;
+      for (const row of agg ?? []) {
+        const aid = Number(row.answer_id);
+        countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
+        const lv = Number(row.level);
+        const cnt = Number(row.count ?? 0);
+        if (lv === 1) countsMap[aid].level1 = cnt;
+        else if (lv === 2) countsMap[aid].level2 = cnt;
+        else if (lv === 3) countsMap[aid].level3 = cnt;
+      }
+    }
+  }
+
+  const normalized = answers.map((a: any) => ({
+    ...a,
+    votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+    votesBy: {},
+  }));
+
+  return AnswerSchema.array().parse(normalized as any);
 }
 
 /**
@@ -432,41 +557,58 @@ export async function voteAnswer({
 
   // Upsert the user's vote for the answer
   await ensureConnection();
-  const { data: voteRow, error: upsertError } = await supabase
+
+  // Do the upsert and in parallel request the answer and vote counts to reduce round-trips.
+  const upsertPromise = supabase
     .from('votes')
     .upsert({ answer_id: answerId, user_id: userId, level }, { onConflict: 'answer_id,user_id' })
     .select('*')
     .single();
-  if (upsertError) throw upsertError;
 
-  // fetch answer
-  const { data: answerRow, error: answerErr } = await supabase
-  .from('answers')
-  // select only needed columns to reduce payload
-  .select('id, text, author_name, author_id, topic_id, created_at')
-  .eq('id', answerId)
-  .single();
-  if (answerErr) throw answerErr;
+  const answerPromise = supabase
+    .from('answers')
+    .select('id, text, author_name, author_id, topic_id, created_at')
+    .eq('id', answerId)
+    .single();
 
-  // fetch aggregated counts from materialized view or compute
-  const { data: counts, error: countsErr } = await supabase
+  // Try materialized view first (faster if present). If it errors, we'll fall back to aggregate query.
+  const countsPromise = supabase
     .from('answer_vote_counts')
-    .select('*')
+    .select('level1, level2, level3')
     .eq('answer_id', answerId)
     .single();
-  if (countsErr) {
-    // fallback: compute from votes table
+
+  const [upsertRes, answerRes, countsRes] = await Promise.all([upsertPromise, answerPromise, countsPromise]);
+
+  const upsertError = (upsertRes as any).error;
+  if (upsertError) throw upsertError;
+
+  const answerRow = (answerRes as any).data;
+  const counts = (countsRes as any).data;
+
+  // If counts view missing or empty, compute from votes table (single aggregate query)
+  if (!counts) {
     const { data: agg, error: aggErr } = await supabase
-  .from('votes')
-  .select('level, count', { head: false })
-  .eq('answer_id', answerId);
+      .from('votes')
+      .select('level, count', { head: false })
+      .eq('answer_id', answerId);
     if (aggErr) throw aggErr;
+    // normalize aggregate to levels
+    const mapped: any = { level1: 0, level2: 0, level3: 0 };
+    for (const row of agg ?? []) {
+      const lv = Number(row.level);
+      const cnt = Number(row.count ?? 0);
+      if (lv === 1) mapped.level1 = cnt;
+      else if (lv === 2) mapped.level2 = cnt;
+      else if (lv === 3) mapped.level3 = cnt;
+    }
+    Object.assign((counts as any) ?? {}, mapped);
   }
 
   const votesObj = {
-    level1: counts?.level1 ?? 0,
-    level2: counts?.level2 ?? 0,
-    level3: counts?.level3 ?? 0,
+  level1: counts?.level1 ?? 0,
+  level2: counts?.level2 ?? 0,
+  level3: counts?.level3 ?? 0,
   };
   const votesByObj: Record<string, number> = {};
   if (userId) votesByObj[userId] = level;

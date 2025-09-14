@@ -29,8 +29,8 @@ export async function ensureConnection(): Promise<void> {
   if (_connectionCheck === true) return;
   if (_connectionCheck) return _connectionCheck;
 
-  // Start a lightweight probe, but race it with a short timeout so requesters fail fast.
-  const probe = (async () => {
+  // Start a lightweight probe and cache the in-flight promise so concurrent callers share it.
+  const probePromise = (async () => {
     if (!SUPABASE_KEY) throw new Error('Supabase key is not set. Set VITE_SUPABASE_KEY or SUPABASE_KEY');
     try {
       // lightweight probe: attempt to select 1 row from profiles (smallest safe table)
@@ -42,18 +42,20 @@ export async function ensureConnection(): Promise<void> {
     }
   })();
 
-  const timeout = new Promise<void>((_, reject) =>
-    setTimeout(() => reject(new Error('Supabase connection probe timed out')), CONNECTION_PROBE_TIMEOUT_MS)
-  );
-
-  _connectionCheck = Promise.race([probe, timeout]);
+  _connectionCheck = probePromise;
 
   try {
-    await _connectionCheck;
+    await Promise.race([
+      probePromise,
+      new Promise<void>((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase connection probe timed out')), CONNECTION_PROBE_TIMEOUT_MS)
+      ),
+    ]);
+    // mark success so subsequent calls are fast
     _connectionCheck = true;
   } catch (err) {
-    // keep the rejected promise cached so multiple callers see the same message
-    _connectionCheck = _connectionCheck as Promise<void>;
+    // reset so callers can retry later instead of being stuck with a cached rejection
+    _connectionCheck = null;
     throw err;
   }
 }
