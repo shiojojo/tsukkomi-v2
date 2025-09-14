@@ -7,7 +7,9 @@ import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { getTopics, getAnswers, getCommentsForAnswers } = await import('~/lib/db');
+  const { getTopics, getAnswers, getCommentsForAnswers } = await import(
+    '~/lib/db'
+  );
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
   const answers = await getAnswers();

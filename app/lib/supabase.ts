@@ -17,6 +17,8 @@ export default supabase;
 
 // Connection check caching: avoid repeating a failed network call many times.
 let _connectionCheck: true | Promise<void> | null = null;
+// Timeout for the lightweight probe (ms). Keep small so requests fail fast instead of hanging.
+const CONNECTION_PROBE_TIMEOUT_MS = 2000;
 
 /**
  * ensureConnection
@@ -27,7 +29,8 @@ export async function ensureConnection(): Promise<void> {
   if (_connectionCheck === true) return;
   if (_connectionCheck) return _connectionCheck;
 
-  _connectionCheck = (async () => {
+  // Start a lightweight probe, but race it with a short timeout so requesters fail fast.
+  const probe = (async () => {
     if (!SUPABASE_KEY) throw new Error('Supabase key is not set. Set VITE_SUPABASE_KEY or SUPABASE_KEY');
     try {
       // lightweight probe: attempt to select 1 row from profiles (smallest safe table)
@@ -38,6 +41,12 @@ export async function ensureConnection(): Promise<void> {
       throw new Error(`Supabase connection check failed: ${e?.message ?? String(e)}`);
     }
   })();
+
+  const timeout = new Promise<void>((_, reject) =>
+    setTimeout(() => reject(new Error('Supabase connection probe timed out')), CONNECTION_PROBE_TIMEOUT_MS)
+  );
+
+  _connectionCheck = Promise.race([probe, timeout]);
 
   try {
     await _connectionCheck;

@@ -19,7 +19,8 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response('Invalid topic id', { status: 400 });
   }
 
-  const { getTopic, getAnswersByTopic, getUsers, getCommentsByAnswer } = await import('~/lib/db');
+  const { getTopic, getAnswersByTopic, getUsers, getCommentsByAnswer } =
+    await import('~/lib/db');
   const [topic, answers, users] = await Promise.all([
     getTopic(id),
     getAnswersByTopic(id),
@@ -157,8 +158,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
       ? String(form.get('authorName'))
       : undefined;
     if (!answerIdRaw) return new Response('Invalid', { status: 400 });
-  const { addComment, voteAnswer } = await import('~/lib/db');
-  await addComment({
+    const { addComment, voteAnswer } = await import('~/lib/db');
+    await addComment({
       answerId: String(answerIdRaw),
       text: String(commentText),
       author: authorName,

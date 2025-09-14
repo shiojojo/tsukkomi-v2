@@ -23,16 +23,16 @@ export async function action({ request }: ActionFunctionArgs) {
     if (!parsed.success) {
       return { ok: false, errors: parsed.error.format() };
     }
-  const { addSubUser } = await import('~/lib/db');
-  const sub = await addSubUser(parsed.data);
+    const { addSubUser } = await import('~/lib/db');
+    const sub = await addSubUser(parsed.data);
     return { ok: true, sub };
   }
 
   if (intent === 'remove-subuser') {
     const parentId = String(form.get('parentId') || '');
     const subId = String(form.get('subId') || '');
-  const { removeSubUser } = await import('~/lib/db');
-  const ok = await removeSubUser(parentId, subId);
+    const { removeSubUser } = await import('~/lib/db');
+    const ok = await removeSubUser(parentId, subId);
     return { ok };
   }
 

@@ -17,6 +17,27 @@ import { supabase, ensureConnection } from './supabase';
 const _envKey = (import.meta.env.VITE_SUPABASE_KEY as string) ?? (process.env.SUPABASE_KEY as string | undefined);
 const isDev = Boolean(import.meta.env.DEV) && !_envKey;
 
+// Simple server-side in-memory cache to avoid repeated identical DB queries.
+// Key design: short TTLs, manual invalidation on mutations.
+type CacheEntry = { value: any; expires: number };
+const _cache = new Map<string, CacheEntry>();
+function getCached<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const e = _cache.get(key);
+  if (e && e.expires > now) return Promise.resolve(e.value as T);
+  return loader().then((v) => {
+    try {
+      _cache.set(key, { value: v, expires: Date.now() + ttlMs });
+    } catch {}
+    return v;
+  });
+}
+function invalidateCache(prefix: string) {
+  for (const k of Array.from(_cache.keys())) {
+    if (k === prefix || k.startsWith(prefix)) _cache.delete(k);
+  }
+}
+
 /**
  * getAnswers
  * Intent: /routes should call this to retrieve 大喜利の回答一覧.
@@ -36,13 +57,17 @@ export async function getAnswers(): Promise<Answer[]> {
   }
 
   // Production path
-  await ensureConnection();
-  const { data, error } = await supabase
-    .from('answers')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((r: any) => AnswerSchema.parse(r));
+  // cache answers for a short duration to avoid repeated heavy list queries
+  const loader = async () => {
+    const { data, error } = await supabase
+      .from('answers')
+      // select only needed fields to reduce payload
+      .select('id, text, author_name, author_id, topic_id, created_at, votes, votes_by')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return AnswerSchema.array().parse(data ?? []);
+  };
+  return getCached<Answer[]>('answers:all', 5000, loader);
 }
 
 /**
@@ -57,23 +82,24 @@ export async function getCommentsByAnswer(answerId: string | number): Promise<Co
     return copy.map((c) => CommentSchema.parse(c));
   }
   // production: fetch from Supabase
-  await ensureConnection();
-  const { data, error } = await supabase
-    .from('comments')
-    .select('*')
-    .eq('answer_id', Number(answerId))
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  // Normalize DB (snake_case) -> application shape (camelCase) before zod parsing
-  const rows = (data ?? []).map((c: any) => ({
-    id: typeof c.id === 'string' ? Number(c.id) : c.id,
-    answerId: c.answer_id ?? c.answerId,
-    text: c.text,
-    author: c.author_name ?? c.author,
-    authorId: c.author_id ?? c.authorId,
-    created_at: c.created_at ?? c.createdAt,
-  }));
-  return rows.map((c: any) => CommentSchema.parse(c));
+  const key = `comments:answer:${String(answerId)}`;
+  return getCached<Comment[]>(key, 3000, async () => {
+    const { data, error } = await supabase
+      .from('comments')
+      .select('id, answer_id, text, author_name, author_id, created_at')
+      .eq('answer_id', Number(answerId))
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    const rows = (data ?? []).map((c: any) => ({
+      id: typeof c.id === 'string' ? Number(c.id) : c.id,
+      answerId: c.answer_id ?? c.answerId,
+      text: c.text,
+      author: c.author_name ?? c.author,
+      authorId: c.author_id ?? c.authorId,
+      created_at: c.created_at ?? c.createdAt,
+    }));
+    return CommentSchema.array().parse(rows as any);
+  });
 }
 
 /**
@@ -111,7 +137,8 @@ export async function getCommentsForAnswers(
   const numericIds = answerIds.map((id) => Number(id));
   const { data, error } = await supabase
     .from('comments')
-    .select('*')
+  // select minimal fields
+  .select('id, answer_id, text, author_name, author_id, created_at')
     .in('answer_id', numericIds)
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -125,10 +152,12 @@ export async function getCommentsForAnswers(
     created_at: c.created_at ?? c.createdAt,
   }));
 
-  for (const r of rows) {
+  // Validate all rows at once, then group them. This reduces zod invocations and GC churn.
+  const validated = CommentSchema.array().parse(rows as any);
+  for (const r of validated) {
     const key = String(r.answerId);
     result[key] = result[key] ?? [];
-    result[key].push(CommentSchema.parse(r as any));
+    result[key].push(r);
   }
 
   // ensure every requested id has an array
@@ -158,6 +187,11 @@ export async function addComment(input: { answerId: string | number; text: strin
       created_at: now,
     } as const;
     mockComments.push(raw);
+    // invalidate any comment/answer caches so subsequent reads are fresh
+    try {
+      invalidateCache(`comments:answer:${String(input.answerId)}`);
+      invalidateCache('answers:all');
+    } catch {}
     return CommentSchema.parse(raw);
   }
 
@@ -183,6 +217,11 @@ export async function addComment(input: { answerId: string | number; text: strin
     authorId: data.author_id ?? data.authorId,
     created_at: data.created_at ?? data.createdAt,
   };
+  // clear related caches after successful insert
+  try {
+    invalidateCache(`comments:answer:${String(input.answerId)}`);
+    invalidateCache('answers:all');
+  } catch {}
   return CommentSchema.parse(row as any);
 }
 
@@ -209,13 +248,14 @@ export async function getTopics(): Promise<Topic[]> {
     });
     return copy.map((t) => TopicSchema.parse(t));
   }
-  await ensureConnection();
-  const { data, error } = await supabase
-    .from('topics')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return (data ?? []).map((t: any) => TopicSchema.parse(t));
+  return getCached<Topic[]>('topics:all', 10_000, async () => {
+    const { data, error } = await supabase
+      .from('topics')
+      .select('id, title, created_at, image')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return TopicSchema.array().parse(data ?? []);
+  });
 }
 
 /**
@@ -227,12 +267,11 @@ export async function getUsers(): Promise<User[]> {
     const copy = [...mockUsers];
     return copy.map((u) => UserSchema.parse(u));
   }
-  await ensureConnection();
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('*');
-  if (error) throw error;
-  return (data ?? []).map((u: any) => UserSchema.parse(u));
+  return getCached<User[]>('users:all', 10_000, async () => {
+    const { data, error } = await supabase.from('profiles').select('id, name, sub_users');
+    if (error) throw error;
+    return UserSchema.array().parse(data ?? []);
+  });
 }
 
 /**
@@ -276,7 +315,8 @@ export async function addSubUser(input: { parentId: string; name: string }): Pro
     const id = `${parent.id}#sub-${Date.now()}-${parent.subUsers.length + 1}`;
     const sub = { id, name: input.name };
     parent.subUsers.push(sub);
-    return sub;
+  try { invalidateCache('users:all'); } catch {}
+  return sub;
   }
 
   await ensureConnection();
@@ -286,6 +326,7 @@ export async function addSubUser(input: { parentId: string; name: string }): Pro
     .select('*')
     .single();
   if (error) throw error;
+  try { invalidateCache('users:all'); } catch {}
   return data as SubUser;
 }
 
@@ -301,7 +342,8 @@ export async function removeSubUser(parentId: string, subId: string): Promise<bo
     if (idx === -1) return false;
     parent.subUsers.splice(idx, 1);
     // also clear any localStorage references is left to client; server-side returns success
-    return true;
+  try { invalidateCache('users:all'); } catch {}
+  return true;
   }
 
   await ensureConnection();
@@ -311,6 +353,7 @@ export async function removeSubUser(parentId: string, subId: string): Promise<bo
     .eq('id', subId)
     .eq('parent_id', parentId);
   if (error) throw error;
+  try { invalidateCache('users:all'); } catch {}
   return true;
 }
 
@@ -398,10 +441,11 @@ export async function voteAnswer({
 
   // fetch answer
   const { data: answerRow, error: answerErr } = await supabase
-    .from('answers')
-    .select('*')
-    .eq('id', answerId)
-    .single();
+  .from('answers')
+  // select only needed columns to reduce payload
+  .select('id, text, author_name, author_id, topic_id, created_at')
+  .eq('id', answerId)
+  .single();
   if (answerErr) throw answerErr;
 
   // fetch aggregated counts from materialized view or compute
@@ -413,8 +457,9 @@ export async function voteAnswer({
   if (countsErr) {
     // fallback: compute from votes table
     const { data: agg, error: aggErr } = await supabase
-      .from('votes')
-      .select('level, count', { head: false });
+  .from('votes')
+  .select('level, count', { head: false })
+  .eq('answer_id', answerId);
     if (aggErr) throw aggErr;
   }
 
@@ -437,6 +482,8 @@ export async function voteAnswer({
     votesBy: votesByObj,
   } as const;
 
+  // invalidate cached answers so clients see updated vote counts
+  try { invalidateCache('answers:all'); } catch {}
   return AnswerSchema.parse(result as any);
 }
 
