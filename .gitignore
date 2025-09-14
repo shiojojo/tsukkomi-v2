@@ -1,0 +1,43 @@
+.DS_Store
+/node_modules/
+
+# React Router
+/.react-router/
+/build/
+
+# Local env
+.env.local
+
+# Environment / secrets
+# Ignore all env files (but keep explicit examples if present)
+.env
+.env.*
+!.env.example
+
+# Supabase / service keys
+supabase/.env
+.supabase
+
+# Common secret file patterns
+*.key
+*.pem
+*.secret
+secrets.*
+service-account*.json
+
+# Deployment & platform configs that may contain tokens
+/.vercel/
+.netlify/
+.firebase/
+
+# Build caches
+/dist/
+/.cache/
+
+# Scripts that may contain secrets or service URLs
+/scripts/check-supabase.mjs
+/scripts/ensure-topic-images.mjs
+/scripts/find-secrets.mjs
+
+# If you prefer to ignore all scripts (uncomment)
+# /scripts/

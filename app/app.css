@@ -1,0 +1,76 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+html,
+body {
+  /* Base background and text for light / dark. Use slightly lighter dark-bg for better contrast
+     and ensure text color switches to near-white in dark mode for readability. */
+  @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased leading-relaxed;
+
+  @media (prefers-color-scheme: dark) {
+    color-scheme: dark;
+  }
+}
+
+/* App-wide form/button utilities to ensure contrast in dark and light themes */
+/* Primary small button used for inline forms (comment send) */
+.btn-inline {
+  /* Light: subtle white button; Dark: use an accessible indigo primary for contrast */
+  @apply bg-white dark:bg-indigo-600 text-gray-900 dark:text-white border border-gray-200 dark:border-transparent px-3 py-1 rounded-md shadow-sm;
+}
+
+.btn-inline:hover {
+  @apply bg-gray-50 dark:bg-indigo-500;
+}
+
+/* Improve input contrast and focus */
+.form-input {
+  @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 rounded-md px-3 py-2;
+}
+
+.form-input:focus {
+  @apply outline-none ring-2 ring-indigo-500;
+}
+
+/* Small muted text variant for form helper / author labels */
+.text-muted {
+  @apply text-sm text-gray-500 dark:text-gray-300;
+}
+
+/* Headings and links: ensure strong contrast in dark mode */
+h1,
+h2,
+h3,
+h4,
+h5 {
+  @apply text-gray-900 dark:text-gray-100;
+}
+a {
+  @apply text-blue-600 dark:text-blue-400;
+}
+
+/* Code/pre blocks: darker background in light, slightly lighter in dark for legibility */
+pre,
+code {
+  @apply bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100;
+}
+
+/* Sub-user switcher buttons: neutral, accessible look in both themes */
+.btn-switch {
+  @apply w-full text-left px-3 py-2 rounded border bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100 border-gray-200 dark:border-gray-700 transition-colors;
+}
+.btn-switch:hover {
+  @apply bg-gray-50 dark:bg-gray-700;
+}
+
+.btn-switch--sub {
+  @apply bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100;
+}
+.btn-switch--sub:hover {
+  @apply bg-gray-100 dark:bg-gray-600;
+}
