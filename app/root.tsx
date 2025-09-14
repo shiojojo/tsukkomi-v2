@@ -5,6 +5,7 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigation,
 } from 'react-router';
 
 import type { Route } from './+types/root';
@@ -35,6 +36,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         {children}
+        {/* Global loading overlay: displayed when navigation state is not idle */}
+        {/* This will be controlled by the App component which passes a prop. */}
         {/* Responsive nav: footer on mobile, header on md+ */}
         <ResponsiveNav />
         <ScrollRestoration />
@@ -45,9 +48,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  // useNavigation is only available inside the Router context (client-side)
+  const navigation = useNavigation();
+  const isLoading = navigation.state !== 'idle';
+
   return (
     <Layout>
       <Outlet />
+
+      {/* Loading overlay rendered at the top level so it covers route content */}
+      {isLoading && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-slate-900/95 text-white rounded-lg p-4 flex items-center gap-3">
+            <div className="w-8 h-8 border-4 border-t-transparent border-white rounded-full animate-spin" />
+            <div className="text-sm">Loading…</div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
