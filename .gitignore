@@ -35,12 +35,6 @@ service-account*.json
 /.cache/
 
 # Scripts that may contain secrets or service URLs
-/scripts/check-supabase.mjs
-/scripts/ensure-topic-images.mjs
-/scripts/find-secrets.mjs
 
 # If you prefer to ignore all scripts (uncomment)
 # /scripts/
-
-.env.example
-*.sql
