@@ -18,47 +18,20 @@ export async function loader({ params }: LoaderFunctionArgs) {
   if (!id) {
     throw new Response('Invalid topic id', { status: 400 });
   }
-
-  const { getTopic, getAnswersByTopic, getUsers, getCommentsByAnswer } =
-    await import('~/lib/db');
-  const [topic, answers, users] = await Promise.all([
+  // Only fetch the topic and answer summaries here.
+  // Comments and any user-detail enrichment are intentionally loaded lazily on the client
+  // to avoid N+1 and large joins on initial page render.
+  const { getTopic, getAnswersByTopic } = await import('~/lib/db');
+  const [topic, answers] = await Promise.all([
     getTopic(id),
     getAnswersByTopic(id),
-    getUsers(),
   ]);
 
   if (!topic) {
     throw new Response('Not Found', { status: 404 });
   }
 
-  // annotate answers with voter details (name + level) so UI can show who voted what
-  // include subUsers in the map so names resolve for voter ids like "user-1#sub-1"
-  const usersMap = new Map<string, string>();
-  for (const u of users) {
-    usersMap.set(u.id, u.name);
-    if (u.subUsers && Array.isArray(u.subUsers)) {
-      for (const s of u.subUsers) {
-        usersMap.set(s.id, s.name);
-      }
-    }
-  }
-  const answersWithVoters = answers.map(a => ({
-    ...a,
-    voters: Object.entries(a.votesBy || {}).map(([userId, lvl]) => ({
-      id: userId,
-      name: usersMap.get(userId) ?? userId,
-      level: Number(lvl),
-    })),
-  }));
-
-  // attach comments per answer (dev mock)
-  const commentsByAnswer: Record<string, Comment[]> = {};
-  for (const a of answersWithVoters) {
-    const cs = await getCommentsByAnswer(a.id);
-    commentsByAnswer[String(a.id)] = cs;
-  }
-
-  return { topic, answers: answersWithVoters, commentsByAnswer };
+  return { topic, answers };
 }
 
 function FavoriteButton({ answerId }: { answerId: number }) {
@@ -191,8 +164,6 @@ export default function TopicDetailRoute() {
   const topic: Topic = data.topic;
   // answers may be annotated with `voters: { id, name, level }[]`
   const answers: any[] = data.answers ?? [];
-  const commentsByAnswer: Record<string, Comment[]> =
-    (data as any)?.commentsByAnswer ?? {};
   // votes are handled locally for now; no server roundtrip on click.
 
   return (
@@ -228,21 +199,50 @@ export default function TopicDetailRoute() {
       </div>
 
       {/* Scrollable answers region */}
-      <div className="mt-2 overflow-auto max-h-[calc(100vh-140px)]">
+      <div
+        className="mt-2 overflow-auto max-h-[calc(100vh-140px)] pb-16 sm:pb-24"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 4rem)' }}
+      >
         {answers.length === 0 ? (
           <p className="text-gray-600">まだ回答が投稿されていません。</p>
         ) : (
-          <ul className="space-y-5 px-1">
-            {answers.map(a => (
-              <AnswerCard
-                key={a.id}
-                answer={a}
-                comments={commentsByAnswer[String(a.id)]}
-              />
-            ))}
-          </ul>
+          <ProgressiveAnswersList
+            answers={answers}
+            topicId={String(topic.id)}
+          />
         )}
       </div>
+    </div>
+  );
+}
+
+function ProgressiveAnswersList({
+  answers,
+  topicId,
+}: {
+  answers: any[];
+  topicId: string;
+}) {
+  const PAGE = 10;
+  const [count, setCount] = useState(Math.min(PAGE, answers.length));
+  const visible = answers.slice(0, count);
+  return (
+    <div>
+      <ul className="space-y-5 px-1">
+        {visible.map(a => (
+          <AnswerCard key={a.id} answer={a} topicId={topicId} />
+        ))}
+      </ul>
+      {count < answers.length ? (
+        <div className="mt-4 flex justify-center">
+          <button
+            className="px-4 py-2 rounded-md border bg-white dark:bg-gray-800"
+            onClick={() => setCount(c => Math.min(answers.length, c + PAGE))}
+          >
+            もっと見る ({answers.length - count} 件)
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -398,12 +398,19 @@ function NumericVoteButtons({
   );
 }
 
+// in-memory client cache for comments to avoid repeat fetches while the user navigates
+const clientCommentsCache = new Map<string, any[]>();
+// track in-flight comment fetches so parallel renders or re-entrancy reuse the same promise
+const clientCommentsInFlight = new Map<string, Promise<any[]>>();
+
 function AnswerCard({
   answer,
   comments,
+  topicId,
 }: {
   answer: any;
   comments?: Comment[];
+  topicId?: string;
 }) {
   const a = answer;
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -428,6 +435,60 @@ function AnswerCard({
   const votes = a.votes ?? { level1: 0, level2: 0, level3: 0 };
   const [open, setOpen] = useState(false);
   const detailsId = `answer-details-${a.id}`;
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [fetchedComments, setFetchedComments] = useState<Comment[] | null>(
+    comments ?? null
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const key = String(a.id);
+    // prefer cache presence check (handles empty arrays too)
+    if (clientCommentsCache.has(key)) {
+      setFetchedComments(clientCommentsCache.get(key) ?? []);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingComments(true);
+
+    const startFetch = async () => {
+      try {
+        // if another fetch is already running for this key, await it
+        if (clientCommentsInFlight.has(key)) {
+          const p = clientCommentsInFlight.get(key)!;
+          const cs = await p;
+          if (!cancelled) setFetchedComments(cs);
+          return;
+        }
+
+        const promise = (async () => {
+          const res = await fetch(`/topics/${topicId}/comments/${a.id}`, {
+            cache: 'force-cache',
+          });
+          if (!res.ok) return [] as Comment[];
+          const json = await res.json();
+          return (json && json.comments) || [];
+        })();
+
+        clientCommentsInFlight.set(key, promise);
+        const cs = await promise;
+        clientCommentsCache.set(key, cs);
+        if (!cancelled) setFetchedComments(cs);
+      } catch (e) {
+        if (!cancelled) setFetchedComments([]);
+      } finally {
+        clientCommentsInFlight.delete(key);
+        if (!cancelled) setLoadingComments(false);
+      }
+    };
+
+    startFetch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, a.id, topicId]);
 
   return (
     <li className="p-4 md:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-md shadow-sm">
@@ -467,12 +528,14 @@ function AnswerCard({
                 — {a.author}
               </p>
             ) : null}
-            {/* comments */}
-            {open ? (
-              <div className="mt-4">
-                <h4 className="text-sm font-medium">コメント</h4>
+            {/* comments: lazy-load only when user opens details */}
+            <div className="mt-4">
+              <h4 className="text-sm font-medium">コメント</h4>
+              {loadingComments ? (
+                <div className="text-sm text-gray-500">読み込み中…</div>
+              ) : (
                 <ul className="mt-2 space-y-2 text-sm">
-                  {(comments || []).map(c => (
+                  {(fetchedComments || []).map(c => (
                     <li key={c.id} className="text-gray-700">
                       {c.text}{' '}
                       <span className="text-xs text-gray-400">
@@ -481,36 +544,36 @@ function AnswerCard({
                     </li>
                   ))}
                 </ul>
+              )}
 
-                <div className="mt-3">
-                  <div className="text-muted mb-2">
-                    コメントとして: {currentUserName ?? '名無し'}
-                  </div>
-                  <Form method="post" className="flex gap-2">
-                    <input type="hidden" name="answerId" value={String(a.id)} />
-                    <input
-                      type="hidden"
-                      name="authorId"
-                      value={currentUserId ?? ''}
-                    />
-                    <input
-                      type="hidden"
-                      name="authorName"
-                      value={currentUserName ?? ''}
-                    />
-                    <input
-                      name="commentText"
-                      className="form-input flex-1"
-                      placeholder="コメントを追加"
-                      aria-label="コメント入力"
-                    />
-                    <button className="btn-inline" aria-label="コメントを送信">
-                      送信
-                    </button>
-                  </Form>
+              <div className="mt-3">
+                <div className="text-muted mb-2">
+                  コメントとして: {currentUserName ?? '名無し'}
                 </div>
+                <Form method="post" className="flex gap-2">
+                  <input type="hidden" name="answerId" value={String(a.id)} />
+                  <input
+                    type="hidden"
+                    name="authorId"
+                    value={currentUserId ?? ''}
+                  />
+                  <input
+                    type="hidden"
+                    name="authorName"
+                    value={currentUserName ?? ''}
+                  />
+                  <input
+                    name="commentText"
+                    className="form-input flex-1"
+                    placeholder="コメントを追加"
+                    aria-label="コメント入力"
+                  />
+                  <button className="btn-inline" aria-label="コメントを送信">
+                    送信
+                  </button>
+                </Form>
               </div>
-            ) : null}
+            </div>
 
             {a.voters && a.voters.length > 0 ? (
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
