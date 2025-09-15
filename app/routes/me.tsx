@@ -1,149 +1,238 @@
-import { Link } from 'react-router';
+import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
+import { useLoaderData, useFetcher, Form } from 'react-router';
 import { useEffect, useState } from 'react';
-import { mockUsers } from '~/mock/users';
+import { Link } from 'react-router';
+import { SubUserCreateSchema } from '~/lib/schemas/user';
 
-// If VITE_SUPABASE_KEY is set, the app is expected to use Supabase for auth/profiles.
-// In that case we avoid showing local mock/localStorage-derived user info here so
-// the UI reflects the authoritative Supabase-backed state (which may be empty).
-const USING_SUPABASE = Boolean(import.meta.env.VITE_SUPABASE_KEY);
+/**
+ * 概要: /me ページ - 開発向けにサブユーザーの作成 / 削除 / 切替 を提供する。
+ * Intent: ローカルの currentUser / currentSubUser を操作できる簡易 UI。
+ * Contract:
+ *  - loader: { users: User[] }
+ *  - action: intent=add-subuser | remove-subuser -> returns { ok, sub?, parentId?, subId? }
+ * Environment: dev は in-memory mock を使う (lib/db の分岐に従う)
+ * Errors: バリデーションエラーは { ok: false, errors } を返す
+ */
+export async function loader({}: LoaderFunctionArgs) {
+  const { getUsers } = await import('~/lib/db');
+  const users = await getUsers();
+  return { users };
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+  const form = await request.formData();
+  const intent = form.get('intent') ? String(form.get('intent')) : '';
+
+  if (intent === 'add-subuser') {
+    const name = String(form.get('name') || '');
+    const parentId = String(form.get('parentId') || '');
+    const parsed = SubUserCreateSchema.safeParse({ name, parentId });
+    if (!parsed.success) return { ok: false, errors: parsed.error.format() };
+    const { addSubUser } = await import('~/lib/db');
+    const sub = await addSubUser(parsed.data);
+    return { ok: true, sub, parentId };
+  }
+
+  if (intent === 'remove-subuser') {
+    const parentId = String(form.get('parentId') || '');
+    const subId = String(form.get('subId') || '');
+    const { removeSubUser } = await import('~/lib/db');
+    const ok = await removeSubUser(parentId, subId);
+    return { ok, parentId, subId };
+  }
+
+  return { ok: false };
+}
 
 export default function MeRoute() {
-  const [id, setId] = useState<string | null>(null);
-  const [name, setName] = useState<string | null>(null);
+  const data = useLoaderData() as Awaited<ReturnType<typeof loader>>;
+  const users = data.users as any[];
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+  const [currentSubUserId, setCurrentSubUserId] = useState<string | null>(null);
+  const [currentSubUserName, setCurrentSubUserName] = useState<string | null>(
+    null
+  );
+
+  // fetchers for mutate actions
+  const add = useFetcher();
+  const remove = useFetcher();
 
   useEffect(() => {
     try {
-      if (!USING_SUPABASE) {
-        // show currently selected sub-user if set, otherwise primary user
-        setId(
-          localStorage.getItem('currentSubUserId') ??
-            localStorage.getItem('currentUserId')
-        );
-        setName(
-          localStorage.getItem('currentSubUserName') ??
-            localStorage.getItem('currentUserName')
-        );
-      } else {
-        // Supabase mode: don't rely on localStorage/mock; keep null so UI shows login/empty state
-        setId(null);
-        setName(null);
-      }
+      setCurrentUserId(localStorage.getItem('currentUserId'));
+      setCurrentUserName(localStorage.getItem('currentUserName'));
+      setCurrentSubUserId(localStorage.getItem('currentSubUserId'));
+      setCurrentSubUserName(localStorage.getItem('currentSubUserName'));
     } catch {
-      setId(null);
-      setName(null);
+      // ignore
     }
   }, []);
 
-  if (!id) {
-    return (
-      <div className="p-4 max-w-md mx-auto">
-        <p className="text-sm text-gray-700 dark:text-gray-300">
-          {USING_SUPABASE
-            ? 'サーバー上のユーザーデータが未設定です。ログイン後にプロフィールが表示されます。'
-            : 'ログインされていません。'}
-        </p>
-        <Link to="/login" className="text-blue-600">
-          ログインへ
-        </Link>
-      </div>
-    );
+  // Handle add result: set the created sub-user as active
+  useEffect(() => {
+    if (add.state === 'idle' && add.data && add.data.ok && add.data.sub) {
+      try {
+        const sub = add.data.sub as any;
+        const parentId = String(add.data.parentId || '');
+        localStorage.setItem('currentUserId', parentId);
+        const parent = users.find(u => u.id === parentId);
+        if (parent) localStorage.setItem('currentUserName', parent.name ?? '');
+        localStorage.setItem('currentSubUserId', sub.id);
+        localStorage.setItem('currentSubUserName', sub.name);
+      } catch {}
+      // reload to reflect updated server-side mock state
+      window.location.reload();
+    }
+  }, [add.state, add.data]);
+
+  // Handle remove result: if removed sub was active, clear sub selection
+  useEffect(() => {
+    if (remove.state === 'idle' && remove.data && remove.data.ok) {
+      try {
+        const removedId = String(remove.data.subId || '');
+        if (localStorage.getItem('currentSubUserId') === removedId) {
+          localStorage.removeItem('currentSubUserId');
+          localStorage.removeItem('currentSubUserName');
+        }
+      } catch {}
+      window.location.reload();
+    }
+  }, [remove.state, remove.data]);
+
+  function selectMain(user: any) {
+    try {
+      localStorage.setItem('currentUserId', user.id);
+      localStorage.setItem('currentUserName', user.name ?? '');
+      // clear any sub selection
+      localStorage.removeItem('currentSubUserId');
+      localStorage.removeItem('currentSubUserName');
+    } catch {}
+    window.location.reload();
+  }
+
+  function switchToSub(sub: any, parent: any) {
+    try {
+      localStorage.setItem('currentUserId', parent.id);
+      localStorage.setItem('currentUserName', parent.name ?? '');
+      localStorage.setItem('currentSubUserId', sub.id);
+      localStorage.setItem('currentSubUserName', sub.name);
+    } catch {}
+    window.location.reload();
   }
 
   return (
-    <div className="p-4 max-w-md mx-auto">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-        {name}
-      </h1>
-      <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
-        ユーザーID: {id}
+    <div className="p-4 max-w-lg mx-auto">
+      <h1 className="text-xl font-bold mb-2">アカウント / サブユーザー</h1>
+      <p className="text-sm text-gray-600 mb-4">
+        サブユーザーの作成・削除・切替（開発用）
       </p>
-      {/* Sub-user switcher for parent account when available */}
-      <div className="mb-4">
-        <h2 className="text-sm font-semibold mb-2">サブユーザー切替</h2>
-        {(() => {
-          try {
-            const parentId = localStorage.getItem('currentUserId');
-            if (!parentId)
-              return (
-                <div className="text-xs text-gray-500">
-                  メインアカウントでログインしてください。
-                </div>
-              );
-            const parent = mockUsers.find(u => u.id === parentId);
-            if (!parent || !parent.subUsers)
-              return (
-                <div className="text-xs text-gray-500">
-                  サブユーザーがありません。
-                </div>
-              );
-            return (
-              <div className="space-y-2">
-                <button
-                  onClick={() => {
-                    try {
-                      // clear sub-user selection (back to primary identity)
-                      localStorage.removeItem('currentSubUserId');
-                      localStorage.removeItem('currentSubUserName');
-                      // ensure primary is set
-                      localStorage.setItem('currentUserId', parent.id);
-                      localStorage.setItem('currentUserName', parent.name);
-                      window.location.reload();
-                    } catch {}
-                  }}
-                  className="btn-switch"
-                >
-                  メインとして操作 ({parent.name})
-                </button>
-                {parent.subUsers.map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => {
-                      try {
-                        localStorage.setItem('currentUserId', parent.id);
-                        localStorage.setItem('currentUserName', parent.name);
-                        localStorage.setItem('currentSubUserId', s.id);
-                        localStorage.setItem('currentSubUserName', s.name);
-                        window.location.reload();
-                      } catch {}
-                    }}
-                    className="btn-switch btn-switch--sub"
-                  >
-                    {s.name}
+
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold">メインアカウントを選択</h2>
+        <ul className="mt-2 space-y-2">
+          {users.map((u: any) => (
+            <li key={u.id} className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">{u.name}</div>
+                <div className="text-xs text-gray-500">{u.id}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                {currentUserId === u.id ? (
+                  <span className="text-xs text-green-600">選択中</span>
+                ) : (
+                  <button className="btn-inline" onClick={() => selectMain(u)}>
+                    選択
                   </button>
-                ))}
+                )}
               </div>
-            );
-          } catch {
-            return (
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold">サブユーザーを追加</h2>
+        {currentUserId ? (
+          <add.Form method="post" className="flex gap-2 mt-2">
+            <input type="hidden" name="intent" value="add-subuser" />
+            <input type="hidden" name="parentId" value={currentUserId ?? ''} />
+            <input
+              name="name"
+              className="form-input flex-1"
+              placeholder="サブユーザー名"
+            />
+            <button className="btn-inline" type="submit">
+              作成
+            </button>
+          </add.Form>
+        ) : (
+          <div className="text-xs text-gray-500 mt-2">
+            まずメインアカウントを選択してください。
+          </div>
+        )}
+      </section>
+
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold">既存のサブユーザー</h2>
+        {currentUserId ? (
+          <ul className="mt-2 space-y-2">
+            {users.find(u => u.id === currentUserId)?.subUsers?.length ? (
+              users
+                .find(u => u.id === currentUserId)
+                .subUsers.map((s: any) => (
+                  <li key={s.id} className="flex items-center justify-between">
+                    <div>{s.name}</div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="text-sm text-blue-600"
+                        onClick={() =>
+                          switchToSub(
+                            s,
+                            users.find(u => u.id === currentUserId)
+                          )
+                        }
+                      >
+                        切替
+                      </button>
+                      <remove.Form method="post">
+                        <input
+                          type="hidden"
+                          name="intent"
+                          value="remove-subuser"
+                        />
+                        <input
+                          type="hidden"
+                          name="parentId"
+                          value={currentUserId ?? ''}
+                        />
+                        <input type="hidden" name="subId" value={s.id} />
+                        <button className="text-sm text-red-600">削除</button>
+                      </remove.Form>
+                    </div>
+                  </li>
+                ))
+            ) : (
               <div className="text-xs text-gray-500">
-                サブユーザー情報を取得できませんでした。
+                サブユーザーがありません。
               </div>
-            );
-          }
-        })()}
-      </div>
-      <div className="space-y-2">
-        <Link
-          to="/settings/account"
-          className="block px-3 py-2 bg-white dark:bg-gray-800 border rounded text-gray-900 dark:text-gray-100"
-        >
+            )}
+          </ul>
+        ) : (
+          <div className="text-xs text-gray-500">
+            メインアカウントを選択してください。
+          </div>
+        )}
+      </section>
+
+      <div className="flex gap-4">
+        <Link to="/settings/account" className="text-blue-600">
           アカウント設定
         </Link>
-        <button
-          onClick={() => {
-            try {
-              localStorage.removeItem('currentUserId');
-              localStorage.removeItem('currentUserName');
-              // also clear any selected sub-user
-              localStorage.removeItem('currentSubUserId');
-              localStorage.removeItem('currentSubUserName');
-              window.location.href = '/';
-            } catch {}
-          }}
-          className="block px-3 py-2 w-full text-left bg-red-600 text-white rounded"
-        >
-          ログアウト
-        </button>
+        <Link to="/" className="text-gray-600">
+          ホームへ
+        </Link>
       </div>
     </div>
   );
