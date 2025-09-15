@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS topics (
   id bigserial PRIMARY KEY,
   title text NOT NULL,
   image text,
+  -- original/source image URL preserved when we import and re-host images
+  source_image text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS topics_created_at_idx ON topics (created_at DESC);

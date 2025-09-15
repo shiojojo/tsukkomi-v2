@@ -229,6 +229,9 @@ async function main() {
         id: topics.size + 1,
         title: isUrl ? '写真' : topic,
         image: isUrl ? topic : null,
+        source_image: isUrl ? topic : null,
+        // will be set to the latest answer date for this topic when answers are parsed
+        created_at: null,
       };
       topics.set(topic, entry);
     }
@@ -244,6 +247,15 @@ async function main() {
     }
 
     const createdAt = normalizeDate(maybeDate);
+
+    // update topic created_at to the latest answer date seen for that topic
+    if (createdAt) {
+      const e = topics.get(topic);
+      if (!e.created_at || createdAt > e.created_at) {
+        e.created_at = createdAt;
+        topics.set(topic, e);
+      }
+    }
 
     answers.push({
       topicId,
@@ -266,7 +278,11 @@ async function main() {
       try {
         // sequential to avoid parallel downloads
         // eslint-disable-next-line no-await-in-loop
-        entry.image = await downloadResizeAndUploadImage(entry.image);
+        const original = entry.image;
+        const uploaded = await downloadResizeAndUploadImage(entry.image);
+        entry.image = uploaded;
+        // keep original reference in source_image
+        entry.source_image = original;
       } catch (e) {
         console.warn(
           'failed to process image',
@@ -279,13 +295,15 @@ async function main() {
   for (const [key, entry] of topics.entries()) {
     const id = entry.id;
     const title = entry.title;
+    // include created_at when available so DB ordering by created_at reflects topic activity
+    const createdVal = entry.created_at ? sqlEscape(entry.created_at) : 'now()';
     if (entry.image) {
       lines.push(
-        `INSERT INTO topics (id, title, image) VALUES (${id}, ${sqlEscape(title)}, ${sqlEscape(entry.image)});`
+        `INSERT INTO topics (id, title, image, source_image, created_at) VALUES (${id}, ${sqlEscape(title)}, ${sqlEscape(entry.image)}, ${entry.source_image ? sqlEscape(entry.source_image) : 'NULL'}, ${createdVal});`
       );
     } else {
       lines.push(
-        `INSERT INTO topics (id, title) VALUES (${id}, ${sqlEscape(title)});`
+        `INSERT INTO topics (id, title, source_image, created_at) VALUES (${id}, ${sqlEscape(title)}, ${entry.source_image ? sqlEscape(entry.source_image) : 'NULL'}, ${createdVal});`
       );
     }
   }
