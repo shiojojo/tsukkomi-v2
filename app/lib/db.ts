@@ -709,8 +709,9 @@ export async function voteAnswer({
 
   // Do the upsert and in parallel request the answer and vote counts to reduce round-trips.
   const upsertPromise = writeClient
-    .from('votes')
-    .upsert({ answer_id: answerId, user_id: userId, level }, { onConflict: 'answer_id,user_id' })
+  .from('votes')
+  // votes table uses `actor_id` (see migrations). use actor_id to match schema.
+  .upsert({ answer_id: answerId, actor_id: userId, level }, { onConflict: 'answer_id,actor_id' })
     .select('*')
     .single();
 

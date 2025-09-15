@@ -310,6 +310,53 @@ function NumericVoteButtons({
       localStorage.setItem(k, String(level));
     } catch {}
     setSelection(level);
+
+    // send vote to server action so DB (or dev mock) is updated
+    (async () => {
+      try {
+        const form = new FormData();
+        form.append('answerId', String(answerId));
+        form.append('level', String(level));
+        if (typeof prev === 'number')
+          form.append('previousLevel', String(prev));
+        const uid =
+          localStorage.getItem('currentSubUserId') ??
+          localStorage.getItem('currentUserId') ??
+          '';
+        form.append('userId', String(uid));
+
+        const res = await fetch(window.location.pathname, {
+          method: 'POST',
+          body: form,
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        if (!res.ok) {
+          // non-blocking: log for debugging
+          const text = await res.text().catch(() => '');
+          // eslint-disable-next-line no-console
+          console.error('vote submit failed', res.status, text);
+          return;
+        }
+
+        // update local counts from server response when available
+        const json = await res.json().catch(() => null);
+        if (json && json.answer && json.answer.votes) {
+          try {
+            setCounts({
+              level1: Number(json.answer.votes.level1 ?? 0),
+              level2: Number(json.answer.votes.level2 ?? 0),
+              level3: Number(json.answer.votes.level3 ?? 0),
+            });
+          } catch {}
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.error('vote submit error', e);
+      }
+    })();
   };
 
   const btnBase = CONTROL_BTN_BASE + ' gap-2 px-3';
