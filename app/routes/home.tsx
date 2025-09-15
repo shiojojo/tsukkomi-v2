@@ -30,25 +30,26 @@ export default function Home() {
 
         {latest ? (
           <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-lg p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold leading-tight">
-                  {latest.title}
-                </h2>
-                <p className="mt-2 text-sm text-gray-800 dark:text-gray-200">
-                  このお題に対する回答を見たり投稿できます。
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Link
-                  to={`/topics/${latest.id}`}
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium"
-                >
-                  回答を見る
-                </Link>
-                {/* '全ての回答へ' removed — use '回答を見る' which navigates to the topic page */}
-              </div>
+            <div>
+              <Link
+                to={`/topics/${latest.id}`}
+                className="block p-0 border rounded-md overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                aria-label={`お題 ${latest.title} の回答を見る`}
+              >
+                {latest.image ? (
+                  <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                    <img
+                      src={latest.image}
+                      alt={latest.title}
+                      className="w-full h-auto max-h-60 object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <h2 className="text-lg font-medium">{latest.title}</h2>
+                  </div>
+                )}
+              </Link>
             </div>
           </section>
         ) : (
@@ -56,8 +57,6 @@ export default function Home() {
             お題がまだありません。
           </div>
         )}
-
-        {/* User ranking removed */}
       </div>
     </main>
   );
