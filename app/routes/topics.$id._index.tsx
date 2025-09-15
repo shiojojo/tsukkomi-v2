@@ -174,15 +174,25 @@ export default function TopicRoute() {
           </ul>
         )}
         {cursor && (
-          <div className="mt-6 flex justify-center">
-            <button
-              ref={loadMoreRef}
-              onClick={loadMore}
-              disabled={loadingMore}
-              className="px-4 py-2 rounded-md border bg-white disabled:opacity-50"
-            >
-              {loadingMore ? '読み込み中…' : 'もっと見る'}
-            </button>
+          // Ensure the load-more control is not hidden behind mobile footers / safe-area insets.
+          <div
+            className="mt-6 flex justify-center"
+            // add extra padding for devices with safe-area inset (iPhone home indicator / app footer)
+            style={{
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)',
+            }}
+          >
+            <div className="w-full max-w-xs flex justify-center">
+              <button
+                ref={loadMoreRef}
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="px-4 py-2 rounded-md border bg-white disabled:opacity-50 mb-4"
+                aria-label="もっと見る"
+              >
+                {loadingMore ? '読み込み中…' : 'もっと見る'}
+              </button>
+            </div>
           </div>
         )}
       </div>

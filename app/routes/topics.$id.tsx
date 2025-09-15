@@ -234,13 +234,22 @@ function ProgressiveAnswersList({
         ))}
       </ul>
       {count < answers.length ? (
-        <div className="mt-4 flex justify-center">
-          <button
-            className="px-4 py-2 rounded-md border bg-white dark:bg-gray-800"
-            onClick={() => setCount(c => Math.min(answers.length, c + PAGE))}
-          >
-            もっと見る ({answers.length - count} 件)
-          </button>
+        // add safe-area bottom padding so the button is reachable on devices with home indicator / footers
+        <div
+          className="mt-4 flex justify-center"
+          style={{
+            paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)',
+          }}
+        >
+          <div className="w-full max-w-xs flex justify-center">
+            <button
+              className="px-4 py-2 rounded-md border bg-white dark:bg-gray-800 mb-4"
+              onClick={() => setCount(c => Math.min(answers.length, c + PAGE))}
+              aria-label={`もっと見る (${answers.length - count} 件)`}
+            >
+              もっと見る ({answers.length - count} 件)
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
