@@ -11,32 +11,18 @@ import type { Comment } from '~/lib/schemas/comment';
 import { UserSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { supabase, supabaseAdmin, ensureConnection } from './supabase';
-import { getEdgeNumber } from './edge-config';
 
 // Use mock data only when running in DEV and no Supabase key is provided.
 // This lets local dev point at a real Supabase instance by setting VITE_SUPABASE_KEY or SUPABASE_KEY.
 const _envKey = (import.meta.env.VITE_SUPABASE_KEY as string) ?? (process.env.SUPABASE_KEY as string | undefined);
 const isDev = Boolean(import.meta.env.DEV) && !_envKey;
 
-// Simple server-side in-memory cache to avoid repeated identical DB queries.
-// Key design: short TTLs, manual invalidation on mutations.
-type CacheEntry = { value: any; expires: number };
-const _cache = new Map<string, CacheEntry>();
-function getCached<T>(key: string, ttlMs: number, loader: () => Promise<T>): Promise<T> {
-  const now = Date.now();
-  const e = _cache.get(key);
-  if (e && e.expires > now) return Promise.resolve(e.value as T);
-  return loader().then((v) => {
-    try {
-      _cache.set(key, { value: v, expires: Date.now() + ttlMs });
-    } catch {}
-    return v;
-  });
-}
-function invalidateCache(prefix: string) {
-  for (const k of Array.from(_cache.keys())) {
-    if (k === prefix || k.startsWith(prefix)) _cache.delete(k);
-  }
+// Note: in-memory caching and edge-config have been removed to always query
+// the database directly for freshest results and to avoid cache wait delays.
+// keep a no-op invalidation function so existing mutation code can call it
+// without conditional edits. This intentionally does nothing now.
+function invalidateCache(_prefix: string) {
+  // no-op: caching removed
 }
 
 /**
@@ -57,74 +43,67 @@ export async function getAnswers(): Promise<Answer[]> {
     return copy.map((c) => AnswerSchema.parse(c));
   }
 
-  // Production path
-  // cache answers for a short duration to avoid repeated heavy list queries
-  const loader = async () => {
-    const ttl = await getEdgeNumber('ttl_answers_ms', 5000);
-    await ensureConnection();
-    const { data: answerRows, error: answerErr } = await supabase
-      .from('answers')
-      // select only existing, minimal fields to reduce payload
-      .select('id, text, author_name, author_id, topic_id, created_at')
-      .order('created_at', { ascending: false });
-    if (answerErr) throw answerErr;
+  // Production: always fetch fresh answers from DB
+  await ensureConnection();
+  const { data: answerRows, error: answerErr } = await supabase
+    .from('answers')
+    // select only existing, minimal fields to reduce payload
+    .select('id, text, author_name, author_id, topic_id, created_at')
+    .order('created_at', { ascending: false });
+  if (answerErr) throw answerErr;
 
-    const answers = (answerRows ?? []).map((a: any) => ({
-      id: typeof a.id === 'string' ? Number(a.id) : a.id,
-      text: a.text,
-      author: a.author_name ?? undefined,
-      authorId: a.author_id ?? undefined,
-      topicId: a.topic_id ?? undefined,
-      created_at: a.created_at ?? a.createdAt,
-    }));
+  const answers = (answerRows ?? []).map((a: any) => ({
+    id: typeof a.id === 'string' ? Number(a.id) : a.id,
+    text: a.text,
+    author: a.author_name ?? undefined,
+    authorId: a.author_id ?? undefined,
+    topicId: a.topic_id ?? undefined,
+    created_at: a.created_at ?? a.createdAt,
+  }));
 
-    // collect ids and fetch aggregated counts in one query (use materialized view if present)
-    const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
-    const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
-    if (ids.length) {
-      // try counts view first
-      const { data: countsData, error: countsErr } = await supabase
-        .from('answer_vote_counts')
-        .select('answer_id, level1, level2, level3')
+  // collect ids and fetch aggregated counts in one query (use materialized view if present)
+  const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
+  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
+  if (ids.length) {
+    // try counts view first
+    const { data: countsData, error: countsErr } = await supabase
+      .from('answer_vote_counts')
+      .select('answer_id, level1, level2, level3')
+      .in('answer_id', ids);
+
+    if (!countsErr && countsData && countsData.length) {
+      for (const c of countsData) {
+        countsMap[Number(c.answer_id)] = {
+          level1: Number(c.level1 ?? 0),
+          level2: Number(c.level2 ?? 0),
+          level3: Number(c.level3 ?? 0),
+        };
+      }
+    } else {
+      // fallback: aggregate from votes table in one query
+      const { data: agg, error: aggErr } = await supabase
+        .from('votes')
+        .select('answer_id, level', { head: false })
         .in('answer_id', ids);
-
-      if (!countsErr && countsData && countsData.length) {
-        for (const c of countsData) {
-          countsMap[Number(c.answer_id)] = {
-            level1: Number(c.level1 ?? 0),
-            level2: Number(c.level2 ?? 0),
-            level3: Number(c.level3 ?? 0),
-          };
-        }
-      } else {
-        // fallback: aggregate from votes table in one query
-        // Fallback: fetch raw vote rows and aggregate client-side to avoid relying on
-        // database-side GROUP BY syntax which can vary across PostgREST endpoints.
-        const { data: agg, error: aggErr } = await supabase
-          .from('votes')
-          .select('answer_id, level', { head: false })
-          .in('answer_id', ids);
-        if (aggErr) throw aggErr;
-        for (const row of agg ?? []) {
-          const aid = Number(row.answer_id);
-          countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
-          const lv = Number(row.level);
-          if (lv === 1) countsMap[aid].level1 += 1;
-          else if (lv === 2) countsMap[aid].level2 += 1;
-          else if (lv === 3) countsMap[aid].level3 += 1;
-        }
+      if (aggErr) throw aggErr;
+      for (const row of agg ?? []) {
+        const aid = Number(row.answer_id);
+        countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
+        const lv = Number(row.level);
+        if (lv === 1) countsMap[aid].level1 += 1;
+        else if (lv === 2) countsMap[aid].level2 += 1;
+        else if (lv === 3) countsMap[aid].level3 += 1;
       }
     }
+  }
 
-    const normalized = answers.map((a: any) => ({
-      ...a,
-      votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-      votesBy: {},
-    }));
+  const normalized = answers.map((a: any) => ({
+    ...a,
+    votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+    votesBy: {},
+  }));
 
-    return AnswerSchema.array().parse(normalized as any);
-  };
-  return getCached<Answer[]>('answers:all', await getEdgeNumber('ttl_answers_ms', 5000), loader);
+  return AnswerSchema.array().parse(normalized as any);
 }
 
 /**
@@ -231,25 +210,22 @@ export async function getCommentsByAnswer(answerId: string | number): Promise<Co
     copy.sort((a, b) => (a.created_at < b.created_at ? -1 : 1));
     return copy.map((c) => CommentSchema.parse(c));
   }
-  // production: fetch from Supabase
-  const key = `comments:answer:${String(answerId)}`;
-  return getCached<Comment[]>(key, 3000, async () => {
-    const { data, error } = await supabase
-      .from('comments')
-      .select('id, answer_id, text, author_name, author_id, created_at')
-      .eq('answer_id', Number(answerId))
-      .order('created_at', { ascending: true });
-    if (error) throw error;
-    const rows = (data ?? []).map((c: any) => ({
-      id: typeof c.id === 'string' ? Number(c.id) : c.id,
-      answerId: c.answer_id ?? c.answerId,
-      text: c.text,
-      author: c.author_name ?? c.author,
-      authorId: c.author_id ?? c.authorId,
-      created_at: c.created_at ?? c.createdAt,
-    }));
-    return CommentSchema.array().parse(rows as any);
-  });
+  // production: fetch from Supabase directly
+  const { data, error } = await supabase
+    .from('comments')
+    .select('id, answer_id, text, author_name, author_id, created_at')
+    .eq('answer_id', Number(answerId))
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  const rows = (data ?? []).map((c: any) => ({
+    id: typeof c.id === 'string' ? Number(c.id) : c.id,
+    answerId: c.answer_id ?? c.answerId,
+    text: c.text,
+    author: c.author_name ?? c.author,
+    authorId: c.author_id ?? c.authorId,
+    created_at: c.created_at ?? c.createdAt,
+  }));
+  return CommentSchema.array().parse(rows as any);
 }
 
 /**
@@ -404,14 +380,13 @@ export async function getTopics(): Promise<Topic[]> {
     });
     return copy.map((t) => TopicSchema.parse(t));
   }
-  return getCached<Topic[]>('topics:all', await getEdgeNumber('ttl_topics_ms', 10_000), async () => {
-    const { data, error } = await supabase
-      .from('topics')
-      .select('id, title, created_at, image')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return TopicSchema.array().parse(data ?? []);
-  });
+  await ensureConnection();
+  const { data, error } = await supabase
+    .from('topics')
+    .select('id, title, created_at, image')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return TopicSchema.array().parse(data ?? []);
 }
 
 /**
@@ -425,30 +400,26 @@ export async function getUsers(): Promise<User[]> {
   const sanitized = copy.map((u) => ({ id: u.id, name: u.name, subUsers: u.subUsers ?? undefined }));
   return sanitized.map((u) => UserSchema.parse(u));
   }
-  return getCached<User[]>('profiles:all', await getEdgeNumber('ttl_users_ms', 10_000), async () => {
-    // Do NOT select line_id for the public users list to avoid leaking external identifiers.
-    // Fetch profiles first, then batch-fetch sub_users and attach them so we don't reference
-    // a non-existent `sub_users` column on profiles.
-    const { data, error } = await supabase.from('profiles').select('id, name');
-      if (error) throw error;
-      const baseRows = (data ?? []).map((r: any) => ({ id: String(r.id), name: r.name }));
-      const ids = baseRows.map(r => r.id).filter(Boolean as any);
-      let subMap: Record<string, { id: string; name: string }[]> = {};
-      if (ids.length) {
-        const { data: subs, error: subsErr } = await supabase
-          .from('sub_users')
-          .select('id, parent_user_id, name')
-          .in('parent_user_id', ids as any[]);
-        if (subsErr) throw subsErr;
-        for (const s of (subs ?? [])) {
-          const pid = String(s.parent_user_id ?? '');
-          subMap[pid] = subMap[pid] ?? [];
-          subMap[pid].push({ id: String(s.id), name: s.name });
-        }
+  // Production: fetch profiles and attach sub_users without caching
+  const { data, error } = await supabase.from('profiles').select('id, name');
+    if (error) throw error;
+    const baseRows = (data ?? []).map((r: any) => ({ id: String(r.id), name: r.name }));
+    const ids = baseRows.map(r => r.id).filter(Boolean as any);
+    let subMap: Record<string, { id: string; name: string }[]> = {};
+    if (ids.length) {
+      const { data: subs, error: subsErr } = await supabase
+        .from('sub_users')
+        .select('id, parent_user_id, name')
+        .in('parent_user_id', ids as any[]);
+      if (subsErr) throw subsErr;
+      for (const s of (subs ?? [])) {
+        const pid = String(s.parent_user_id ?? '');
+        subMap[pid] = subMap[pid] ?? [];
+        subMap[pid].push({ id: String(s.id), name: s.name });
       }
-      const rows = baseRows.map(r => ({ id: r.id, name: r.name, subUsers: subMap[r.id] ?? undefined }));
-      return UserSchema.array().parse(rows as any);
-  });
+    }
+    const rows = baseRows.map(r => ({ id: r.id, name: r.name, subUsers: subMap[r.id] ?? undefined }));
+    return UserSchema.array().parse(rows as any);
 }
 
 /**
