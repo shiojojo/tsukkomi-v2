@@ -7,6 +7,10 @@
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import dotenv from 'dotenv';
+import fetch from 'node-fetch';
+import sharp from 'sharp';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 function parseCSV(text) {
   const rows = [];
@@ -110,7 +114,61 @@ function generateUUID() {
   }
 }
 
-function main() {
+// load local env (if present)
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+
+const STORAGE_ENDPOINT = process.env.STORAGE_ENDPOINT;
+const STORAGE_ID = process.env.STORAGE_ID;
+const STORAGE_ACCESS_KEY = process.env.STORAGE_ACCESS_KEY;
+const STORAGE_BUCKET = process.env.STORAGE_BUCKET;
+const VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+
+let s3client = null;
+if (STORAGE_ENDPOINT && STORAGE_ID && STORAGE_ACCESS_KEY && STORAGE_BUCKET) {
+  s3client = new S3Client({
+    endpoint: STORAGE_ENDPOINT,
+    region: 'us-east-1',
+    credentials: {
+      accessKeyId: STORAGE_ID,
+      secretAccessKey: STORAGE_ACCESS_KEY,
+    },
+    forcePathStyle: true,
+  });
+}
+
+async function downloadResizeAndUploadImage(srcUrl) {
+  if (!s3client) return srcUrl;
+  try {
+    const res = await fetch(srcUrl);
+    if (!res.ok) throw new Error('fetch failed ' + res.status);
+    const array = await res.arrayBuffer();
+    const input = Buffer.from(array);
+    const outBuf = await sharp(input)
+      .resize({ width: 1200, withoutEnlargement: true })
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    const key = `images/${generateUUID()}.jpg`;
+    const cmd = new PutObjectCommand({
+      Bucket: STORAGE_BUCKET,
+      Key: key,
+      Body: outBuf,
+      ContentType: 'image/jpeg',
+    });
+    await s3client.send(cmd);
+    if (VITE_SUPABASE_URL)
+      return `${VITE_SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${key}`;
+    return `${STORAGE_ENDPOINT.replace(/\/$/, '')}/${STORAGE_BUCKET}/${key}`;
+  } catch (err) {
+    console.warn(
+      'image upload failed for',
+      srcUrl,
+      err && err.message ? err.message : err
+    );
+    return srcUrl;
+  }
+}
+
+async function main() {
   const args = process.argv.slice(2);
   if (args.length < 2) {
     console.error(
@@ -202,6 +260,22 @@ function main() {
   lines.push('BEGIN;');
   lines.push('');
   // topics inserts (explicit ids). Include image when available.
+  // If configured, download remote images, resize and upload them, then replace the URL.
+  for (const [key, entry] of topics.entries()) {
+    if (entry.image && /^https?:\/\//i.test(entry.image)) {
+      try {
+        // sequential to avoid parallel downloads
+        // eslint-disable-next-line no-await-in-loop
+        entry.image = await downloadResizeAndUploadImage(entry.image);
+      } catch (e) {
+        console.warn(
+          'failed to process image',
+          entry.image,
+          e && e.message ? e.message : e
+        );
+      }
+    }
+  }
   for (const [key, entry] of topics.entries()) {
     const id = entry.id;
     const title = entry.title;
