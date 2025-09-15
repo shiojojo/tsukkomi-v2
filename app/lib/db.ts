@@ -648,6 +648,54 @@ export async function getAnswersByTopic(topicId: string | number) {
 }
 
 /**
+ * getAnswersPageByTopic
+ * Intent: Cursor based (created_at desc) pagination for answers under a topic to enable incremental loading.
+ * Contract:
+ *  - Input: { topicId: string|number; cursor: string | null; pageSize?: number }
+ *  - Output: { answers: Answer[]; nextCursor: string | null }
+ *    answers sorted desc by created_at. nextCursor = 最後の要素の created_at (次ページ条件 < cursor)。
+ * Environment:
+ *  - dev: in-memory filter + sort + slice
+ *  - prod: Supabase query with .lt('created_at', cursor) when cursor provided
+ * Errors: Supabase error そのまま throw。
+ */
+export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20 }: { topicId: string | number; cursor: string | null; pageSize?: number }): Promise<{ answers: Answer[]; nextCursor: string | null }> {
+  if (pageSize <= 0) return { answers: [], nextCursor: null };
+  if (isDev) {
+    const all = await getAnswersByTopic(topicId);
+    // ensure desc
+    const sorted = [...all].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    const sliced = cursor ? sorted.filter(a => a.created_at < cursor).slice(0, pageSize) : sorted.slice(0, pageSize);
+    const next = sliced.length === pageSize ? sliced[sliced.length - 1].created_at : null;
+    return { answers: sliced, nextCursor: next };
+  }
+  await ensureConnection();
+  const numericTopic = Number(topicId);
+  let query = supabase
+    .from('answers')
+    .select('id, text, author_name, author_id, topic_id, created_at')
+    .eq('topic_id', numericTopic)
+    .order('created_at', { ascending: false })
+    .limit(pageSize);
+  if (cursor) query = query.lt('created_at', cursor);
+  const { data, error } = await query;
+  if (error) throw error;
+  const rows = (data ?? []).map((a: any) => ({
+    id: typeof a.id === 'string' ? Number(a.id) : a.id,
+    text: a.text,
+    author: a.author_name ?? undefined,
+    authorId: a.author_id ?? undefined,
+    topicId: a.topic_id ?? undefined,
+    created_at: a.created_at ?? a.createdAt,
+    votes: { level1: 0, level2: 0, level3: 0 },
+    votesBy: {},
+  }));
+  const answers = AnswerSchema.array().parse(rows as any);
+  const next = answers.length === pageSize ? answers[answers.length - 1].created_at : null;
+  return { answers, nextCursor: next };
+}
+
+/**
  * voteAnswer
  * Intent: record a three-level vote for an answer.
  * Contract: accepts answerId and level (1|2|3). Returns the updated Answer.
