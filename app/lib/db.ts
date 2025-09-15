@@ -423,15 +423,27 @@ export async function getUsers(): Promise<User[]> {
   }
   return getCached<User[]>('profiles:all', await getEdgeNumber('ttl_users_ms', 10_000), async () => {
     // Do NOT select line_id for the public users list to avoid leaking external identifiers.
-  const { data, error } = await supabase.from('profiles').select('id, name, sub_users');
-    if (error) throw error;
-    // normalize returned rows to match schema shape; intentionally omit line_id
-    const rows = (data ?? []).map((r: any) => ({
-      id: String(r.id),
-      name: r.name,
-      subUsers: r.sub_users ?? undefined,
-    }));
-    return UserSchema.array().parse(rows as any);
+    // Fetch profiles first, then batch-fetch sub_users and attach them so we don't reference
+    // a non-existent `sub_users` column on profiles.
+    const { data, error } = await supabase.from('profiles').select('id, name');
+      if (error) throw error;
+      const baseRows = (data ?? []).map((r: any) => ({ id: String(r.id), name: r.name }));
+      const ids = baseRows.map(r => r.id).filter(Boolean as any);
+      let subMap: Record<string, { id: string; name: string }[]> = {};
+      if (ids.length) {
+        const { data: subs, error: subsErr } = await supabase
+          .from('sub_users')
+          .select('id, parent_user_id, name')
+          .in('parent_user_id', ids as any[]);
+        if (subsErr) throw subsErr;
+        for (const s of (subs ?? [])) {
+          const pid = String(s.parent_user_id ?? '');
+          subMap[pid] = subMap[pid] ?? [];
+          subMap[pid].push({ id: String(s.id), name: s.name });
+        }
+      }
+      const rows = baseRows.map(r => ({ id: r.id, name: r.name, subUsers: subMap[r.id] ?? undefined }));
+      return UserSchema.array().parse(rows as any);
   });
 }
 
@@ -446,10 +458,13 @@ export async function getUserById(id: string): Promise<User | undefined> {
 
   await ensureConnection();
   // Default public getter: do NOT return line_id. Use getUserByIdPrivate for server-only access.
-  const { data, error } = await supabase.from('profiles').select('id, name, sub_users').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('profiles').select('id, name').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return undefined;
-  const normalized = { id: String(data.id), name: data.name, subUsers: data.sub_users ?? undefined };
+  // fetch sub_users separately
+  const { data: subs, error: subsErr } = await supabase.from('sub_users').select('id, parent_user_id, name').eq('parent_user_id', id);
+  if (subsErr) throw subsErr;
+  const normalized = { id: String(data.id), name: data.name, subUsers: (subs ?? []).map((s: any) => ({ id: String(s.id), name: s.name })) || undefined };
   return UserSchema.parse(normalized as any);
 }
 
@@ -459,10 +474,12 @@ export async function getUserById(id: string): Promise<User | undefined> {
  */
 export async function getUserByIdPrivate(id: string): Promise<User | undefined> {
   await ensureConnection();
-  const { data, error } = await supabase.from('profiles').select('id, name, sub_users, line_id').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('profiles').select('id, name, line_id').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return undefined;
-  const normalized = { id: String(data.id), name: data.name, line_id: data.line_id ?? undefined, subUsers: data.sub_users ?? undefined };
+  const { data: subs, error: subsErr } = await supabase.from('sub_users').select('id, parent_user_id, name').eq('parent_user_id', id);
+  if (subsErr) throw subsErr;
+  const normalized = { id: String(data.id), name: data.name, line_id: data.line_id ?? undefined, subUsers: (subs ?? []).map((s: any) => ({ id: String(s.id), name: s.name })) || undefined };
   return UserSchema.parse(normalized as any);
 }
 
@@ -478,9 +495,9 @@ export async function getSubUsers(parentId: string): Promise<SubUser[] | undefin
 
   await ensureConnection();
   const { data, error } = await supabase
-    .from('sub_users')
-    .select('id, parent_id, name')
-    .eq('parent_id', parentId);
+  .from('sub_users')
+  .select('id, parent_user_id, name')
+  .eq('parent_user_id', parentId);
   if (error) throw error;
   // ensure shape matches SubUser type (id, name)
   return (data ?? []).map((r: any) => ({ id: String(r.id), name: r.name }));
@@ -506,8 +523,8 @@ export async function addSubUser(input: { parentId: string; name: string }): Pro
 
   await ensureConnection();
   const { data, error } = await supabase
-    .from('sub_users')
-    .insert({ parent_id: input.parentId, name: input.name })
+  .from('sub_users')
+  .insert({ parent_user_id: input.parentId, name: input.name })
     .select('*')
     .single();
   if (error) throw error;
@@ -534,9 +551,9 @@ export async function removeSubUser(parentId: string, subId: string): Promise<bo
   await ensureConnection();
   const { error } = await supabase
     .from('sub_users')
-    .delete()
-    .eq('id', subId)
-    .eq('parent_id', parentId);
+  .delete()
+  .eq('id', subId)
+  .eq('parent_user_id', parentId);
   if (error) throw error;
   try { invalidateCache('profiles:all'); } catch {}
   return true;
