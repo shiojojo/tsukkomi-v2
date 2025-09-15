@@ -5,7 +5,7 @@
 -- connections (Supabase service role) bypass RLS and are not affected.
 
 -- Enable RLS on all relevant tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sub_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE topics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE answers ENABLE ROW LEVEL SECURITY;
@@ -13,21 +13,21 @@ ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
 
 -- ==========================
--- users
+-- profiles
 -- ==========================
 -- Publicly readable (exposes display names). Insert/Update/Delete only by the authenticated owner.
-CREATE POLICY "users_public_select" ON users FOR SELECT USING (true);
+CREATE POLICY "profiles_public_select" ON profiles FOR SELECT USING (true);
 
 -- Insert: allow when authenticated and id matches auth.uid()
-CREATE POLICY "users_insert_own" ON users FOR INSERT WITH CHECK (
+CREATE POLICY "profiles_insert_own" ON profiles FOR INSERT WITH CHECK (
   auth.uid() IS NOT NULL AND (id = auth.uid()::uuid)
 );
 
-CREATE POLICY "users_update_own" ON users FOR UPDATE
+CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE
   USING (id = auth.uid()::uuid)
   WITH CHECK (id = auth.uid()::uuid);
 
-CREATE POLICY "users_delete_own" ON users FOR DELETE USING (id = auth.uid()::uuid);
+CREATE POLICY "profiles_delete_own" ON profiles FOR DELETE USING (id = auth.uid()::uuid);
 
 -- ==========================
 -- sub_users
@@ -104,3 +104,10 @@ CREATE POLICY "votes_delete_actor" ON votes FOR DELETE USING (actor_id = auth.ui
 -- Note: Service role connections bypass RLS. If you need broader read access for anonymous
 -- clients, you can create policies that allow FOR SELECT USING (true) for anon, otherwise
 -- require auth.uid() IS NOT NULL.
+
+-- Ensure the new compatibility view `public.profiles` is accessible to typical Supabase
+-- client roles. RLS on the underlying tables (profiles, sub_users) still applies.
+-- Granting SELECT here ensures the anon/authenticated roles can see the view;
+-- policies above determine which rows are visible.
+GRANT SELECT ON public.profiles TO anon;
+GRANT SELECT ON public.profiles TO authenticated;

@@ -421,9 +421,9 @@ export async function getUsers(): Promise<User[]> {
   const sanitized = copy.map((u) => ({ id: u.id, name: u.name, subUsers: u.subUsers ?? undefined }));
   return sanitized.map((u) => UserSchema.parse(u));
   }
-  return getCached<User[]>('users:all', await getEdgeNumber('ttl_users_ms', 10_000), async () => {
+  return getCached<User[]>('profiles:all', await getEdgeNumber('ttl_users_ms', 10_000), async () => {
     // Do NOT select line_id for the public users list to avoid leaking external identifiers.
-    const { data, error } = await supabase.from('profiles').select('id, name, sub_users');
+  const { data, error } = await supabase.from('profiles').select('id, name, sub_users');
     if (error) throw error;
     // normalize returned rows to match schema shape; intentionally omit line_id
     const rows = (data ?? []).map((r: any) => ({
@@ -500,7 +500,7 @@ export async function addSubUser(input: { parentId: string; name: string }): Pro
     const id = `${parent.id}#sub-${Date.now()}-${parent.subUsers.length + 1}`;
     const sub = { id, name: input.name };
     parent.subUsers.push(sub);
-  try { invalidateCache('users:all'); } catch {}
+  try { invalidateCache('profiles:all'); } catch {}
   return sub;
   }
 
@@ -511,7 +511,7 @@ export async function addSubUser(input: { parentId: string; name: string }): Pro
     .select('*')
     .single();
   if (error) throw error;
-  try { invalidateCache('users:all'); } catch {}
+  try { invalidateCache('profiles:all'); } catch {}
   return data as SubUser;
 }
 
@@ -527,7 +527,7 @@ export async function removeSubUser(parentId: string, subId: string): Promise<bo
     if (idx === -1) return false;
     parent.subUsers.splice(idx, 1);
     // also clear any localStorage references is left to client; server-side returns success
-  try { invalidateCache('users:all'); } catch {}
+  try { invalidateCache('profiles:all'); } catch {}
   return true;
   }
 
@@ -538,7 +538,7 @@ export async function removeSubUser(parentId: string, subId: string): Promise<bo
     .eq('id', subId)
     .eq('parent_id', parentId);
   if (error) throw error;
-  try { invalidateCache('users:all'); } catch {}
+  try { invalidateCache('profiles:all'); } catch {}
   return true;
 }
 

@@ -33,8 +33,8 @@ export async function ensureConnection(): Promise<void> {
   const probePromise = (async () => {
     if (!SUPABASE_KEY) throw new Error('Supabase key is not set. Set VITE_SUPABASE_KEY or SUPABASE_KEY');
     try {
-      // lightweight probe: attempt to select 1 row from profiles (smallest safe table)
-      const { error } = await supabase.from('profiles').select('id').limit(1);
+  // lightweight probe: attempt to select 1 row from profiles (smallest safe table)
+  const { error } = await supabase.from('profiles').select('id').limit(1);
       if (error) throw error;
     } catch (e: any) {
       // normalize error shape for caller
