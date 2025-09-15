@@ -10,7 +10,7 @@ import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 import { UserSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
-import { supabase, ensureConnection } from './supabase';
+import { supabase, supabaseAdmin, ensureConnection } from './supabase';
 import { getEdgeNumber } from './edge-config';
 
 // Use mock data only when running in DEV and no Supabase key is provided.
@@ -353,7 +353,11 @@ export async function addComment(input: { answerId: string | number; text: strin
     author_id: input.authorId ?? null,
   } as const;
   await ensureConnection();
-  const { data, error } = await supabase
+  // Use admin client for writes when available (server-only). Fall back to public client will fail if RLS blocks.
+  const writeClient = supabaseAdmin ?? supabase;
+  if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
+
+  const { data, error } = await writeClient
     .from('comments')
     .insert(payload)
     .select('id, answer_id, text, author_name, author_id, created_at')
@@ -522,9 +526,11 @@ export async function addSubUser(input: { parentId: string; name: string }): Pro
   }
 
   await ensureConnection();
-  const { data, error } = await supabase
-  .from('sub_users')
-  .insert({ parent_user_id: input.parentId, name: input.name })
+  const writeClient = supabaseAdmin ?? supabase;
+  if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
+  const { data, error } = await writeClient
+    .from('sub_users')
+    .insert({ parent_user_id: input.parentId, name: input.name })
     .select('*')
     .single();
   if (error) throw error;
@@ -549,11 +555,13 @@ export async function removeSubUser(parentId: string, subId: string): Promise<bo
   }
 
   await ensureConnection();
-  const { error } = await supabase
+  const writeClient = supabaseAdmin ?? supabase;
+  if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
+  const { error } = await writeClient
     .from('sub_users')
-  .delete()
-  .eq('id', subId)
-  .eq('parent_user_id', parentId);
+    .delete()
+    .eq('id', subId)
+    .eq('parent_user_id', parentId);
   if (error) throw error;
   try { invalidateCache('profiles:all'); } catch {}
   return true;
@@ -695,9 +703,12 @@ export async function voteAnswer({
 
   // Upsert the user's vote for the answer
   await ensureConnection();
+  // Use server/admin client for write operations in production.
+  const writeClient = supabaseAdmin ?? supabase;
+  if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
 
   // Do the upsert and in parallel request the answer and vote counts to reduce round-trips.
-  const upsertPromise = supabase
+  const upsertPromise = writeClient
     .from('votes')
     .upsert({ answer_id: answerId, user_id: userId, level }, { onConflict: 'answer_id,user_id' })
     .select('*')
