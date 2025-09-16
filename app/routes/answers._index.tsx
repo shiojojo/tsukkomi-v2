@@ -200,19 +200,42 @@ export default function AnswersRoute() {
           </div>
 
           <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <p className="mt-2 text-lg">{a.text}</p>
+            <div className="flex-1 space-y-2">
+              <p className="text-lg leading-snug break-words">{a.text}</p>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                <span className="inline-flex items-center gap-1 font-medium text-gray-700">
+                  Score:{' '}
+                  <span className="text-gray-900 dark:text-gray-100">
+                    {score}
+                  </span>
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  👍1:{(a as any).votes?.level1 ?? 0}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  😂2:{(a as any).votes?.level2 ?? 0}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  🤣3:{(a as any).votes?.level3 ?? 0}
+                </span>
+                {a.author && (
+                  <span className="inline-flex items-center gap-1">
+                    作者: {a.author}
+                  </span>
+                )}
+              </div>
             </div>
 
-            <div className="text-right">
+            <div className="flex flex-col items-end gap-2 min-w-[64px]">
               <button
                 type="button"
                 onClick={() => setOpen(s => !s)}
                 aria-expanded={open}
-                className="text-sm text-blue-600 px-2 py-1 rounded-md"
+                className="text-xs px-2 py-1 rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
               >
                 {open ? '閉じる' : '詳細'}
               </button>
+              <FavoriteButton answerId={a.id} />
             </div>
           </div>
 

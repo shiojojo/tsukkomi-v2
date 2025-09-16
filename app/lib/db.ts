@@ -145,22 +145,44 @@ export async function searchAnswers(opts: {
   }
 
   await ensureConnection();
-  const offset = (page - 1) * pageSize;
-  // build query
-  let query = supabase.from('answers').select('id, text, author_name, author_id, topic_id, created_at', { count: 'exact' });
-  if (topicId != null) query = query.eq('topic_id', Number(topicId));
-  if (q) {
-    // ilike on text and author_name
-    query = query.or(`text.ilike.*${q}*,author_name.ilike.*${q}*`);
-  }
-  // ordering
-  if (sortBy === 'newest') query = query.order('created_at', { ascending: false });
-  else if (sortBy === 'oldest') query = query.order('created_at', { ascending: true });
-  // pagination
-  const { data: rows, error, count } = await query.range(offset, offset + pageSize - 1);
-  if (error) throw error;
+  // When minScore or hasComments filters are active, DB-side pagination cannot be trusted
+  // because we must filter on derived data (vote score / comment existence). Strategy:
+  //   1. Fetch ALL matching base answers (bounded by a hard cap) without pagination
+  //   2. Fetch vote counts + (optional) comment presence for those ids
+  //   3. Apply filters + sort in memory
+  //   4. Slice for pagination
+  // For large datasets a server-side materialized view should be introduced; acceptable trade-off now.
 
-  const answers = (rows ?? []).map((a: any) => ({
+  const derivedFiltering = Boolean(minScore != null || hasComments);
+  const HARD_CAP = 5000; // safeguard to avoid unbounded memory usage
+
+  let baseQuery = supabase
+    .from('answers')
+    .select('id, text, author_name, author_id, topic_id, created_at', { count: 'exact' });
+  if (topicId != null) baseQuery = baseQuery.eq('topic_id', Number(topicId));
+  if (q) baseQuery = baseQuery.or(`text.ilike.*${q}*,author_name.ilike.*${q}*`);
+  // always order by created_at initially for deterministic results
+  if (sortBy === 'oldest') baseQuery = baseQuery.order('created_at', { ascending: true });
+  else baseQuery = baseQuery.order('created_at', { ascending: false });
+
+  let rows: any[] | null = null;
+  let count: number | null = null;
+  if (derivedFiltering) {
+    // fetch up to HARD_CAP rows (no manual pagination yet)
+    const { data, error, count: c } = await baseQuery.range(0, HARD_CAP - 1);
+    if (error) throw error;
+    rows = data ?? [];
+    count = c ?? rows.length; // base count before derived filter
+  } else {
+    // normal fast path with DB pagination
+    const offset = (page - 1) * pageSize;
+    const { data, error, count: c } = await baseQuery.range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    rows = data ?? [];
+    count = c ?? rows.length;
+  }
+
+  let answers = (rows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
     author: a.author_name ?? undefined,
@@ -171,32 +193,74 @@ export async function searchAnswers(opts: {
     votesBy: {},
   }));
 
-  // fetch counts in bulk
-  const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
+  // fetch vote counts for all loaded answers
+  const ids = answers.map(r => Number(r.id)).filter(Boolean);
   const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
   if (ids.length) {
     const { data: countsData, error: countsErr } = await supabase
       .from('answer_vote_counts')
       .select('answer_id, level1, level2, level3')
       .in('answer_id', ids);
-    if (!countsErr && countsData && countsData.length) {
-      for (const c of countsData) {
-        countsMap[Number(c.answer_id)] = {
-          level1: Number(c.level1 ?? 0),
-          level2: Number(c.level2 ?? 0),
-          level3: Number(c.level3 ?? 0),
-        };
-      }
+    if (countsErr) throw countsErr;
+    for (const c of countsData ?? []) {
+      countsMap[Number(c.answer_id)] = {
+        level1: Number(c.level1 ?? 0),
+        level2: Number(c.level2 ?? 0),
+        level3: Number(c.level3 ?? 0),
+      };
     }
   }
 
-  const normalized = answers.map((a: any) => ({
+  // optional: comment presence filtering (we only need the set of answer ids that have comments)
+  let commentSet: Set<number> | null = null;
+  if (hasComments && ids.length) {
+    const { data: commentIds, error: commentsErr } = await supabase
+      .from('comments')
+      .select('answer_id')
+      .in('answer_id', ids);
+    if (commentsErr) throw commentsErr;
+    commentSet = new Set((commentIds ?? []).map((r: any) => Number(r.answer_id)));
+  }
+
+  // attach counts
+  answers = answers.map(a => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-    votesBy: {},
   }));
 
-  return { answers: AnswerSchema.array().parse(normalized as any), total: Number(count ?? normalized.length) };
+  if (derivedFiltering) {
+    // compute score
+    type WithScore = typeof answers[number] & { __score: number };
+    let augmented: WithScore[] = answers.map(a => {
+      const v = a.votes;
+      const score = (v.level1 || 0) * 1 + (v.level2 || 0) * 2 + (v.level3 || 0) * 3;
+      return { ...a, __score: score };
+    });
+    if (minScore != null) augmented = augmented.filter(a => a.__score >= (minScore as number));
+    if (hasComments && commentSet) augmented = augmented.filter(a => commentSet!.has(a.id));
+    // sort (scoreDesc overrides created_at ordering)
+    if (sortBy === 'scoreDesc') augmented.sort((a, b) => b.__score - a.__score || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    else if (sortBy === 'oldest') augmented.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    else augmented.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const totalFiltered = augmented.length;
+    const start = (page - 1) * pageSize;
+    const slice = augmented.slice(start, start + pageSize).map(a => ({ ...a }));
+    return { answers: AnswerSchema.array().parse(slice as any), total: totalFiltered };
+  }
+
+  // scoreDesc sorting without derived filters (we only loaded one page; need counts for those only)
+  if (sortBy === 'scoreDesc') {
+    answers.sort((a, b) => {
+      const av = a.votes; const bv = b.votes;
+      const as = (av.level1||0) + (av.level2||0)*2 + (av.level3||0)*3;
+      const bs = (bv.level1||0) + (bv.level2||0)*2 + (bv.level3||0)*3;
+      if (bs !== as) return bs - as;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }
+
+  return { answers: AnswerSchema.array().parse(answers as any), total: Number(count ?? answers.length) };
 }
 
 /**
