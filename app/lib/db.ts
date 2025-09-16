@@ -120,8 +120,10 @@ export async function searchAnswers(opts: {
   sortBy?: 'newest' | 'oldest' | 'scoreDesc';
   minScore?: number | undefined;
   hasComments?: boolean;
+  fromDate?: string | undefined; // inclusive (YYYY-MM-DD or ISO)
+  toDate?: string | undefined;   // inclusive (YYYY-MM-DD or ISO)
 }): Promise<{ answers: Answer[]; total: number }> {
-  const { q, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments } = opts;
+  const { q, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments, fromDate, toDate } = opts;
   if (isDev) {
     // Filter mockAnswers in memory but page the result
     let arr = [...mockAnswers];
@@ -129,6 +131,23 @@ export async function searchAnswers(opts: {
     if (q) {
       const low = q.toLowerCase();
       arr = arr.filter(a => String(a.text).toLowerCase().includes(low) || String(a.author ?? '').toLowerCase().includes(low));
+    }
+    // date filtering (inclusive). Accept date-only string => compare by date portion.
+    if (fromDate) {
+      const fromTs = new Date(fromDate).getTime();
+      if (!Number.isNaN(fromTs)) arr = arr.filter(a => new Date(a.created_at).getTime() >= fromTs);
+    }
+    if (toDate) {
+      // inclusive end-of-day: if only date provided, add 1 day -1ms
+      let toTs = new Date(toDate).getTime();
+      if (!Number.isNaN(toTs)) {
+        // detect date-only (no 'T')
+        if (!toDate.includes('T')) {
+          const d = new Date(toTs);
+            toTs = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime() - 1;
+        }
+        arr = arr.filter(a => new Date(a.created_at).getTime() <= toTs);
+      }
     }
     // compute score and comments presence
     const withScore = arr.map(a => ({ a, score: ((a as any).votes?.level1 || 0) * 1 + ((a as any).votes?.level2 || 0) * 2 + ((a as any).votes?.level3 || 0) * 3 }));
@@ -161,6 +180,20 @@ export async function searchAnswers(opts: {
     .select('id, text, author_name, author_id, topic_id, created_at', { count: 'exact' });
   if (topicId != null) baseQuery = baseQuery.eq('topic_id', Number(topicId));
   if (q) baseQuery = baseQuery.or(`text.ilike.*${q}*,author_name.ilike.*${q}*`);
+  if (fromDate) {
+    // direct gte for fromDate
+    baseQuery = baseQuery.gte('created_at', fromDate.includes('T') ? fromDate : `${fromDate}T00:00:00.000Z`);
+  }
+  if (toDate) {
+    // inclusive: if date-only, advance one day and use lt
+    if (!toDate.includes('T')) {
+      const d = new Date(toDate + 'T00:00:00.000Z');
+      const next = new Date(d.getTime() + 24*60*60*1000); // +1 day
+      baseQuery = baseQuery.lt('created_at', next.toISOString());
+    } else {
+      baseQuery = baseQuery.lte('created_at', toDate);
+    }
+  }
   // always order by created_at initially for deterministic results
   if (sortBy === 'oldest') baseQuery = baseQuery.order('created_at', { ascending: true });
   else baseQuery = baseQuery.order('created_at', { ascending: false });

@@ -20,6 +20,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const hasComments = params.get('hasComments')
     ? params.get('hasComments') === '1' || params.get('hasComments') === 'true'
     : undefined;
+  const fromDate = params.get('fromDate') || undefined;
+  const toDate = params.get('toDate') || undefined;
 
   const { getTopics, searchAnswers, getCommentsForAnswers } = await import(
     '~/lib/db'
@@ -35,6 +37,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
     sortBy,
     minScore: Number.isNaN(minScore) ? undefined : minScore,
     hasComments: hasComments ?? false,
+    fromDate,
+    toDate,
   });
   const answerIds = answers.map(a => a.id);
   const commentsByAnswer = await getCommentsForAnswers(answerIds);
@@ -294,6 +298,8 @@ export default function AnswersRoute() {
   );
   const [minScore, setMinScore] = useState<string>('');
   const [hasComments, setHasComments] = useState<boolean>(false);
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
 
   // initialize from current URL so form inputs reflect current server filters
   useEffect(() => {
@@ -306,6 +312,8 @@ export default function AnswersRoute() {
         params.get('hasComments') === '1' ||
           params.get('hasComments') === 'true'
       );
+      setFromDate(params.get('fromDate') ?? '');
+      setToDate(params.get('toDate') ?? '');
     } catch {}
   }, []);
 
@@ -351,21 +359,24 @@ export default function AnswersRoute() {
 
           {/* Filters: search and sort (server-driven via GET) */}
           <div className="mt-3">
-            <Form method="get" className="flex gap-2 items-center">
+            <Form
+              method="get"
+              className="flex flex-wrap gap-2 items-start md:items-center"
+            >
               <input
                 name="q"
                 type="search"
                 placeholder="検索: テキスト or 作者"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                className="form-input w-full"
+                className="form-input flex-1 min-w-[180px]"
                 aria-label="回答検索"
               />
               <select
                 name="sortBy"
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value as any)}
-                className="form-select w-36"
+                className="form-select w-32"
               >
                 <option value="newest">新着</option>
                 <option value="oldest">古い順</option>
@@ -378,7 +389,26 @@ export default function AnswersRoute() {
                 placeholder="min score"
                 value={minScore}
                 onChange={e => setMinScore(e.target.value)}
-                className="form-input w-28"
+                className="form-input w-24"
+              />
+              <input
+                name="fromDate"
+                type="date"
+                value={fromDate}
+                onChange={e => setFromDate(e.target.value)}
+                className="form-input w-36"
+                aria-label="開始日"
+              />
+              <span className="text-xs text-gray-500 self-center hidden sm:inline">
+                ~
+              </span>
+              <input
+                name="toDate"
+                type="date"
+                value={toDate}
+                onChange={e => setToDate(e.target.value)}
+                className="form-input w-36"
+                aria-label="終了日"
               />
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -395,6 +425,7 @@ export default function AnswersRoute() {
                 検索
               </button>
             </Form>
+            {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
           </div>
         </div>
       </div>
@@ -448,7 +479,7 @@ export default function AnswersRoute() {
       {/* Mobile pagination controls (link-based) */}
       <div className="flex items-center justify-between mt-4 md:hidden px-4">
         <a
-          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.max(1, currentPage - 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}`}
+          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.max(1, currentPage - 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}${fromDate ? `&fromDate=${encodeURIComponent(fromDate)}` : ''}${toDate ? `&toDate=${encodeURIComponent(toDate)}` : ''}`}
           aria-label="前のページ"
           className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
         >
@@ -458,7 +489,7 @@ export default function AnswersRoute() {
         <div className="text-sm">{`ページ ${currentPage} / ${pageCount}`}</div>
 
         <a
-          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.min(pageCount, currentPage + 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}`}
+          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.min(pageCount, currentPage + 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}${fromDate ? `&fromDate=${encodeURIComponent(fromDate)}` : ''}${toDate ? `&toDate=${encodeURIComponent(toDate)}` : ''}`}
           aria-label="次のページ"
           className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
         >
