@@ -194,13 +194,12 @@ export default function AnswersRoute() {
           <div>
             {topic ? (
               topic.image ? (
-                // Photo topic: show image like topic detail page but smaller height
                 <div className="block p-0 border rounded-md overflow-hidden">
                   <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                     <img
                       src={topic.image}
                       alt={topic.title}
-                      className="w-full h-auto max-h-36 object-contain"
+                      className="w-full h-auto max-h-40 object-contain"
                     />
                   </div>
                 </div>
