@@ -193,9 +193,22 @@ export default function AnswersRoute() {
           {/* Topic shown at top of the card, large and unabbreviated */}
           <div>
             {topic ? (
-              <div className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-gray-100">
-                {topic.title}
-              </div>
+              topic.image ? (
+                // Photo topic: show image like topic detail page but smaller height
+                <div className="block p-0 border rounded-md overflow-hidden">
+                  <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                    <img
+                      src={topic.image}
+                      alt={topic.title}
+                      className="w-full h-auto max-h-36 object-contain"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-gray-100">
+                  {topic.title}
+                </div>
+              )
             ) : (
               <div className="text-lg md:text-xl font-extrabold">
                 お題なし（フリー回答）
