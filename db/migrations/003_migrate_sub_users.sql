@@ -1,6 +1,7 @@
 -- 003_migrate_sub_users.sql
 -- Migrate embedded `sub_users` JSON from `profiles` into a separate `sub_users` table.
 -- Idempotent: safe to run multiple times.
+-- この手順は不要かもしれません
 
 BEGIN;
 
