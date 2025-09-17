@@ -16,6 +16,8 @@ import { supabase, supabaseAdmin, ensureConnection } from './supabase';
 // This lets local dev point at a real Supabase instance by setting VITE_SUPABASE_KEY or SUPABASE_KEY.
 const _envKey = (import.meta.env.VITE_SUPABASE_KEY as string) ?? (process.env.SUPABASE_KEY as string | undefined);
 const isDev = Boolean(import.meta.env.DEV) && !_envKey;
+// Opt-in debug timings. Set DEBUG_DB_TIMINGS=1 in the environment to enable lightweight console timings
+const DEBUG_DB_TIMINGS = Boolean(process.env.DEBUG_DB_TIMINGS ?? (import.meta.env.DEBUG_DB_TIMINGS as any) ?? false);
 
 // Note: in-memory caching and edge-config have been removed to always query
 // the database directly for freshest results and to avoid cache wait delays.
@@ -478,10 +480,16 @@ export async function getTopics(): Promise<Topic[]> {
     return copy.map((t) => TopicSchema.parse(t));
   }
   await ensureConnection();
+  if (DEBUG_DB_TIMINGS) console.time('db:ensureConnection');
+  await ensureConnection();
+  if (DEBUG_DB_TIMINGS) console.timeEnd('db:ensureConnection');
+
+  if (DEBUG_DB_TIMINGS) console.time('db:topicsQuery');
   const { data, error } = await supabase
     .from('topics')
     .select('id, title, created_at, image')
     .order('created_at', { ascending: false });
+  if (DEBUG_DB_TIMINGS) console.timeEnd('db:topicsQuery');
   if (error) throw error;
   return TopicSchema.array().parse(data ?? []);
 }
