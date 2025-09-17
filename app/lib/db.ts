@@ -479,7 +479,6 @@ export async function getTopics(): Promise<Topic[]> {
     });
     return copy.map((t) => TopicSchema.parse(t));
   }
-  await ensureConnection();
   if (DEBUG_DB_TIMINGS) console.time('db:ensureConnection');
   await ensureConnection();
   if (DEBUG_DB_TIMINGS) console.timeEnd('db:ensureConnection');
@@ -492,6 +491,45 @@ export async function getTopics(): Promise<Topic[]> {
   if (DEBUG_DB_TIMINGS) console.timeEnd('db:topicsQuery');
   if (error) throw error;
   return TopicSchema.array().parse(data ?? []);
+}
+
+/**
+ * getLatestTopic
+ * Intent: return the single latest Topic (by created_at desc) used on home screens.
+ * Contract: returns Topic or null when none exist.
+ * Environment:
+ *  - dev: returns the first topic from sorted mockTopics (or null)
+ *  - prod: queries DB with ORDER BY created_at DESC LIMIT 1
+ * Errors: zod parsing errors or Supabase errors will throw.
+ */
+export async function getLatestTopic(): Promise<Topic | null> {
+  if (isDev) {
+    const copy = [...mockTopics];
+    copy.sort((a, b) => {
+      if (a.created_at && b.created_at) return a.created_at < b.created_at ? 1 : -1;
+      const an = Number(a.id as any);
+      const bn = Number(b.id as any);
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) return bn - an;
+      return String(b.id) > String(a.id) ? 1 : -1;
+    });
+    const first = copy[0];
+    return first ? TopicSchema.parse(first) : null;
+  }
+
+  if (DEBUG_DB_TIMINGS) console.time('db:latestTopic:ensureConnection');
+  await ensureConnection();
+  if (DEBUG_DB_TIMINGS) console.timeEnd('db:latestTopic:ensureConnection');
+
+  if (DEBUG_DB_TIMINGS) console.time('db:latestTopic:query');
+  const { data, error } = await supabase
+    .from('topics')
+    .select('id, title, created_at, image')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (DEBUG_DB_TIMINGS) console.timeEnd('db:latestTopic:query');
+  if (error) throw error;
+  const row = (data ?? [])[0] ?? null;
+  return row ? TopicSchema.parse(row as any) : null;
 }
 
 /**

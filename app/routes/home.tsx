@@ -12,9 +12,8 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function loader(_args: LoaderFunctionArgs) {
-  const { getTopics } = await import('~/lib/db');
-  const topics = await getTopics();
-  const latest = topics.length ? topics[0] : null;
+  const { getLatestTopic } = await import('~/lib/db');
+  const latest = await getLatestTopic();
   return { latest };
 }
 
