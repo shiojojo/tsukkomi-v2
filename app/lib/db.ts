@@ -103,6 +103,7 @@ export async function getAnswers(): Promise<Answer[]> {
  */
 export async function searchAnswers(opts: {
   q?: string;
+  author?: string;
   topicId?: string | number;
   page?: number;
   pageSize?: number;
@@ -112,7 +113,7 @@ export async function searchAnswers(opts: {
   fromDate?: string | undefined; // inclusive (YYYY-MM-DD or ISO)
   toDate?: string | undefined;   // inclusive (YYYY-MM-DD or ISO)
 }): Promise<{ answers: Answer[]; total: number }> {
-  const { q, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments, fromDate, toDate } = opts;
+  const { q, author, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments, fromDate, toDate } = opts;
   await ensureConnection();
   // When minScore or hasComments filters are active, DB-side pagination cannot be trusted
   // because we must filter on derived data (vote score / comment existence). Strategy:
@@ -129,7 +130,10 @@ export async function searchAnswers(opts: {
     .from('answers')
     .select('id, text, author_name, author_id, topic_id, created_at', { count: 'exact' });
   if (topicId != null) baseQuery = baseQuery.eq('topic_id', Number(topicId));
-  if (q) baseQuery = baseQuery.or(`text.ilike.*${q}*,author_name.ilike.*${q}*`);
+  // allow explicit author-only search via `author` param; fallback to `q` which searches text OR author
+  if (author) {
+    baseQuery = baseQuery.ilike('author_name', `%${author}%`);
+  } else if (q) baseQuery = baseQuery.or(`text.ilike.*${q}*,author_name.ilike.*${q}*`);
   if (fromDate) {
     // direct gte for fromDate
     baseQuery = baseQuery.gte('created_at', fromDate.includes('T') ? fromDate : `${fromDate}T00:00:00.000Z`);

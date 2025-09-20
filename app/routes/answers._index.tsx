@@ -5,11 +5,13 @@ import { useEffect, useState } from 'react';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
+import type { User } from '~/lib/schemas/user';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const params = url.searchParams;
   const q = params.get('q') ?? undefined;
+  const author = params.get('author') ?? undefined;
   const page = Number(params.get('page') ?? '1');
   const pageSize = Number(params.get('pageSize') ?? '20');
   const sortBy = (params.get('sortBy') as any) ?? 'newest';
@@ -26,8 +28,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const { getTopics, searchAnswers, getCommentsForAnswers } = await import(
     '~/lib/db'
   );
+  const { getUsers } = await import('~/lib/db');
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
+  const users = await getUsers();
 
   const { answers, total } = await searchAnswers({
     q,
@@ -39,11 +43,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
     hasComments: hasComments ?? false,
     fromDate,
     toDate,
+    author,
   });
   const answerIds = answers.map(a => a.id);
   const commentsByAnswer = await getCommentsForAnswers(answerIds);
 
-  return { answers, topicsById, commentsByAnswer, total, page, pageSize };
+  return {
+    answers,
+    topicsById,
+    commentsByAnswer,
+    total,
+    page,
+    pageSize,
+    users,
+  };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -76,6 +89,7 @@ export default function AnswersRoute() {
   const topicsById: Record<string, Topic> = (data as any)?.topicsById ?? {};
   const commentsByAnswer: Record<string, Comment[]> =
     (data as any)?.commentsByAnswer ?? {};
+  const users: User[] = (data as any)?.users ?? [];
   // No pinned topic handling: topics are shown per-answer and topic-specific pages live under /topics/:id
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -305,6 +319,7 @@ export default function AnswersRoute() {
 
   // Filter UI state (server-driven via GET form)
   const [query, setQuery] = useState('');
+  const [authorQuery, setAuthorQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'scoreDesc'>(
     'newest'
   );
@@ -318,6 +333,7 @@ export default function AnswersRoute() {
     try {
       const params = new URLSearchParams(window.location.search);
       setQuery(params.get('q') ?? '');
+      setAuthorQuery(params.get('author') ?? '');
       setSortBy((params.get('sortBy') as any) ?? 'newest');
       setMinScore(params.get('minScore') ?? '');
       setHasComments(
@@ -337,6 +353,16 @@ export default function AnswersRoute() {
     const l3 = Number(v.level3 || 0);
     // weighted score: 1*level1 + 2*level2 + 3*level3
     return l1 * 1 + l2 * 2 + l3 * 3;
+  };
+
+  // helpers to adjust minScore in UI (mobile-friendly increment/decrement)
+  const incrementMinScore = () => {
+    const n = Number(minScore || 0);
+    setMinScore(String(n + 1));
+  };
+  const decrementMinScore = () => {
+    const n = Math.max(0, Number(minScore || 0) - 1);
+    setMinScore(String(n));
   };
 
   // helper: whether answer is favorited by current user (localStorage)
@@ -384,6 +410,36 @@ export default function AnswersRoute() {
                 className="form-input flex-1 min-w-[180px]"
                 aria-label="回答検索"
               />
+              {/* Author selector: native dropdown for small user set */}
+              <div className="flex items-center gap-2">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">
+                    作者
+                  </label>
+                  <select
+                    name="author"
+                    value={authorQuery}
+                    onChange={e => setAuthorQuery(e.target.value)}
+                    className="form-select w-44"
+                  >
+                    <option value="">全て</option>
+                    {users.map(u => (
+                      <option key={u.id} value={u.name}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {authorQuery && (
+                  <button
+                    type="button"
+                    className="text-sm text-red-500"
+                    onClick={() => setAuthorQuery('')}
+                  >
+                    クリア
+                  </button>
+                )}
+              </div>
               <select
                 name="sortBy"
                 value={sortBy}
@@ -394,15 +450,35 @@ export default function AnswersRoute() {
                 <option value="oldest">古い順</option>
                 <option value="scoreDesc">スコア順</option>
               </select>
-              <input
-                name="minScore"
-                type="number"
-                min={0}
-                placeholder="min score"
-                value={minScore}
-                onChange={e => setMinScore(e.target.value)}
-                className="form-input w-24"
-              />
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={decrementMinScore}
+                  className="px-2 py-1 border rounded"
+                >
+                  -
+                </button>
+                <input
+                  name="minScore"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  min={0}
+                  placeholder="min score"
+                  value={minScore}
+                  onChange={e =>
+                    setMinScore(e.target.value.replace(/[^0-9]/g, ''))
+                  }
+                  className="form-input w-20 text-center"
+                />
+                <button
+                  type="button"
+                  onClick={incrementMinScore}
+                  className="px-2 py-1 border rounded"
+                >
+                  +
+                </button>
+              </div>
               <input
                 name="fromDate"
                 type="date"
@@ -491,7 +567,7 @@ export default function AnswersRoute() {
       {/* Mobile pagination controls (link-based) */}
       <div className="flex items-center justify-between mt-4 md:hidden px-4">
         <a
-          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.max(1, currentPage - 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}${fromDate ? `&fromDate=${encodeURIComponent(fromDate)}` : ''}${toDate ? `&toDate=${encodeURIComponent(toDate)}` : ''}`}
+          href={`?q=${encodeURIComponent(query)}&author=${encodeURIComponent(authorQuery)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.max(1, currentPage - 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}${fromDate ? `&fromDate=${encodeURIComponent(fromDate)}` : ''}${toDate ? `&toDate=${encodeURIComponent(toDate)}` : ''}`}
           aria-label="前のページ"
           className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
         >
@@ -501,7 +577,7 @@ export default function AnswersRoute() {
         <div className="text-sm">{`ページ ${currentPage} / ${pageCount}`}</div>
 
         <a
-          href={`?q=${encodeURIComponent(query)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.min(pageCount, currentPage + 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}${fromDate ? `&fromDate=${encodeURIComponent(fromDate)}` : ''}${toDate ? `&toDate=${encodeURIComponent(toDate)}` : ''}`}
+          href={`?q=${encodeURIComponent(query)}&author=${encodeURIComponent(authorQuery)}&sortBy=${encodeURIComponent(String(sortBy))}&page=${Math.min(pageCount, currentPage + 1)}${minScore ? `&minScore=${encodeURIComponent(String(minScore))}` : ''}${hasComments ? `&hasComments=1` : ''}${fromDate ? `&fromDate=${encodeURIComponent(fromDate)}` : ''}${toDate ? `&toDate=${encodeURIComponent(toDate)}` : ''}`}
           aria-label="次のページ"
           className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
         >
