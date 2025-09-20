@@ -651,7 +651,7 @@ export async function voteAnswer({
   userId,
 }: {
   answerId: number;
-  level: 1 | 2 | 3;
+  level: 0 | 1 | 2 | 3; // 0 = remove existing vote
   previousLevel?: number | null;
   userId?: string | null;
 }): Promise<Answer> {
@@ -665,13 +665,27 @@ export async function voteAnswer({
   const writeClient = supabaseAdmin ?? supabase;
   if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
 
-  // Do the upsert and in parallel request the answer and vote counts to reduce round-trips.
-  const upsertPromise = writeClient
-  .from('votes')
-  // votes table uses `actor_id` (see migrations). use actor_id to match schema.
-  .upsert({ answer_id: answerId, actor_id: userId, level }, { onConflict: 'answer_id,actor_id' })
-    .select('*')
-    .single();
+  // If level = 0, remove existing vote row; else upsert.
+  const upsertPromise = (async () => {
+    if (level === 0) {
+      const { error } = await writeClient
+        .from('votes')
+        .delete()
+        .eq('answer_id', answerId)
+        .eq('actor_id', userId);
+      if (error) throw error;
+      return { data: null } as any;
+    }
+    return writeClient
+      .from('votes')
+      // votes table uses `actor_id` (see migrations). use actor_id to match schema.
+      .upsert(
+        { answer_id: answerId, actor_id: userId, level },
+        { onConflict: 'answer_id,actor_id' }
+      )
+      .select('*')
+      .single();
+  })();
 
   const answerPromise = supabase
     .from('answers')
@@ -719,7 +733,7 @@ export async function voteAnswer({
   level3: counts?.level3 ?? 0,
   };
   const votesByObj: Record<string, number> = {};
-  if (userId) votesByObj[userId] = level;
+  if (userId && level !== 0) votesByObj[userId] = level;
 
   const result = {
     id: Number(answerRow.id),

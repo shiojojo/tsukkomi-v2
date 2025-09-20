@@ -141,14 +141,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
     return { ok: true };
   }
   const answerId = Number(form.get('answerId'));
-  const level = Number(form.get('level')) as 1 | 2 | 3;
+  const levelRaw = Number(form.get('level'));
+  const level = levelRaw as 0 | 1 | 2 | 3; // 0 means remove vote
   const previousLevel = form.get('previousLevel')
     ? Number(form.get('previousLevel'))
     : undefined;
   const userId = form.get('userId') ? String(form.get('userId')) : null;
-  if (!answerId || ![1, 2, 3].includes(level)) {
+  if (!answerId || ![0, 1, 2, 3].includes(level))
     return new Response('Invalid vote', { status: 400 });
-  }
   if (!userId) {
     return new Response('Unauthorized', { status: 401 });
   }
@@ -289,68 +289,68 @@ function NumericVoteButtons({
 
   const handleVote = (level: 1 | 2 | 3) => {
     const prev = selection;
-    if (prev === level) return; // toggle no-op (user keeps same)
+    const isToggleOff = prev === level; // user clicked the same level -> remove vote
 
-    // update counts locally
+    // update counts locally first (optimistic)
     setCounts(c => {
       const next = { ...c };
       if (prev === 1) next.level1 = Math.max(0, next.level1 - 1);
       if (prev === 2) next.level2 = Math.max(0, next.level2 - 1);
       if (prev === 3) next.level3 = Math.max(0, next.level3 - 1);
-
-      if (level === 1) next.level1 = (next.level1 || 0) + 1;
-      if (level === 2) next.level2 = (next.level2 || 0) + 1;
-      if (level === 3) next.level3 = (next.level3 || 0) + 1;
+      if (!isToggleOff) {
+        if (level === 1) next.level1 = (next.level1 || 0) + 1;
+        if (level === 2) next.level2 = (next.level2 || 0) + 1;
+        if (level === 3) next.level3 = (next.level3 || 0) + 1;
+      }
       return next;
     });
 
     try {
       const uid =
-        localStorage.getItem('currentSubUserId') ??
+        localStorage.getItem('currentSubUserId') ||
         localStorage.getItem('currentUserId');
       if (!uid) {
-        // require login / selection
         try {
           window.location.href = '/login';
         } catch {}
         return;
       }
       const k = `vote:answer:${answerId}:user:${uid}`;
-      localStorage.setItem(k, String(level));
+      if (isToggleOff) {
+        localStorage.removeItem(k);
+      } else {
+        localStorage.setItem(k, String(level));
+      }
     } catch {}
-    setSelection(level);
+    setSelection(isToggleOff ? null : level);
 
-    // send vote to server action so DB (or dev mock) is updated
+    // send vote (or removal) to server action so DB is updated
     (async () => {
       try {
         const form = new FormData();
         form.append('answerId', String(answerId));
-        form.append('level', String(level));
+        form.append('level', String(isToggleOff ? 0 : level)); // 0 means remove
         if (typeof prev === 'number')
           form.append('previousLevel', String(prev));
         const uid =
-          localStorage.getItem('currentSubUserId') ??
-          localStorage.getItem('currentUserId') ??
+          localStorage.getItem('currentSubUserId') ||
+          localStorage.getItem('currentUserId') ||
           '';
         form.append('userId', String(uid));
 
         const res = await fetch(window.location.pathname, {
           method: 'POST',
           body: form,
-          headers: {
-            Accept: 'application/json',
-          },
+          headers: { Accept: 'application/json' },
         });
 
         if (!res.ok) {
-          // non-blocking: log for debugging
           const text = await res.text().catch(() => '');
           // eslint-disable-next-line no-console
           console.error('vote submit failed', res.status, text);
           return;
         }
 
-        // update local counts from server response when available
         const json = await res.json().catch(() => null);
         if (json && json.answer && json.answer.votes) {
           try {
