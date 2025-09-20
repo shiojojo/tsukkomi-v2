@@ -619,39 +619,12 @@ export default function AnswersRoute() {
           </p>
         ) : (
           <div className="space-y-8 px-4">
-            {
-              // Group answers by topicId so the topic title appears above its answers
-              Object.values(
-                paged.reduce(
-                  (acc, { answer, score }) => {
-                    const tid = answer.topicId ?? null;
-                    const key = tid === null ? 'none' : String(tid);
-                    if (!acc[key])
-                      acc[key] = {
-                        topicId: tid === null ? null : Number(tid),
-                        items: [] as { answer: Answer; score: number }[],
-                      };
-                    acc[key].items.push({ answer, score });
-                    return acc;
-                  },
-                  {} as Record<
-                    string,
-                    {
-                      topicId: number | null;
-                      items: { answer: Answer; score: number }[];
-                    }
-                  >
-                )
-              ).map(group => (
-                <section key={String(group.topicId ?? 'none')} className="">
-                  <ul className="space-y-4">
-                    {group.items.map(({ answer: a, score }) => (
-                      <AnswerCard key={a.id} a={a} score={score} />
-                    ))}
-                  </ul>
-                </section>
-              ))
-            }
+            {/* Render answers in the exact order returned by the loader (preserve DB ordering) */}
+            <ul className="space-y-4">
+              {paged.map(({ answer: a, score }) => (
+                <AnswerCard key={a.id} a={a} score={score} />
+              ))}
+            </ul>
           </div>
         )}
       </div>
