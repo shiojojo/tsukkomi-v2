@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, Link, Form } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useLoaderData, Link, Form, useFetcher } from 'react-router';
+import { useState, useEffect, useRef } from 'react';
 // server-only imports are dynamically loaded inside loader/action
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
@@ -448,6 +448,77 @@ function AnswerCard({
   const [fetchedComments, setFetchedComments] = useState<Comment[] | null>(
     comments ?? null
   );
+  // fetcher & refs for comment submission (useFetcher must be at component top-level)
+  const fetcher = useFetcher();
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const lastSubmittedText = useRef<string | null>(null);
+  const lastTmpId = useRef<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // auto-clear toast
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // watch for submission result and handle success / failure (replace or rollback)
+  useEffect(() => {
+    if (!fetcher) return;
+    if (fetcher.state === 'idle' && (fetcher.data !== undefined)) {
+      const data = fetcher.data as any;
+      const key = String(a.id);
+      const tmpId = lastTmpId.current;
+
+      if (data && data.ok) {
+        // success: if server returned full comment, replace tmp; otherwise mark pending false
+        try {
+          if (tmpId) {
+            if (data.comment) {
+              setFetchedComments(prev =>
+                prev ? prev.map(c => (String(c.id) === String(tmpId) ? data.comment : c)) : [data.comment]
+              );
+              // update cache: replace tmp in cached array
+              const cached = clientCommentsCache.get(key) || [];
+              clientCommentsCache.set(
+                key,
+                cached.map((c: any) => (String(c.id) === String(tmpId) ? data.comment : c))
+              );
+            } else {
+              // no comment returned: mark pending false
+              setFetchedComments(prev =>
+                prev
+                  ? prev.map(c => (String(c.id) === String(tmpId) ? { ...c, pending: false } : c))
+                  : prev
+              );
+              const cached = clientCommentsCache.get(key) || [];
+              clientCommentsCache.set(
+                key,
+                cached.map((c: any) => (String(c.id) === String(tmpId) ? { ...c, pending: false } : c))
+              );
+            }
+          }
+        } catch {}
+        // clear input
+        try {
+          if (inputRef.current) inputRef.current.value = '';
+        } catch {}
+      } else {
+        // failure: remove tmp comment and notify
+        try {
+          if (tmpId) {
+            setFetchedComments(prev => (prev ? prev.filter(c => String(c.id) !== String(tmpId)) : prev));
+            const cached = clientCommentsCache.get(key) || [];
+            clientCommentsCache.set(key, cached.filter((c: any) => String(c.id) !== String(tmpId)));
+          }
+        } catch {}
+        setToast((data && data.message) || 'コメントの保存に失敗しました');
+      }
+
+      lastTmpId.current = null;
+      lastSubmittedText.current = null;
+    }
+  }, [fetcher.state, fetcher.data]);
   // fetch function that deduplicates in-flight fetches and uses client cache
   const fetchCommentsOnce = async () => {
     const key = String(a.id);
@@ -521,7 +592,8 @@ function AnswerCard({
   }, [open]);
 
   return (
-    <li className="p-4 md:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-md shadow-sm">
+    <>
+      <li className="p-4 md:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-md shadow-sm">
       <div className="flex flex-col gap-3">
         <p className="mt-0 text-2xl md:text-4xl leading-relaxed text-gray-800 dark:text-gray-100">
           {a.text}
@@ -582,7 +654,31 @@ function AnswerCard({
                 <div className="text-muted mb-2">
                   コメントとして: {currentUserName ?? '名無し'}
                 </div>
-                <Form method="post" className="flex gap-2">
+                {/* useFetcher to submit without redirect and provide immediate UI feedback */}
+                <fetcher.Form
+                  method="post"
+                  className="flex gap-2"
+                  onSubmit={() => {
+                    const text = inputRef.current?.value ?? '';
+                    lastSubmittedText.current = text;
+                    const tmpId = `tmp-${Date.now()}`;
+                    lastTmpId.current = tmpId;
+                    // optimistic add
+                    try {
+                      const newComment = {
+                        id: tmpId,
+                        text,
+                        author: currentUserName ?? undefined,
+                        created_at: new Date().toISOString(),
+                        pending: true,
+                      } as any;
+                      setFetchedComments(prev => (prev ? [newComment, ...prev] : [newComment]));
+                      const key = String(a.id);
+                      const cached = clientCommentsCache.get(key) || [];
+                      clientCommentsCache.set(key, [newComment, ...cached]);
+                    } catch {}
+                  }}
+                >
                   <input type="hidden" name="answerId" value={String(a.id)} />
                   <input
                     type="hidden"
@@ -596,14 +692,20 @@ function AnswerCard({
                   />
                   <input
                     name="commentText"
+                    ref={inputRef}
                     className="form-input flex-1"
                     placeholder="コメントを追加"
                     aria-label="コメント入力"
                   />
-                  <button className="btn-inline" aria-label="コメントを送信">
-                    送信
+                  <button
+                    className={`btn-inline ${fetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''}`}
+                    aria-label="コメントを送信"
+                    aria-busy={fetcher.state === 'submitting'}
+                    disabled={fetcher.state === 'submitting'}
+                  >
+                    {fetcher.state === 'submitting' ? '送信中…' : '送信'}
                   </button>
-                </Form>
+                </fetcher.Form>
               </div>
             </div>
 
@@ -620,6 +722,19 @@ function AnswerCard({
           </div>
         ) : null}
       </div>
-    </li>
+      </li>
+
+      {toast ? (
+        <div className="fixed bottom-6 right-6 z-50">
+          <div
+            className="bg-red-600 text-white px-4 py-2 rounded-md shadow-lg"
+            role="status"
+            aria-live="polite"
+          >
+            {toast}
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
