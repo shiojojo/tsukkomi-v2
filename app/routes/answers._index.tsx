@@ -159,7 +159,7 @@ export default function AnswersRoute() {
         type="button"
         aria-pressed={favLocal}
         onClick={handleClick}
-        className={`p-2 rounded-md ${favLocal ? 'text-red-500' : 'text-gray-400'} hover:opacity-90`}
+        className={`p-2 rounded-md ${favLocal ? 'text-red-500' : 'text-gray-400 dark:text-white'} hover:opacity-90`}
         title={
           !currentUserIdLocal
             ? 'ログインしてお気に入り登録'
@@ -232,8 +232,8 @@ export default function AnswersRoute() {
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 space-y-2">
               <p className="text-lg leading-snug break-words">{a.text}</p>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
-                <span className="inline-flex items-center gap-1 font-medium text-gray-700">
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-white">
+                <span className="inline-flex items-center gap-1 font-medium text-gray-700 dark:text-white">
                   Score:{' '}
                   <span className="text-gray-900 dark:text-gray-100">
                     {score}
@@ -274,9 +274,9 @@ export default function AnswersRoute() {
               <h4 className="text-sm font-medium">コメント</h4>
               <ul className="mt-2 space-y-2 text-sm">
                 {(commentsByAnswer[String(a.id)] || []).map(c => (
-                  <li key={c.id} className="text-gray-700">
+                  <li key={c.id} className="text-gray-700 dark:text-white">
                     {c.text}{' '}
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-gray-400 dark:text-white">
                       — {c.author || '名無し'}
                     </span>
                   </li>
@@ -462,7 +462,7 @@ export default function AnswersRoute() {
               {/* Author selector */}
               <div className="flex items-center gap-2">
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">
+                  <label className="text-xs text-gray-500 dark:text-white mb-1 block">
                     作者
                   </label>
                   <select
@@ -560,7 +560,7 @@ export default function AnswersRoute() {
 
                   <div className="w-full flex items-center gap-4">
                     <div className="flex-1 flex flex-col">
-                      <label className="text-xs text-gray-500 mb-1">
+                      <label className="text-xs text-gray-500 dark:text-white mb-1">
                         開始日
                       </label>
                       <input
@@ -574,7 +574,7 @@ export default function AnswersRoute() {
                     </div>
 
                     <div className="flex-1 flex flex-col">
-                      <label className="text-xs text-gray-500 mb-1">
+                      <label className="text-xs text-gray-500 dark:text-white mb-1">
                         終了日
                       </label>
                       <input
@@ -597,7 +597,7 @@ export default function AnswersRoute() {
                 <button
                   type="button"
                   onClick={resetFilters}
-                  className="text-sm px-2 py-1 border rounded-md text-gray-600"
+                  className="text-sm px-2 py-1 border rounded-md text-gray-600 dark:text-white"
                 >
                   リセット
                 </button>
@@ -614,7 +614,9 @@ export default function AnswersRoute() {
         */}
       <div className="overflow-auto px-0 py-4 space-y-4 w-full max-h-[calc(100vh-112px)] md:max-h-[calc(100vh-64px)]">
         {paged.length === 0 ? (
-          <p className="text-gray-600 px-4">表示される回答がありません。</p>
+          <p className="text-gray-600 dark:text-white px-4">
+            表示される回答がありません。
+          </p>
         ) : (
           <div className="space-y-8 px-4">
             {

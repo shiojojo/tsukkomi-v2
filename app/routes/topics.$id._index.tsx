@@ -77,7 +77,9 @@ function AnswerCard({ answer }: { answer: Answer }) {
               {new Date(answer.created_at).toLocaleString()}
             </p>
             {answer.author && (
-              <p className="mt-1 text-xs text-gray-400">— {answer.author}</p>
+              <p className="mt-1 text-xs text-gray-400 dark:text-white">
+                — {answer.author}
+              </p>
             )}
             <div className="mt-3">
               <h4 className="font-medium">コメント</h4>
@@ -88,13 +90,13 @@ function AnswerCard({ answer }: { answer: Answer }) {
                   {(comments || []).map(c => (
                     <li key={c.id} className="text-gray-700 text-xs">
                       {c.text}{' '}
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-[10px] text-gray-400 dark:text-white">
                         — {c.author || '名無し'}
                       </span>
                     </li>
                   ))}
                   {comments && comments.length === 0 && (
-                    <li className="text-gray-400 text-xs">
+                    <li className="text-gray-400 text-xs dark:text-white">
                       コメントはまだありません。
                     </li>
                   )}

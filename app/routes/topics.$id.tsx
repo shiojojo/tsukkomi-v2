@@ -84,7 +84,7 @@ function FavoriteButton({ answerId }: { answerId: number }) {
       type="button"
       aria-pressed={fav}
       onClick={handleClick}
-      className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400'} hover:opacity-90`}
+      className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400 dark:text-white'} hover:opacity-90`}
       title={
         !currentUserId
           ? 'ログインしてお気に入り登録'
@@ -550,11 +550,11 @@ function AnswerCard({
 
         {open ? (
           <div id={detailsId} className="mt-3">
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-gray-500 dark:text-white">
               {new Date(a.created_at).toLocaleString()}
             </p>
             {a.author ? (
-              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-gray-400">
+              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-white">
                 — {a.author}
               </p>
             ) : null}
@@ -562,13 +562,15 @@ function AnswerCard({
             <div className="mt-4">
               <h4 className="text-sm font-medium">コメント</h4>
               {loadingComments ? (
-                <div className="text-sm text-gray-500">読み込み中…</div>
+                <div className="text-sm text-gray-500 dark:text-white">
+                  読み込み中…
+                </div>
               ) : (
                 <ul className="mt-2 space-y-2 text-sm">
                   {(fetchedComments || []).map(c => (
-                    <li key={c.id} className="text-gray-700">
+                    <li key={c.id} className="text-gray-700 dark:text-white">
                       {c.text}{' '}
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-400 dark:text-white">
                         — {c.author || '名無し'}
                       </span>
                     </li>
