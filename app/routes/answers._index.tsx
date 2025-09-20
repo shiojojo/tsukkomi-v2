@@ -412,7 +412,8 @@ export default function AnswersRoute() {
                 className="form-input flex-1 min-w-[180px]"
                 aria-label="回答検索"
               />
-              {/* Author selector: native dropdown for small user set */}
+
+              {/* Author selector */}
               <div className="flex items-center gap-2">
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">
@@ -442,6 +443,7 @@ export default function AnswersRoute() {
                   </button>
                 )}
               </div>
+
               <select
                 name="sortBy"
                 value={sortBy}
@@ -452,6 +454,7 @@ export default function AnswersRoute() {
                 <option value="oldest">古い順</option>
                 <option value="scoreDesc">スコア順</option>
               </select>
+
               {/* Advanced filters toggle */}
               <div className="flex items-center gap-2">
                 <button
@@ -463,71 +466,84 @@ export default function AnswersRoute() {
                 </button>
               </div>
 
-              {/* Advanced filters (collapsed by default) */}
               {showAdvancedFilters && (
-                <div className="flex flex-wrap items-center gap-2 w-full mt-2">
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={decrementMinScore}
-                      className="px-2 py-1 border rounded"
-                    >
-                      -
-                    </button>
-                    <input
-                      name="minScore"
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      min={0}
-                      placeholder="min score"
-                      value={minScore}
-                      onChange={e =>
-                        setMinScore(e.target.value.replace(/[^0-9]/g, ''))
-                      }
-                      className="form-input w-20 text-center"
-                    />
-                    <button
-                      type="button"
-                      onClick={incrementMinScore}
-                      className="px-2 py-1 border rounded"
-                    >
-                      +
-                    </button>
+                <div className="flex flex-col gap-3 w-full mt-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={decrementMinScore}
+                        className="px-2 py-1 border rounded"
+                      >
+                        -
+                      </button>
+                      <input
+                        name="minScore"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        min={0}
+                        placeholder="min score"
+                        value={minScore}
+                        onChange={e =>
+                          setMinScore(e.target.value.replace(/[^0-9]/g, ''))
+                        }
+                        className="form-input w-20 text-center"
+                      />
+                      <button
+                        type="button"
+                        onClick={incrementMinScore}
+                        className="px-2 py-1 border rounded"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        name="hasComments"
+                        type="checkbox"
+                        checked={hasComments}
+                        onChange={e => setHasComments(e.target.checked)}
+                        value="1"
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">has comments</span>
+                    </label>
                   </div>
 
-                  <input
-                    name="fromDate"
-                    type="date"
-                    value={fromDate}
-                    onChange={e => setFromDate(e.target.value)}
-                    className="form-input w-36"
-                    aria-label="開始日"
-                  />
-                  <span className="text-xs text-gray-500 self-center hidden sm:inline">
-                    ~
-                  </span>
-                  <input
-                    name="toDate"
-                    type="date"
-                    value={toDate}
-                    onChange={e => setToDate(e.target.value)}
-                    className="form-input w-36"
-                    aria-label="終了日"
-                  />
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      name="hasComments"
-                      type="checkbox"
-                      checked={hasComments}
-                      onChange={e => setHasComments(e.target.checked)}
-                      value="1"
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm">has comments</span>
-                  </label>
+                  <div className="w-full flex items-center gap-4">
+                    <div className="flex-1 flex flex-col">
+                      <label className="text-xs text-gray-500 mb-1">
+                        開始日
+                      </label>
+                      <input
+                        name="fromDate"
+                        type="date"
+                        value={fromDate}
+                        onChange={e => setFromDate(e.target.value)}
+                        className="form-input w-full"
+                        aria-label="開始日"
+                      />
+                    </div>
+
+                    <div className="flex-1 flex flex-col">
+                      <label className="text-xs text-gray-500 mb-1">
+                        終了日
+                      </label>
+                      <input
+                        name="toDate"
+                        type="date"
+                        value={toDate}
+                        onChange={e => setToDate(e.target.value)}
+                        className="form-input w-full"
+                        aria-label="終了日"
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
+
               <button type="submit" className="btn-inline">
                 検索
               </button>
