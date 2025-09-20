@@ -448,56 +448,77 @@ function AnswerCard({
   const [fetchedComments, setFetchedComments] = useState<Comment[] | null>(
     comments ?? null
   );
-
-  useEffect(() => {
-    if (!open) return;
+  // fetch function that deduplicates in-flight fetches and uses client cache
+  const fetchCommentsOnce = async () => {
     const key = String(a.id);
+
     // prefer cache presence check (handles empty arrays too)
     if (clientCommentsCache.has(key)) {
       setFetchedComments(clientCommentsCache.get(key) ?? []);
       return;
     }
 
+    // if another fetch is already running for this key, await it
+    if (clientCommentsInFlight.has(key)) {
+      try {
+        const p = clientCommentsInFlight.get(key)!;
+        const cs = await p;
+        setFetchedComments(cs);
+      } catch {
+        setFetchedComments([]);
+      }
+      return;
+    }
+
     let cancelled = false;
     setLoadingComments(true);
 
-    const startFetch = async () => {
+    const promise = (async () => {
       try {
-        // if another fetch is already running for this key, await it
-        if (clientCommentsInFlight.has(key)) {
-          const p = clientCommentsInFlight.get(key)!;
-          const cs = await p;
-          if (!cancelled) setFetchedComments(cs);
-          return;
+        const res = await fetch(`/topics/${topicId}/comments/${a.id}`, {
+          cache: 'no-cache',
+          headers: { Accept: 'application/json' },
+        });
+        if (!res.ok) return [] as Comment[];
+
+        // Read as text first to avoid "body already read" when json() fails.
+        let text: string | null = null;
+        try {
+          text = await res.text();
+        } catch {
+          text = null;
         }
 
-        const promise = (async () => {
-          const res = await fetch(`/topics/${topicId}/comments/${a.id}`, {
-            cache: 'force-cache',
-          });
-          if (!res.ok) return [] as Comment[];
-          const json = await res.json();
-          return (json && json.comments) || [];
-        })();
+        if (!text) return [] as Comment[];
 
-        clientCommentsInFlight.set(key, promise);
-        const cs = await promise;
-        clientCommentsCache.set(key, cs);
-        if (!cancelled) setFetchedComments(cs);
-      } catch (e) {
-        if (!cancelled) setFetchedComments([]);
-      } finally {
-        clientCommentsInFlight.delete(key);
-        if (!cancelled) setLoadingComments(false);
+        try {
+          const parsed = JSON.parse(text);
+          return (parsed && parsed.comments) || [];
+        } catch {
+          return [] as Comment[];
+        }
+      } catch {
+        return [] as Comment[];
       }
-    };
+    })();
 
-    startFetch();
+    clientCommentsInFlight.set(key, promise);
+    try {
+      const cs = await promise;
+      clientCommentsCache.set(key, cs);
+      if (!cancelled) setFetchedComments(cs);
+    } finally {
+      clientCommentsInFlight.delete(key);
+      if (!cancelled) setLoadingComments(false);
+    }
+  };
 
-    return () => {
-      cancelled = true;
-    };
-  }, [open, a.id, topicId]);
+  useEffect(() => {
+    if (!open) return;
+    // trigger fetch when opened (deduplicated by fetchCommentsOnce)
+    fetchCommentsOnce();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   return (
     <li className="p-4 md:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-md shadow-sm">
