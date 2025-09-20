@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
@@ -367,6 +367,52 @@ export default function AnswersRoute() {
     setMinScore(String(n));
   };
 
+  // reset all filters to defaults and reload the route (clears query params)
+  const resetFilters = () => {
+    try {
+      setQuery('');
+      setAuthorQuery('');
+      setSortBy('newest');
+      setMinScore('');
+      setHasComments(false);
+      setFromDate('');
+      setToDate('');
+      // reload without query params so loader receives defaults
+      window.location.href = window.location.pathname;
+    } catch {}
+  };
+
+  // Persist advanced filters visibility so it doesn't unexpectedly close on reloads
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const p = params.get('showAdvancedFilters');
+      if (p === '1') {
+        setShowAdvancedFilters(true);
+      } else {
+        const v = localStorage.getItem('answers:showAdvancedFilters');
+        if (v === '1') setShowAdvancedFilters(true);
+      }
+    } catch {}
+  }, []);
+
+  const toggleAdvancedFilters = () => {
+    setShowAdvancedFilters(s => {
+      const next = !s;
+      try {
+        localStorage.setItem('answers:showAdvancedFilters', next ? '1' : '0');
+        // also persist to URL so GET navigations keep the setting
+        try {
+          const url = new URL(window.location.href);
+          if (next) url.searchParams.set('showAdvancedFilters', '1');
+          else url.searchParams.delete('showAdvancedFilters');
+          history.replaceState(null, '', url.toString());
+        } catch {}
+      } catch {}
+      return next;
+    });
+  };
+
   // helper: whether answer is favorited by current user (localStorage)
   const isFavoritedByCurrentUser = (answer: Answer) => {
     if (!currentUserId) return false;
@@ -460,7 +506,7 @@ export default function AnswersRoute() {
                 <button
                   type="button"
                   className="text-sm px-2 py-1 border rounded-md"
-                  onClick={() => setShowAdvancedFilters(s => !s)}
+                  onClick={toggleAdvancedFilters}
                 >
                   {showAdvancedFilters ? '詳細を閉じる' : '詳細フィルタ'}
                 </button>
@@ -544,9 +590,18 @@ export default function AnswersRoute() {
                 </div>
               )}
 
-              <button type="submit" className="btn-inline">
-                検索
-              </button>
+              <div className="flex items-center gap-2">
+                <button type="submit" className="btn-inline">
+                  検索
+                </button>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="text-sm px-2 py-1 border rounded-md text-gray-600"
+                >
+                  リセット
+                </button>
+              </div>
             </Form>
             {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
           </div>
