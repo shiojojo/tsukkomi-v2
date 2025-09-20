@@ -327,6 +327,8 @@ export default function AnswersRoute() {
   const [hasComments, setHasComments] = useState<boolean>(false);
   const [fromDate, setFromDate] = useState<string>('');
   const [toDate, setToDate] = useState<string>('');
+  const [showAdvancedFilters, setShowAdvancedFilters] =
+    useState<boolean>(false);
 
   // initialize from current URL so form inputs reflect current server filters
   useEffect(() => {
@@ -450,65 +452,82 @@ export default function AnswersRoute() {
                 <option value="oldest">古い順</option>
                 <option value="scoreDesc">スコア順</option>
               </select>
-              <div className="flex items-center gap-1">
+              {/* Advanced filters toggle */}
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={decrementMinScore}
-                  className="px-2 py-1 border rounded"
+                  className="text-sm px-2 py-1 border rounded-md"
+                  onClick={() => setShowAdvancedFilters(s => !s)}
                 >
-                  -
-                </button>
-                <input
-                  name="minScore"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  min={0}
-                  placeholder="min score"
-                  value={minScore}
-                  onChange={e =>
-                    setMinScore(e.target.value.replace(/[^0-9]/g, ''))
-                  }
-                  className="form-input w-20 text-center"
-                />
-                <button
-                  type="button"
-                  onClick={incrementMinScore}
-                  className="px-2 py-1 border rounded"
-                >
-                  +
+                  {showAdvancedFilters ? '詳細を閉じる' : '詳細フィルタ'}
                 </button>
               </div>
-              <input
-                name="fromDate"
-                type="date"
-                value={fromDate}
-                onChange={e => setFromDate(e.target.value)}
-                className="form-input w-36"
-                aria-label="開始日"
-              />
-              <span className="text-xs text-gray-500 self-center hidden sm:inline">
-                ~
-              </span>
-              <input
-                name="toDate"
-                type="date"
-                value={toDate}
-                onChange={e => setToDate(e.target.value)}
-                className="form-input w-36"
-                aria-label="終了日"
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  name="hasComments"
-                  type="checkbox"
-                  checked={hasComments}
-                  onChange={e => setHasComments(e.target.checked)}
-                  value="1"
-                  className="w-4 h-4"
-                />
-                <span className="text-sm">has comments</span>
-              </label>
+
+              {/* Advanced filters (collapsed by default) */}
+              {showAdvancedFilters && (
+                <div className="flex flex-wrap items-center gap-2 w-full mt-2">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={decrementMinScore}
+                      className="px-2 py-1 border rounded"
+                    >
+                      -
+                    </button>
+                    <input
+                      name="minScore"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min={0}
+                      placeholder="min score"
+                      value={minScore}
+                      onChange={e =>
+                        setMinScore(e.target.value.replace(/[^0-9]/g, ''))
+                      }
+                      className="form-input w-20 text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={incrementMinScore}
+                      className="px-2 py-1 border rounded"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <input
+                    name="fromDate"
+                    type="date"
+                    value={fromDate}
+                    onChange={e => setFromDate(e.target.value)}
+                    className="form-input w-36"
+                    aria-label="開始日"
+                  />
+                  <span className="text-xs text-gray-500 self-center hidden sm:inline">
+                    ~
+                  </span>
+                  <input
+                    name="toDate"
+                    type="date"
+                    value={toDate}
+                    onChange={e => setToDate(e.target.value)}
+                    className="form-input w-36"
+                    aria-label="終了日"
+                  />
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      name="hasComments"
+                      type="checkbox"
+                      checked={hasComments}
+                      onChange={e => setHasComments(e.target.checked)}
+                      value="1"
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">has comments</span>
+                  </label>
+                </div>
+              )}
               <button type="submit" className="btn-inline">
                 検索
               </button>
