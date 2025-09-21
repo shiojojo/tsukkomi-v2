@@ -159,7 +159,10 @@ export default function TopicRoute() {
   }, [cursor, loadMore]);
 
   return (
-    <div className="p-4 max-w-3xl mx-auto">
+    <div
+      style={{ paddingTop: 'var(--app-header-height, 0px)' }}
+      className="p-4 max-w-3xl mx-auto"
+    >
       <header className="mb-4">
         <h1 className="text-2xl font-bold leading-tight break-words">
           {topic.title}

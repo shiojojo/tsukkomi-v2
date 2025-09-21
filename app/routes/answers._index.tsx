@@ -433,7 +433,10 @@ export default function AnswersRoute() {
   const paged = answers.map(a => ({ answer: a, score: computeScore(a) }));
 
   return (
-    <div className="p-4 md:pt-16 pb-24 md:pb-4 max-w-3xl mx-auto flex flex-col">
+    <div
+      style={{ paddingTop: 'var(--app-header-height, 0px)' }}
+      className="p-4 pb-24 md:pb-4 max-w-3xl mx-auto flex flex-col"
+    >
       <div className="sticky top-0 md:top-16 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
         <div className="p-4">
           <div className="flex items-center justify-between">

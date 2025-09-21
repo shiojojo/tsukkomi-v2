@@ -17,6 +17,11 @@ body {
   }
 }
 
+/* Default header height variable: measured at runtime and updated by ResponsiveNav. */
+:root {
+  --app-header-height: 0px;
+}
+
 /* App-wide form/button utilities to ensure contrast in dark and light themes */
 /* Primary small button used for inline forms (comment send) */
 .btn-inline {

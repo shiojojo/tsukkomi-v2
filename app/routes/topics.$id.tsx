@@ -167,14 +167,18 @@ export default function TopicDetailRoute() {
   // votes are handled locally for now; no server roundtrip on click.
 
   return (
-    <div className="p-4 max-w-3xl mx-auto">
+    <div
+      style={{ paddingTop: 'var(--app-header-height, 0px)' }}
+      className="p-4 max-w-3xl mx-auto"
+    >
       {/* Sticky header */}
       <div
-        className={`sticky top-0 z-30 ${
+        className={`sticky z-30 ${
           topic.image
             ? 'bg-transparent pt-0 pb-0'
             : 'bg-white dark:bg-gray-950 pt-4 pb-2'
         }`}
+        style={{ top: 'var(--app-header-height, 0px)' }}
       >
         <div className="mb-4">
           <div className="w-full">
@@ -465,7 +469,7 @@ function AnswerCard({
   // watch for submission result and handle success / failure (replace or rollback)
   useEffect(() => {
     if (!fetcher) return;
-    if (fetcher.state === 'idle' && (fetcher.data !== undefined)) {
+    if (fetcher.state === 'idle' && fetcher.data !== undefined) {
       const data = fetcher.data as any;
       const key = String(a.id);
       const tmpId = lastTmpId.current;
@@ -476,25 +480,37 @@ function AnswerCard({
           if (tmpId) {
             if (data.comment) {
               setFetchedComments(prev =>
-                prev ? prev.map(c => (String(c.id) === String(tmpId) ? data.comment : c)) : [data.comment]
+                prev
+                  ? prev.map(c =>
+                      String(c.id) === String(tmpId) ? data.comment : c
+                    )
+                  : [data.comment]
               );
               // update cache: replace tmp in cached array
               const cached = clientCommentsCache.get(key) || [];
               clientCommentsCache.set(
                 key,
-                cached.map((c: any) => (String(c.id) === String(tmpId) ? data.comment : c))
+                cached.map((c: any) =>
+                  String(c.id) === String(tmpId) ? data.comment : c
+                )
               );
             } else {
               // no comment returned: mark pending false
               setFetchedComments(prev =>
                 prev
-                  ? prev.map(c => (String(c.id) === String(tmpId) ? { ...c, pending: false } : c))
+                  ? prev.map(c =>
+                      String(c.id) === String(tmpId)
+                        ? { ...c, pending: false }
+                        : c
+                    )
                   : prev
               );
               const cached = clientCommentsCache.get(key) || [];
               clientCommentsCache.set(
                 key,
-                cached.map((c: any) => (String(c.id) === String(tmpId) ? { ...c, pending: false } : c))
+                cached.map((c: any) =>
+                  String(c.id) === String(tmpId) ? { ...c, pending: false } : c
+                )
               );
             }
           }
@@ -507,9 +523,14 @@ function AnswerCard({
         // failure: remove tmp comment and notify
         try {
           if (tmpId) {
-            setFetchedComments(prev => (prev ? prev.filter(c => String(c.id) !== String(tmpId)) : prev));
+            setFetchedComments(prev =>
+              prev ? prev.filter(c => String(c.id) !== String(tmpId)) : prev
+            );
             const cached = clientCommentsCache.get(key) || [];
-            clientCommentsCache.set(key, cached.filter((c: any) => String(c.id) !== String(tmpId)));
+            clientCommentsCache.set(
+              key,
+              cached.filter((c: any) => String(c.id) !== String(tmpId))
+            );
           }
         } catch {}
         setToast((data && data.message) || 'コメントの保存に失敗しました');
@@ -594,134 +615,136 @@ function AnswerCard({
   return (
     <>
       <li className="p-4 md:p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-md shadow-sm">
-      <div className="flex flex-col gap-3">
-        <p className="mt-0 text-2xl md:text-4xl leading-relaxed text-gray-800 dark:text-gray-100">
-          {a.text}
-        </p>
+        <div className="flex flex-col gap-3">
+          <p className="mt-0 text-2xl md:text-4xl leading-relaxed text-gray-800 dark:text-gray-100">
+            {a.text}
+          </p>
 
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <button
-              type="button"
-              onClick={() => setOpen(s => !s)}
-              className={`w-full md:w-auto ${CONTROL_BTN_BASE} text-blue-600 bg-transparent hover:bg-blue-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
-              aria-expanded={open}
-              aria-controls={detailsId}
-            >
-              {open ? '詳細を閉じる' : '詳細を見る'}
-            </button>
-          </div>
-
-          <div className="flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <FavoriteButton answerId={a.id} />
-              <NumericVoteButtons answerId={a.id} initialVotes={votes} />
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <button
+                type="button"
+                onClick={() => setOpen(s => !s)}
+                className={`w-full md:w-auto ${CONTROL_BTN_BASE} text-blue-600 bg-transparent hover:bg-blue-50 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
+                aria-expanded={open}
+                aria-controls={detailsId}
+              >
+                {open ? '詳細を閉じる' : '詳細を見る'}
+              </button>
             </div>
-          </div>
-        </div>
 
-        {open ? (
-          <div id={detailsId} className="mt-3">
-            <p className="text-xs text-gray-500 dark:text-white">
-              {new Date(a.created_at).toLocaleString()}
-            </p>
-            {a.author ? (
-              <p className="mt-2 text-sm font-medium text-gray-600 dark:text-white">
-                — {a.author}
-              </p>
-            ) : null}
-            {/* comments: lazy-load only when user opens details */}
-            <div className="mt-4">
-              <h4 className="text-sm font-medium">コメント</h4>
-              {loadingComments ? (
-                <div className="text-sm text-gray-500 dark:text-white">
-                  読み込み中…
-                </div>
-              ) : (
-                <ul className="mt-2 space-y-2 text-sm">
-                  {(fetchedComments || []).map(c => (
-                    <li key={c.id} className="text-gray-700 dark:text-white">
-                      {c.text}{' '}
-                      <span className="text-xs text-gray-400 dark:text-white">
-                        — {c.author || '名無し'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              <div className="mt-3">
-                <div className="text-muted mb-2">
-                  コメントとして: {currentUserName ?? '名無し'}
-                </div>
-                {/* useFetcher to submit without redirect and provide immediate UI feedback */}
-                <fetcher.Form
-                  method="post"
-                  className="flex gap-2"
-                  onSubmit={() => {
-                    const text = inputRef.current?.value ?? '';
-                    lastSubmittedText.current = text;
-                    const tmpId = `tmp-${Date.now()}`;
-                    lastTmpId.current = tmpId;
-                    // optimistic add
-                    try {
-                      const newComment = {
-                        id: tmpId,
-                        text,
-                        author: currentUserName ?? undefined,
-                        created_at: new Date().toISOString(),
-                        pending: true,
-                      } as any;
-                      setFetchedComments(prev => (prev ? [newComment, ...prev] : [newComment]));
-                      const key = String(a.id);
-                      const cached = clientCommentsCache.get(key) || [];
-                      clientCommentsCache.set(key, [newComment, ...cached]);
-                    } catch {}
-                  }}
-                >
-                  <input type="hidden" name="answerId" value={String(a.id)} />
-                  <input
-                    type="hidden"
-                    name="authorId"
-                    value={currentUserId ?? ''}
-                  />
-                  <input
-                    type="hidden"
-                    name="authorName"
-                    value={currentUserName ?? ''}
-                  />
-                  <input
-                    name="commentText"
-                    ref={inputRef}
-                    className="form-input flex-1"
-                    placeholder="コメントを追加"
-                    aria-label="コメント入力"
-                  />
-                  <button
-                    className={`btn-inline ${fetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''}`}
-                    aria-label="コメントを送信"
-                    aria-busy={fetcher.state === 'submitting'}
-                    disabled={fetcher.state === 'submitting'}
-                  >
-                    {fetcher.state === 'submitting' ? '送信中…' : '送信'}
-                  </button>
-                </fetcher.Form>
+            <div className="flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <FavoriteButton answerId={a.id} />
+                <NumericVoteButtons answerId={a.id} initialVotes={votes} />
               </div>
             </div>
-
-            {a.voters && a.voters.length > 0 ? (
-              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                投票者:{' '}
-                {a.voters.map((v: any, i: number) => (
-                  <span key={v.id} className="mr-3">
-                    {v.name} ({v.level}){i < a.voters.length - 1 ? ',' : ''}
-                  </span>
-                ))}
-              </p>
-            ) : null}
           </div>
-        ) : null}
-      </div>
+
+          {open ? (
+            <div id={detailsId} className="mt-3">
+              <p className="text-xs text-gray-500 dark:text-white">
+                {new Date(a.created_at).toLocaleString()}
+              </p>
+              {a.author ? (
+                <p className="mt-2 text-sm font-medium text-gray-600 dark:text-white">
+                  — {a.author}
+                </p>
+              ) : null}
+              {/* comments: lazy-load only when user opens details */}
+              <div className="mt-4">
+                <h4 className="text-sm font-medium">コメント</h4>
+                {loadingComments ? (
+                  <div className="text-sm text-gray-500 dark:text-white">
+                    読み込み中…
+                  </div>
+                ) : (
+                  <ul className="mt-2 space-y-2 text-sm">
+                    {(fetchedComments || []).map(c => (
+                      <li key={c.id} className="text-gray-700 dark:text-white">
+                        {c.text}{' '}
+                        <span className="text-xs text-gray-400 dark:text-white">
+                          — {c.author || '名無し'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <div className="mt-3">
+                  <div className="text-muted mb-2">
+                    コメントとして: {currentUserName ?? '名無し'}
+                  </div>
+                  {/* useFetcher to submit without redirect and provide immediate UI feedback */}
+                  <fetcher.Form
+                    method="post"
+                    className="flex gap-2"
+                    onSubmit={() => {
+                      const text = inputRef.current?.value ?? '';
+                      lastSubmittedText.current = text;
+                      const tmpId = `tmp-${Date.now()}`;
+                      lastTmpId.current = tmpId;
+                      // optimistic add
+                      try {
+                        const newComment = {
+                          id: tmpId,
+                          text,
+                          author: currentUserName ?? undefined,
+                          created_at: new Date().toISOString(),
+                          pending: true,
+                        } as any;
+                        setFetchedComments(prev =>
+                          prev ? [newComment, ...prev] : [newComment]
+                        );
+                        const key = String(a.id);
+                        const cached = clientCommentsCache.get(key) || [];
+                        clientCommentsCache.set(key, [newComment, ...cached]);
+                      } catch {}
+                    }}
+                  >
+                    <input type="hidden" name="answerId" value={String(a.id)} />
+                    <input
+                      type="hidden"
+                      name="authorId"
+                      value={currentUserId ?? ''}
+                    />
+                    <input
+                      type="hidden"
+                      name="authorName"
+                      value={currentUserName ?? ''}
+                    />
+                    <input
+                      name="commentText"
+                      ref={inputRef}
+                      className="form-input flex-1"
+                      placeholder="コメントを追加"
+                      aria-label="コメント入力"
+                    />
+                    <button
+                      className={`btn-inline ${fetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''}`}
+                      aria-label="コメントを送信"
+                      aria-busy={fetcher.state === 'submitting'}
+                      disabled={fetcher.state === 'submitting'}
+                    >
+                      {fetcher.state === 'submitting' ? '送信中…' : '送信'}
+                    </button>
+                  </fetcher.Form>
+                </div>
+              </div>
+
+              {a.voters && a.voters.length > 0 ? (
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                  投票者:{' '}
+                  {a.voters.map((v: any, i: number) => (
+                    <span key={v.id} className="mr-3">
+                      {v.name} ({v.level}){i < a.voters.length - 1 ? ',' : ''}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       </li>
 
       {toast ? (

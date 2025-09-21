@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 /**
  * Responsive navigation component.
@@ -13,13 +13,53 @@ export default function ResponsiveNav() {
     { to: '/topics', label: 'お題', icon: TopicIcon },
   ];
 
+  const navRef = useRef<HTMLElement | null>(null);
+
+  // Measure nav height and expose as CSS variable so routes can offset accordingly.
+  useEffect(() => {
+    if (!navRef.current || typeof window === 'undefined') return;
+    const el = navRef.current;
+    const mq = window.matchMedia('(min-width:48rem)');
+
+    const update = () => {
+      try {
+        const value = mq.matches ? `${el.offsetHeight}px` : '0px';
+        document.documentElement.style.setProperty(
+          '--app-header-height',
+          value
+        );
+      } catch {}
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    // media query change listener
+    if (typeof mq.addEventListener === 'function') {
+      mq.addEventListener('change', update);
+    } else if (typeof (mq as any).addListener === 'function') {
+      // older browsers
+      (mq as any).addListener(update);
+    }
+
+    return () => {
+      window.removeEventListener('resize', update);
+      if (typeof mq.removeEventListener === 'function') {
+        mq.removeEventListener('change', update);
+      } else if (typeof (mq as any).removeListener === 'function') {
+        (mq as any).removeListener(update);
+      }
+    };
+  }, [navRef]);
+
   return (
     <nav
+      ref={navRef}
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur-sm dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 md:fixed md:top-0 md:bottom-auto md:border-b"
+      className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur-sm dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 md:fixed md:top-0 md:bottom-auto md:border-b md:h-16"
+      role="navigation"
     >
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="flex items-center justify-between md:py-3 md:gap-6">
+      <div className="max-w-4xl mx-auto px-4 h-full">
+        <div className="flex items-center justify-between md:gap-6 h-full">
           <div className="hidden md:flex items-center gap-4">
             <NavLink
               to="/"
