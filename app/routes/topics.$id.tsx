@@ -455,6 +455,7 @@ function AnswerCard({
   // fetcher & refs for comment submission (useFetcher must be at component top-level)
   const fetcher = useFetcher();
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
   const lastSubmittedText = useRef<string | null>(null);
   const lastTmpId = useRef<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -678,14 +679,15 @@ function AnswerCard({
                   {/* useFetcher to submit without redirect and provide immediate UI feedback */}
                   <fetcher.Form
                     method="post"
+                    ref={formRef}
                     className="flex gap-2"
                     onSubmit={() => {
-                      const text = inputRef.current?.value ?? '';
-                      lastSubmittedText.current = text;
-                      const tmpId = `tmp-${Date.now()}`;
-                      lastTmpId.current = tmpId;
-                      // optimistic add
+                      // perform the same optimistic add used by keyboard shortcut
                       try {
+                        const text = inputRef.current?.value ?? '';
+                        lastSubmittedText.current = text;
+                        const tmpId = `tmp-${Date.now()}`;
+                        lastTmpId.current = tmpId;
                         const newComment = {
                           id: tmpId,
                           text,
@@ -699,6 +701,10 @@ function AnswerCard({
                         const key = String(a.id);
                         const cached = clientCommentsCache.get(key) || [];
                         clientCommentsCache.set(key, [newComment, ...cached]);
+                        // clear input immediately so UI feels responsive
+                        try {
+                          if (inputRef.current) inputRef.current.value = '';
+                        } catch {}
                       } catch {}
                     }}
                   >
@@ -720,6 +726,47 @@ function AnswerCard({
                       placeholder="コメントを追加"
                       aria-label="コメント入力"
                       rows={3}
+                      onKeyDown={e => {
+                        const isEnter = e.key === 'Enter';
+                        const isMeta = e.metaKey || e.ctrlKey;
+                        if (isEnter && isMeta) {
+                          e.preventDefault();
+                          try {
+                            // perform optimistic add first so UI updates immediately
+                            const text = inputRef.current?.value ?? '';
+                            lastSubmittedText.current = text;
+                            const tmpId = `tmp-${Date.now()}`;
+                            lastTmpId.current = tmpId;
+                            const newComment = {
+                              id: tmpId,
+                              text,
+                              author: currentUserName ?? undefined,
+                              created_at: new Date().toISOString(),
+                              pending: true,
+                            } as any;
+                            setFetchedComments(prev =>
+                              prev ? [newComment, ...prev] : [newComment]
+                            );
+                            const key = String(a.id);
+                            const cached = clientCommentsCache.get(key) || [];
+                            clientCommentsCache.set(key, [
+                              newComment,
+                              ...cached,
+                            ]);
+
+                            // then programmatic submit using fetcher so action runs
+                            if (formRef.current) {
+                              const fd = new FormData(formRef.current);
+                              fetcher.submit(fd, { method: 'post' });
+                              // clear input immediately after submitting
+                              try {
+                                if (inputRef.current)
+                                  inputRef.current.value = '';
+                              } catch {}
+                            }
+                          } catch {}
+                        }
+                      }}
                     />
                     <button
                       className={`btn-inline ${fetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''}`}
