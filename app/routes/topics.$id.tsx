@@ -454,7 +454,7 @@ function AnswerCard({
   );
   // fetcher & refs for comment submission (useFetcher must be at component top-level)
   const fetcher = useFetcher();
-  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const lastSubmittedText = useRef<string | null>(null);
   const lastTmpId = useRef<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -662,7 +662,7 @@ function AnswerCard({
                   <ul className="mt-2 space-y-2 text-sm">
                     {(fetchedComments || []).map(c => (
                       <li key={c.id} className="text-gray-700 dark:text-white">
-                        {c.text}{' '}
+                        <div className="whitespace-pre-wrap">{c.text}</div>
                         <span className="text-xs text-gray-400 dark:text-white">
                           — {c.author || '名無し'}
                         </span>
@@ -713,12 +713,13 @@ function AnswerCard({
                       name="authorName"
                       value={currentUserName ?? ''}
                     />
-                    <input
+                    <textarea
                       name="commentText"
                       ref={inputRef}
-                      className="form-input flex-1"
+                      className="form-input flex-1 min-h-[44px] resize-y p-2 rounded-md"
                       placeholder="コメントを追加"
                       aria-label="コメント入力"
+                      rows={3}
                     />
                     <button
                       className={`btn-inline ${fetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''}`}
