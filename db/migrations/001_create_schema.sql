@@ -1,82 +1,77 @@
 -- 001_create_schema.sql
--- Initial schema for tsukkomi-v2 (profiles-based)
+-- Unified profiles table (main + sub profiles in one)
+-- Rationale: simplify FK / RLS, allow main or sub identity selection for answers/comments/votes.
 
--- Enable helpful extensions used by migrations
+-- Extensions
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Profiles: use uuid primary key. Use gen_random_uuid() as default for server-side generation.
+-- profiles: parent_id NULL = main profile. child rows reference a main profile.
 CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  parent_id uuid REFERENCES profiles(id) ON DELETE CASCADE,
   name text NOT NULL,
   line_id text,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (parent_id IS NULL OR parent_id <> id)
 );
+CREATE INDEX IF NOT EXISTS profiles_parent_idx ON profiles(parent_id);
+-- root_id: main identity for this row (itself if parent_id NULL)
+ALTER TABLE profiles
+  ADD COLUMN IF NOT EXISTS root_id uuid GENERATED ALWAYS AS (COALESCE(parent_id, id)) STORED;
+CREATE INDEX IF NOT EXISTS profiles_root_idx ON profiles(root_id);
 
--- Sub-users: lightweight identities that can act on behalf of a parent profile
-CREATE TABLE IF NOT EXISTS sub_users (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  parent_user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  name text NOT NULL,
-  line_id text,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-
--- Topics: integer PK (bigserial) because app mock uses numeric ids
+-- topics
 CREATE TABLE IF NOT EXISTS topics (
   id bigserial PRIMARY KEY,
   title text NOT NULL,
   image text,
-  -- original/source image URL preserved when we import and re-host images
   source_image text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS topics_created_at_idx ON topics (created_at DESC);
 
--- Answers: main content records; topic_id optional per current code
+-- answers
 CREATE TABLE IF NOT EXISTS answers (
   id bigserial PRIMARY KEY,
-  text text NOT NULL,
-  author_name text,
-  author_id uuid REFERENCES profiles(id),
   topic_id bigint REFERENCES topics(id) ON DELETE SET NULL,
+  profile_id uuid REFERENCES profiles(id),
+  text text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS answers_topic_idx ON answers (topic_id);
 CREATE INDEX IF NOT EXISTS answers_created_at_idx ON answers (created_at DESC);
 CREATE INDEX IF NOT EXISTS answers_text_trgm_idx ON answers USING gin (text gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS answers_author_name_trgm_idx ON answers USING gin (author_name gin_trgm_ops);
 
--- Comments linked to answers. App orders by created_at ASC.
+-- comments
 CREATE TABLE IF NOT EXISTS comments (
   id bigserial PRIMARY KEY,
   answer_id bigint NOT NULL REFERENCES answers(id) ON DELETE CASCADE,
+  profile_id uuid REFERENCES profiles(id),
   text text NOT NULL,
-  author_name text,
-  author_id uuid REFERENCES profiles(id),
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS comments_answer_created_at_idx ON comments (answer_id, created_at);
 
--- Votes: one actor (user or sub_user) can vote once per answer at level 1/2/3
+-- votes (one per identity per answer)
 CREATE TABLE IF NOT EXISTS votes (
   id bigserial PRIMARY KEY,
   answer_id bigint NOT NULL REFERENCES answers(id) ON DELETE CASCADE,
-  actor_id text NOT NULL,
+  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   level smallint NOT NULL CHECK (level IN (1,2,3)),
   created_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (answer_id, actor_id)
+  UNIQUE (answer_id, profile_id)
 );
 CREATE INDEX IF NOT EXISTS votes_answer_idx ON votes (answer_id);
-CREATE INDEX IF NOT EXISTS votes_actor_idx ON votes (actor_id);
+CREATE INDEX IF NOT EXISTS votes_profile_idx ON votes (profile_id);
 CREATE INDEX IF NOT EXISTS votes_answer_level_idx ON votes (answer_id, level);
 
--- Read-friendly view that aggregates vote counts per answer.
+-- vote counts view
 CREATE OR REPLACE VIEW answer_vote_counts AS
 SELECT
   answer_id,
-  COALESCE(SUM(CASE WHEN level = 1 THEN 1 ELSE 0 END), 0) AS level1,
-  COALESCE(SUM(CASE WHEN level = 2 THEN 1 ELSE 0 END), 0) AS level2,
-  COALESCE(SUM(CASE WHEN level = 3 THEN 1 ELSE 0 END), 0) AS level3
+  COUNT(*) FILTER (WHERE level = 1) AS level1,
+  COUNT(*) FILTER (WHERE level = 2) AS level2,
+  COUNT(*) FILTER (WHERE level = 3) AS level3
 FROM votes
 GROUP BY answer_id;

@@ -3,21 +3,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-  "build": "react-router build",
-  "dev": "react-router dev",
-  "start": "node ./scripts/start-server.mjs",
+    "build": "react-router build",
+    "dev": "react-router dev",
+    "start": "node ./scripts/start-server.mjs",
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.726.1",
     "@react-router/fs-routes": "^7.8.2",
     "@react-router/node": "^7.7.1",
     "@react-router/serve": "^7.7.1",
     "@supabase/supabase-js": "^2.57.4",
+    "csv-parse": "^6.1.0",
     "dotenv": "^17.2.2",
     "isbot": "^5.1.27",
+    "node-fetch": "^2.7.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router": "^7.7.1",
+    "sharp": "^0.33.5",
+    "uuid": "^13.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {

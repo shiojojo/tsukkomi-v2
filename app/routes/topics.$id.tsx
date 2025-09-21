@@ -124,19 +124,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const commentText = form.get('commentText');
   if (commentText) {
     const answerIdRaw = form.get('answerId');
-    const authorId = form.get('authorId')
-      ? String(form.get('authorId'))
-      : undefined;
-    const authorName = form.get('authorName')
-      ? String(form.get('authorName'))
+    const profileId = form.get('profileId')
+      ? String(form.get('profileId'))
       : undefined;
     if (!answerIdRaw) return new Response('Invalid', { status: 400 });
     const { addComment, voteAnswer } = await import('~/lib/db');
     await addComment({
       answerId: String(answerIdRaw),
       text: String(commentText),
-      author: authorName,
-      authorId,
+      profileId,
     });
     return { ok: true };
   }
@@ -711,7 +707,7 @@ function AnswerCard({
                     <input type="hidden" name="answerId" value={String(a.id)} />
                     <input
                       type="hidden"
-                      name="authorId"
+                      name="profileId"
                       value={currentUserId ?? ''}
                     />
                     <input

@@ -63,8 +63,8 @@ export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
   const answerId = form.get('answerId');
   const text = String(form.get('text') || '');
-  const authorId = form.get('authorId')
-    ? String(form.get('authorId'))
+  const profileId = form.get('profileId')
+    ? String(form.get('profileId'))
     : undefined;
   const authorName = form.get('authorName')
     ? String(form.get('authorName'))
@@ -76,8 +76,7 @@ export async function action({ request }: ActionFunctionArgs) {
   await addComment({
     answerId: String(answerId),
     text,
-    author: authorName,
-    authorId,
+    profileId,
   });
   return { ok: true };
 }
@@ -291,7 +290,7 @@ export default function AnswersRoute() {
                   <input type="hidden" name="answerId" value={String(a.id)} />
                   <input
                     type="hidden"
-                    name="authorId"
+                    name="profileId"
                     value={currentUserId ?? ''}
                   />
                   <input

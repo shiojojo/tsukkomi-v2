@@ -7,6 +7,7 @@ import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 import { UserSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
+import { IdentitySchema } from '~/lib/schemas/identity';
 import { supabase, supabaseAdmin, ensureConnection } from './supabase';
 
 // Running always in production-like mode: local development should run a Supabase instance and
@@ -36,16 +37,15 @@ export async function getAnswers(): Promise<Answer[]> {
   await ensureConnection();
   const { data: answerRows, error: answerErr } = await supabase
     .from('answers')
-    // select only existing, minimal fields to reduce payload
-    .select('id, text, author_name, author_id, topic_id, created_at')
+    .select('id, text, profile_id, topic_id, created_at')
     .order('created_at', { ascending: false });
   if (answerErr) throw answerErr;
 
   const answers = (answerRows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
-    author: a.author_name ?? undefined,
-    authorId: a.author_id ?? undefined,
+  author: undefined, // profile name can be resolved separately if needed
+  authorId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
   }));
@@ -128,12 +128,10 @@ export async function searchAnswers(opts: {
 
   let baseQuery = supabase
     .from('answers')
-    .select('id, text, author_name, author_id, topic_id, created_at', { count: 'exact' });
+    .select('id, text, profile_id, topic_id, created_at', { count: 'exact' });
   if (topicId != null) baseQuery = baseQuery.eq('topic_id', Number(topicId));
   // allow explicit author-only search via `author` param; fallback to `q` which searches text OR author
-  if (author) {
-    baseQuery = baseQuery.ilike('author_name', `%${author}%`);
-  } else if (q) baseQuery = baseQuery.or(`text.ilike.*${q}*,author_name.ilike.*${q}*`);
+  if (q) baseQuery = baseQuery.ilike('text', `%${q}%`);
   if (fromDate) {
     // direct gte for fromDate
     baseQuery = baseQuery.gte('created_at', fromDate.includes('T') ? fromDate : `${fromDate}T00:00:00.000Z`);
@@ -172,8 +170,8 @@ export async function searchAnswers(opts: {
   let answers = (rows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
-    author: a.author_name ?? undefined,
-    authorId: a.author_id ?? undefined,
+    author: undefined,
+    authorId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
     votes: { level1: 0, level2: 0, level3: 0 },
@@ -258,7 +256,7 @@ export async function searchAnswers(opts: {
 export async function getCommentsByAnswer(answerId: string | number): Promise<Comment[]> {
   const { data, error } = await supabase
     .from('comments')
-    .select('id, answer_id, text, author_name, author_id, created_at')
+  .select('id, answer_id, text, profile_id, created_at')
     .eq('answer_id', Number(answerId))
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -266,8 +264,8 @@ export async function getCommentsByAnswer(answerId: string | number): Promise<Co
     id: typeof c.id === 'string' ? Number(c.id) : c.id,
     answerId: c.answer_id ?? c.answerId,
     text: c.text,
-    author: c.author_name ?? c.author,
-    authorId: c.author_id ?? c.authorId,
+  author: undefined,
+  authorId: c.profile_id ?? c.authorId,
     created_at: c.created_at ?? c.createdAt,
   }));
   return CommentSchema.array().parse(rows as any);
@@ -292,8 +290,7 @@ export async function getCommentsForAnswers(
   const numericIds = answerIds.map((id) => Number(id));
   const { data, error } = await supabase
     .from('comments')
-    // select minimal fields
-    .select('id, answer_id, text, author_name, author_id, created_at')
+  .select('id, answer_id, text, profile_id, created_at')
     .in('answer_id', numericIds)
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -302,8 +299,8 @@ export async function getCommentsForAnswers(
     id: typeof c.id === 'string' ? Number(c.id) : c.id,
     answerId: c.answer_id ?? c.answerId,
     text: c.text,
-    author: c.author_name ?? c.author,
-    authorId: c.author_id ?? c.authorId,
+  author: undefined,
+  authorId: c.profile_id ?? c.authorId,
     created_at: c.created_at ?? c.createdAt,
   }));
 
@@ -328,13 +325,12 @@ export async function getCommentsForAnswers(
  * Intent: add a comment to an answer in dev (in-memory). Returns the created Comment.
  * Contract: input validated via CommentSchema (partial). In dev the function assigns an id and created_at.
  */
-export async function addComment(input: { answerId: string | number; text: string; author?: string; authorId?: string; }): Promise<Comment> {
+export async function addComment(input: { answerId: string | number; text: string; profileId?: string; }): Promise<Comment> {
   // insert into Supabase
   const payload = {
     answer_id: Number(input.answerId),
     text: input.text,
-    author_name: input.author ?? null,
-    author_id: input.authorId ?? null,
+  profile_id: input.profileId ?? null,
   } as const;
   await ensureConnection();
   // Use admin client for writes when available (server-only). Fall back to public client will fail if RLS blocks.
@@ -344,7 +340,7 @@ export async function addComment(input: { answerId: string | number; text: strin
   const { data, error } = await writeClient
     .from('comments')
     .insert(payload)
-    .select('id, answer_id, text, author_name, author_id, created_at')
+  .select('id, answer_id, text, profile_id, created_at')
     .single();
   if (error) throw error;
   // Normalize returned row before parsing
@@ -353,8 +349,8 @@ export async function addComment(input: { answerId: string | number; text: strin
     id: typeof d.id === 'string' ? Number(d.id) : d.id,
     answerId: d.answer_id ?? d.answerId,
     text: d.text,
-    author: d.author_name ?? d.author,
-    authorId: d.author_id ?? d.authorId,
+  author: undefined,
+  authorId: d.profile_id ?? d.authorId,
     created_at: d.created_at ?? d.createdAt,
   };
   // clear related caches after successful insert
@@ -420,25 +416,12 @@ export async function getLatestTopic(): Promise<Topic | null> {
  */
 export async function getUsers(): Promise<User[]> {
   // fetch profiles and attach sub_users
-  const { data, error } = await supabase.from('profiles').select('id, name');
-    if (error) throw error;
-    const baseRows = (data ?? []).map((r: any) => ({ id: String(r.id), name: r.name }));
-    const ids = baseRows.map(r => r.id).filter(Boolean as any);
-    let subMap: Record<string, { id: string; name: string }[]> = {};
-    if (ids.length) {
-      const { data: subs, error: subsErr } = await supabase
-        .from('sub_users')
-        .select('id, parent_user_id, name')
-        .in('parent_user_id', ids as any[]);
-      if (subsErr) throw subsErr;
-      for (const s of (subs ?? [])) {
-        const pid = String(s.parent_user_id ?? '');
-        subMap[pid] = subMap[pid] ?? [];
-        subMap[pid].push({ id: String(s.id), name: s.name });
-      }
-    }
-    const rows = baseRows.map(r => ({ id: r.id, name: r.name, subUsers: subMap[r.id] ?? undefined }));
-    return UserSchema.array().parse(rows as any);
+  const { data, error } = await supabase.from('profiles').select('id, parent_id, name, line_id, created_at');
+  if (error) throw error;
+  const identitiesTmp = (data ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+  const mains = identitiesTmp.filter(i => i.parentId == null);
+  const rows = mains.map(m => ({ id: m.id, name: m.name, line_id: m.line_id, subUsers: identitiesTmp.filter(c => c.parentId === m.id).map(c => ({ id: c.id, name: c.name, line_id: c.line_id })) }));
+  return UserSchema.array().parse(rows as any);
 }
 
 /**
@@ -447,11 +430,11 @@ export async function getUsers(): Promise<User[]> {
 export async function getUserById(id: string): Promise<User | undefined> {
   await ensureConnection();
   // Default public getter: do NOT return line_id. Use getUserByIdPrivate for server-only access.
-  const { data, error } = await supabase.from('profiles').select('id, name').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('profiles').select('id, parent_id, name, line_id').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return undefined;
   // fetch sub_users separately
-  const { data: subs, error: subsErr } = await supabase.from('sub_users').select('id, parent_user_id, name').eq('parent_user_id', id);
+  const { data: subs, error: subsErr } = await supabase.from('profiles').select('id, parent_id, name, line_id').eq('parent_id', id);
   if (subsErr) throw subsErr;
   const normalized = { id: String(data.id), name: data.name, subUsers: (subs ?? []).map((s: any) => ({ id: String(s.id), name: s.name })) || undefined };
   return UserSchema.parse(normalized as any);
@@ -463,10 +446,10 @@ export async function getUserById(id: string): Promise<User | undefined> {
  */
 export async function getUserByIdPrivate(id: string): Promise<User | undefined> {
   await ensureConnection();
-  const { data, error } = await supabase.from('profiles').select('id, name, line_id').eq('id', id).maybeSingle();
+  const { data, error } = await supabase.from('profiles').select('id, parent_id, name, line_id').eq('id', id).maybeSingle();
   if (error) throw error;
   if (!data) return undefined;
-  const { data: subs, error: subsErr } = await supabase.from('sub_users').select('id, parent_user_id, name').eq('parent_user_id', id);
+  const { data: subs, error: subsErr } = await supabase.from('profiles').select('id, parent_id, name, line_id').eq('parent_id', id);
   if (subsErr) throw subsErr;
   const normalized = { id: String(data.id), name: data.name, line_id: data.line_id ?? undefined, subUsers: (subs ?? []).map((s: any) => ({ id: String(s.id), name: s.name })) || undefined };
   return UserSchema.parse(normalized as any);
@@ -479,11 +462,10 @@ export async function getUserByIdPrivate(id: string): Promise<User | undefined> 
 export async function getSubUsers(parentId: string): Promise<SubUser[] | undefined> {
   await ensureConnection();
   const { data, error } = await supabase
-  .from('sub_users')
-  .select('id, parent_user_id, name')
-  .eq('parent_user_id', parentId);
+  .from('profiles')
+    .select('id, parent_id, name')
+    .eq('parent_id', parentId);
   if (error) throw error;
-  // ensure shape matches SubUser type (id, name)
   return (data ?? []).map((r: any) => ({ id: String(r.id), name: r.name }));
 }
 
@@ -498,8 +480,8 @@ export async function addSubUser(input: { parentId: string; name: string }): Pro
   const writeClient = supabaseAdmin ?? supabase;
   if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
   const { data, error } = await writeClient
-    .from('sub_users')
-    .insert({ parent_user_id: input.parentId, name: input.name })
+  .from('profiles')
+  .insert({ parent_id: input.parentId, name: input.name })
     .select('*')
     .single();
   if (error) throw error;
@@ -517,10 +499,10 @@ export async function removeSubUser(parentId: string, subId: string): Promise<bo
   const writeClient = supabaseAdmin ?? supabase;
   if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
   const { error } = await writeClient
-    .from('sub_users')
-    .delete()
-    .eq('id', subId)
-    .eq('parent_user_id', parentId);
+  .from('profiles')
+  .delete()
+  .eq('id', subId)
+  .eq('parent_id', parentId);
   if (error) throw error;
   try { invalidateCache('profiles:all'); } catch {}
   return true;
@@ -545,7 +527,7 @@ export async function getAnswersByTopic(topicId: string | number) {
   const numericTopic = Number(topicId);
   const { data: answerRows, error: answerErr } = await supabase
     .from('answers')
-    .select('id, text, author_name, author_id, topic_id, created_at')
+  .select('id, text, profile_id, topic_id, created_at')
     .eq('topic_id', numericTopic)
     .order('created_at', { ascending: false });
   if (answerErr) throw answerErr;
@@ -553,8 +535,8 @@ export async function getAnswersByTopic(topicId: string | number) {
   const answers = (answerRows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
-    author: a.author_name ?? undefined,
-    authorId: a.author_id ?? undefined,
+  author: undefined,
+  authorId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
   }));
@@ -620,7 +602,7 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20 }: 
   const numericTopic = Number(topicId);
   let query = supabase
     .from('answers')
-    .select('id, text, author_name, author_id, topic_id, created_at')
+  .select('id, text, profile_id, topic_id, created_at')
     .eq('topic_id', numericTopic)
     .order('created_at', { ascending: false })
     .limit(pageSize);
@@ -630,8 +612,8 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20 }: 
   const rows = (data ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
-    author: a.author_name ?? undefined,
-    authorId: a.author_id ?? undefined,
+  author: undefined,
+  authorId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
     votes: { level1: 0, level2: 0, level3: 0 },
@@ -652,7 +634,7 @@ export async function voteAnswer({
   answerId,
   level,
   previousLevel,
-  userId,
+  userId, // profileId
 }: {
   answerId: number;
   level: 0 | 1 | 2 | 3; // 0 = remove existing vote
@@ -661,7 +643,7 @@ export async function voteAnswer({
 }): Promise<Answer> {
   
   // production: require userId
-  if (!userId) throw new Error('voteAnswer: userId required in production');
+  if (!userId) throw new Error('voteAnswer: profileId required');
 
   // Upsert the user's vote for the answer
   await ensureConnection();
@@ -675,17 +657,16 @@ export async function voteAnswer({
       const { error } = await writeClient
         .from('votes')
         .delete()
-        .eq('answer_id', answerId)
-        .eq('actor_id', userId);
+  .eq('answer_id', answerId)
+	.eq('profile_id', userId);
       if (error) throw error;
       return { data: null } as any;
     }
     return writeClient
       .from('votes')
-      // votes table uses `actor_id` (see migrations). use actor_id to match schema.
       .upsert(
-        { answer_id: answerId, actor_id: userId, level },
-        { onConflict: 'answer_id,actor_id' }
+  { answer_id: answerId, profile_id: userId, level },
+  { onConflict: 'answer_id,profile_id' }
       )
       .select('*')
       .single();
@@ -693,7 +674,7 @@ export async function voteAnswer({
 
   const answerPromise = supabase
     .from('answers')
-    .select('id, text, author_name, author_id, topic_id, created_at')
+  .select('id, text, profile_id, topic_id, created_at')
     .eq('id', answerId)
     .single();
 
@@ -742,8 +723,8 @@ export async function voteAnswer({
   const result = {
     id: Number(answerRow.id),
     text: answerRow.text,
-    author: answerRow.author_name ?? undefined,
-    authorId: answerRow.author_id ?? undefined,
+  author: undefined,
+  authorId: answerRow.profile_id ?? undefined,
     topicId: answerRow.topic_id ?? undefined,
     created_at: answerRow.created_at,
     votes: votesObj,
