@@ -254,23 +254,9 @@ export async function searchAnswers(opts: {
  * Contract: answerId coerced to string for comparison. Returns Comment[] sorted by created_at asc.
  */
 export async function getCommentsByAnswer(answerId: string | number): Promise<Comment[]> {
-  const { data, error } = await supabase
-    .from('comments')
-  // include profile name via foreign table select so UI can show author
-  .select('id, answer_id, text, profile_id, created_at, profiles(name)')
-    .eq('answer_id', Number(answerId))
-    .order('created_at', { ascending: true });
-  if (error) throw error;
-  const rows = (data ?? []).map((c: any) => ({
-    id: typeof c.id === 'string' ? Number(c.id) : c.id,
-    answerId: c.answer_id ?? c.answerId,
-    text: c.text,
-  // Map joined profile name to author
-  author: (c.profiles && c.profiles.name) ? c.profiles.name : undefined,
-  authorId: c.profile_id ?? c.authorId,
-    created_at: c.created_at ?? c.createdAt,
-  }));
-  return CommentSchema.array().parse(rows as any);
+  // Delegate to getCommentsForAnswers to avoid duplicated query/mapping logic
+  const map = await getCommentsForAnswers([answerId]);
+  return map[String(answerId)] ?? [];
 }
 
 /**
@@ -292,21 +278,22 @@ export async function getCommentsForAnswers(
   const numericIds = answerIds.map((id) => Number(id));
   const { data, error } = await supabase
     .from('comments')
-  .select('id, answer_id, text, profile_id, created_at, profiles(name)')
+    .select('id, answer_id, text, profile_id, created_at, profiles(name)')
     .in('answer_id', numericIds)
     .order('created_at', { ascending: true });
   if (error) throw error;
 
-  const rows = (data ?? []).map((c: any) => ({
+  // helper: normalize raw postgrest row into Comment
+  const mapRaw = (c: any) => ({
     id: typeof c.id === 'string' ? Number(c.id) : c.id,
     answerId: c.answer_id ?? c.answerId,
     text: c.text,
-  author: (c.profiles && c.profiles.name) ? c.profiles.name : undefined,
-  authorId: c.profile_id ?? c.authorId,
+    author: c.profiles && c.profiles.name ? c.profiles.name : undefined,
+    authorId: c.profile_id ?? c.authorId,
     created_at: c.created_at ?? c.createdAt,
-  }));
+  });
 
-  // Validate all rows at once, then group them. This reduces zod invocations and GC churn.
+  const rows = (data ?? []).map(mapRaw);
   const validated = CommentSchema.array().parse(rows as any);
   for (const r of validated) {
     const key = String(r.answerId);
@@ -342,13 +329,22 @@ export async function addComment(input: { answerId: string | number; text: strin
   const { data, error } = await writeClient
     .from('comments')
     .insert(payload)
-  .select('id, answer_id, text, profile_id, created_at')
+    .select('id, answer_id, text, profile_id, created_at')
     .single();
   if (error) throw error;
-  // Normalize returned row before parsing
   const d = data as any;
-  // Attempt to resolve profile name for author display
-  let profileName: string | undefined = undefined;
+
+  // Reuse the same mapping logic used by getCommentsForAnswers
+  const mapped = {
+    id: typeof d.id === 'string' ? Number(d.id) : d.id,
+    answerId: d.answer_id ?? d.answerId,
+    text: d.text,
+    author: undefined as string | undefined,
+    authorId: d.profile_id ?? d.authorId,
+    created_at: d.created_at ?? d.createdAt,
+  };
+
+  // Try to resolve profile name only when profile_id present
   try {
     const pid = d.profile_id ?? null;
     if (pid) {
@@ -357,18 +353,11 @@ export async function addComment(input: { answerId: string | number; text: strin
         .select('name')
         .eq('id', pid)
         .maybeSingle();
-      if (!perr && p) profileName = p.name;
+      if (!perr && p) mapped.author = p.name;
     }
   } catch {}
 
-  const row = {
-    id: typeof d.id === 'string' ? Number(d.id) : d.id,
-    answerId: d.answer_id ?? d.answerId,
-    text: d.text,
-    author: profileName,
-    authorId: d.profile_id ?? d.authorId,
-    created_at: d.created_at ?? d.createdAt,
-  };
+  const row = mapped;
   // clear related caches after successful insert
   try {
     invalidateCache(`comments:answer:${String(input.answerId)}`);
