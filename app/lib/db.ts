@@ -256,7 +256,8 @@ export async function searchAnswers(opts: {
 export async function getCommentsByAnswer(answerId: string | number): Promise<Comment[]> {
   const { data, error } = await supabase
     .from('comments')
-  .select('id, answer_id, text, profile_id, created_at')
+  // include profile name via foreign table select so UI can show author
+  .select('id, answer_id, text, profile_id, created_at, profiles(name)')
     .eq('answer_id', Number(answerId))
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -264,7 +265,8 @@ export async function getCommentsByAnswer(answerId: string | number): Promise<Co
     id: typeof c.id === 'string' ? Number(c.id) : c.id,
     answerId: c.answer_id ?? c.answerId,
     text: c.text,
-  author: undefined,
+  // Map joined profile name to author
+  author: (c.profiles && c.profiles.name) ? c.profiles.name : undefined,
   authorId: c.profile_id ?? c.authorId,
     created_at: c.created_at ?? c.createdAt,
   }));
@@ -290,7 +292,7 @@ export async function getCommentsForAnswers(
   const numericIds = answerIds.map((id) => Number(id));
   const { data, error } = await supabase
     .from('comments')
-  .select('id, answer_id, text, profile_id, created_at')
+  .select('id, answer_id, text, profile_id, created_at, profiles(name)')
     .in('answer_id', numericIds)
     .order('created_at', { ascending: true });
   if (error) throw error;
@@ -299,7 +301,7 @@ export async function getCommentsForAnswers(
     id: typeof c.id === 'string' ? Number(c.id) : c.id,
     answerId: c.answer_id ?? c.answerId,
     text: c.text,
-  author: undefined,
+  author: (c.profiles && c.profiles.name) ? c.profiles.name : undefined,
   authorId: c.profile_id ?? c.authorId,
     created_at: c.created_at ?? c.createdAt,
   }));
@@ -345,12 +347,26 @@ export async function addComment(input: { answerId: string | number; text: strin
   if (error) throw error;
   // Normalize returned row before parsing
   const d = data as any;
+  // Attempt to resolve profile name for author display
+  let profileName: string | undefined = undefined;
+  try {
+    const pid = d.profile_id ?? null;
+    if (pid) {
+      const { data: p, error: perr } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', pid)
+        .maybeSingle();
+      if (!perr && p) profileName = p.name;
+    }
+  } catch {}
+
   const row = {
     id: typeof d.id === 'string' ? Number(d.id) : d.id,
     answerId: d.answer_id ?? d.answerId,
     text: d.text,
-  author: undefined,
-  authorId: d.profile_id ?? d.authorId,
+    author: profileName,
+    authorId: d.profile_id ?? d.authorId,
     created_at: d.created_at ?? d.createdAt,
   };
   // clear related caches after successful insert

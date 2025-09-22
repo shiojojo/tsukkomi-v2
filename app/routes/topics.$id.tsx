@@ -124,17 +124,45 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const commentText = form.get('commentText');
   if (commentText) {
     const answerIdRaw = form.get('answerId');
+    // profileId must be supplied by the client; legacy author fields removed
     const profileId = form.get('profileId')
       ? String(form.get('profileId'))
       : undefined;
     if (!answerIdRaw) return new Response('Invalid', { status: 400 });
+    if (!profileId) return new Response('Missing profileId', { status: 400 });
     const { addComment, voteAnswer } = await import('~/lib/db');
-    await addComment({
-      answerId: String(answerIdRaw),
-      text: String(commentText),
-      profileId,
-    });
-    return { ok: true };
+    try {
+      await addComment({
+        answerId: String(answerIdRaw),
+        text: String(commentText),
+        profileId,
+      });
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (e: any) {
+      // Log form values and error to aid debugging in server logs
+      try {
+        const entries: Record<string, any> = {};
+        for (const [k, v] of form.entries()) entries[k] = String(v);
+        // eslint-disable-next-line no-console
+        console.error('addComment failed', {
+          entries,
+          err: String(e?.message ?? e),
+        });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(
+          'addComment failed (failed to serialize form)',
+          String(e?.message ?? e)
+        );
+      }
+      return new Response(
+        JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
   }
   const answerId = Number(form.get('answerId'));
   const levelRaw = Number(form.get('level'));
@@ -710,11 +738,7 @@ function AnswerCard({
                       name="profileId"
                       value={currentUserId ?? ''}
                     />
-                    <input
-                      type="hidden"
-                      name="authorName"
-                      value={currentUserName ?? ''}
-                    />
+                    {/* authorName removed: profileId is authoritative identity for comments */}
                     <textarea
                       name="commentText"
                       ref={inputRef}

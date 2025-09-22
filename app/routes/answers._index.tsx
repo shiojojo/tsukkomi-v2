@@ -63,22 +63,49 @@ export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
   const answerId = form.get('answerId');
   const text = String(form.get('text') || '');
+  // profileId must be supplied by the client (legacy author fields removed)
   const profileId = form.get('profileId')
     ? String(form.get('profileId'))
     : undefined;
-  const authorName = form.get('authorName')
-    ? String(form.get('authorName'))
-    : undefined;
   if (!answerId || !text) {
-    return { ok: false };
+    return new Response('Invalid', { status: 400 });
+  }
+  if (!profileId) {
+    return new Response('Missing profileId', { status: 400 });
   }
   const { addComment } = await import('~/lib/db');
-  await addComment({
-    answerId: String(answerId),
-    text,
-    profileId,
-  });
-  return { ok: true };
+  try {
+    await addComment({
+      answerId: String(answerId),
+      text,
+      profileId,
+    });
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (e: any) {
+    // log incoming form for debugging
+    try {
+      const entries: Record<string, any> = {};
+      for (const [k, v] of form.entries()) entries[k] = String(v);
+      // eslint-disable-next-line no-console
+      console.error('addComment failed', {
+        entries,
+        err: String(e?.message ?? e),
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(
+        'addComment failed (serialize error)',
+        String(e?.message ?? e)
+      );
+    }
+    return new Response(
+      JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 }
 
 export default function AnswersRoute() {
@@ -293,11 +320,7 @@ export default function AnswersRoute() {
                     name="profileId"
                     value={currentUserId ?? ''}
                   />
-                  <input
-                    type="hidden"
-                    name="authorName"
-                    value={currentUserName ?? ''}
-                  />
+                  {/* authorName removed: profileId is authoritative identity for comments */}
                   <input
                     name="text"
                     className="form-input flex-1"
