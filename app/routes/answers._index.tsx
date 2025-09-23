@@ -674,6 +674,94 @@ export default function AnswersRoute() {
           次へ
         </a>
       </div>
+      {/* Desktop pagination controls (visible on md+). Mirrors mobile but shows numeric page links. */}
+      <div className="hidden md:flex items-center justify-center mt-4 px-4 gap-2">
+        {/** build href preserving current filters */}
+        {(() => {
+          const buildHref = (p: number) => {
+            const parts: string[] = [];
+            if (query) parts.push(`q=${encodeURIComponent(query)}`);
+            if (authorQuery)
+              parts.push(`author=${encodeURIComponent(authorQuery)}`);
+            parts.push(`sortBy=${encodeURIComponent(String(sortBy))}`);
+            parts.push(`page=${p}`);
+            if (minScore)
+              parts.push(`minScore=${encodeURIComponent(String(minScore))}`);
+            if (hasComments) parts.push('hasComments=1');
+            if (fromDate)
+              parts.push(`fromDate=${encodeURIComponent(fromDate)}`);
+            if (toDate) parts.push(`toDate=${encodeURIComponent(toDate)}`);
+            return `?${parts.join('&')}`;
+          };
+
+          const windowSize = 3; // pages to show on each side of current
+          const start = Math.max(1, currentPage - windowSize);
+          const end = Math.min(pageCount, currentPage + windowSize);
+
+          return (
+            <nav
+              aria-label="ページネーション"
+              className="flex items-center gap-2"
+            >
+              <a
+                href={buildHref(Math.max(1, currentPage - 1))}
+                aria-label="前のページ"
+                className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+              >
+                前へ
+              </a>
+
+              <div className="flex items-center gap-1">
+                {start > 1 && (
+                  <>
+                    <a
+                      href={buildHref(1)}
+                      className="px-2 py-1 rounded-md border bg-white"
+                    >
+                      1
+                    </a>
+                    {start > 2 && <span className="px-2">…</span>}
+                  </>
+                )}
+
+                {Array.from(
+                  { length: end - start + 1 },
+                  (_, i) => start + i
+                ).map(p => (
+                  <a
+                    key={p}
+                    href={buildHref(p)}
+                    aria-current={p === currentPage ? 'page' : undefined}
+                    className={`px-3 py-2 rounded-md border ${p === currentPage ? 'bg-blue-600 text-white' : 'bg-white'}`}
+                  >
+                    {p}
+                  </a>
+                ))}
+
+                {end < pageCount && (
+                  <>
+                    {end < pageCount - 1 && <span className="px-2">…</span>}
+                    <a
+                      href={buildHref(pageCount)}
+                      className="px-2 py-1 rounded-md border bg-white"
+                    >
+                      {pageCount}
+                    </a>
+                  </>
+                )}
+              </div>
+
+              <a
+                href={buildHref(Math.min(pageCount, currentPage + 1))}
+                aria-label="次のページ"
+                className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+              >
+                次へ
+              </a>
+            </nav>
+          );
+        })()}
+      </div>
     </div>
   );
 }
