@@ -770,7 +770,7 @@ function AnswerCard({
                             const newComment = {
                               id: tmpId,
                               text,
-                              author: currentUserName ?? undefined,
+                              displayName: currentUserName ?? undefined,
                               created_at: new Date().toISOString(),
                               pending: true,
                             } as any;

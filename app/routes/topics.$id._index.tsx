@@ -96,11 +96,11 @@ function AnswerCard({ answer }: { answer: Answer }) {
             <p className="text-xs text-gray-500">
               {new Date(answer.created_at).toLocaleString()}
             </p>
-            {answer.profileId && (
+            {(answer as any).displayName || answer.profileId ? (
               <p className="mt-1 text-xs text-gray-400 dark:text-white">
-                — {answer.profileId}
+                — {(answer as any).displayName ?? answer.profileId}
               </p>
-            )}
+            ) : null}
             <div className="mt-3">
               <h4 className="font-medium">コメント</h4>
               {loading ? (
