@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
+import { consumeToken } from '~/lib/rateLimiter';
 import { useState, useEffect, useRef } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 // server-only imports are dynamically loaded inside loader/action
@@ -168,6 +169,33 @@ function FavoriteButton({
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const form = await request.formData();
+  // rate-limit lightweight: prefer profileId then ip
+  try {
+    const profileId = form.get('profileId')
+      ? String(form.get('profileId'))
+      : undefined;
+    let rateKey = 'anon';
+    if (profileId) rateKey = `p:${profileId}`;
+    else {
+      try {
+        const hdr =
+          request.headers && request.headers.get
+            ? request.headers.get('x-forwarded-for') ||
+              request.headers.get('x-real-ip')
+            : null;
+        if (hdr) rateKey = `ip:${String(hdr).split(',')[0].trim()}`;
+      } catch {}
+    }
+    if (!consumeToken(rateKey, 1)) {
+      return new Response(
+        JSON.stringify({ ok: false, error: 'Too Many Requests' }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+  } catch {}
   // support favorite toggle ops
   const op = form.get('op') ? String(form.get('op')) : undefined;
   if (op === 'toggle') {

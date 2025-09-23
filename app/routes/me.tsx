@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useFetcher, Form } from 'react-router';
+import { consumeToken } from '~/lib/rateLimiter';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
@@ -21,6 +22,28 @@ export async function loader({}: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
+  // basic rate limiting to protect this dev endpoint from storms
+  try {
+    const parentId = form.get('parentId')
+      ? String(form.get('parentId'))
+      : undefined;
+    let rateKey = 'anon';
+    if (parentId) rateKey = `p:${parentId}`;
+    else {
+      try {
+        const hdr =
+          request.headers && request.headers.get
+            ? request.headers.get('x-forwarded-for') ||
+              request.headers.get('x-real-ip')
+            : null;
+        if (hdr) rateKey = `ip:${String(hdr).split(',')[0].trim()}`;
+      } catch {}
+    }
+    // if no token available, return 429
+    if (!consumeToken(rateKey, 1)) {
+      return { ok: false, error: 'rate_limited' } as any;
+    }
+  } catch {}
   const intent = form.get('intent') ? String(form.get('intent')) : '';
 
   if (intent === 'add-subuser') {

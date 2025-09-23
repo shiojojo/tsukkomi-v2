@@ -15,6 +15,8 @@ import type { User } from '~/lib/schemas/user';
 // is implemented. It may be reset on server restart.
 const _recentPostGuard = new Map<string, number>();
 
+import { consumeToken } from '~/lib/rateLimiter';
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const params = url.searchParams;
@@ -90,6 +92,35 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
+  // build a rate limit key: prefer profileId (authenticated/subuser), then IP, then anon
+  let rateKey = 'anon';
+  try {
+    const profileIdCandidate = form.get('profileId')
+      ? String(form.get('profileId'))
+      : undefined;
+    if (profileIdCandidate) rateKey = `p:${profileIdCandidate}`;
+    else {
+      // try to infer IP from headers — request.headers may include x-forwarded-for
+      try {
+        const hdr =
+          request.headers && request.headers.get
+            ? request.headers.get('x-forwarded-for') ||
+              request.headers.get('x-real-ip')
+            : null;
+        if (hdr) rateKey = `ip:${String(hdr).split(',')[0].trim()}`;
+      } catch {}
+    }
+  } catch {}
+  // attempt to consume a token; deny if exhausted
+  if (!consumeToken(rateKey, 1)) {
+    return new Response(
+      JSON.stringify({ ok: false, error: 'Too Many Requests' }),
+      {
+        status: 429,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
   // support favorite toggle ops
   const op = form.get('op') ? String(form.get('op')) : undefined;
   if (op === 'toggle') {
