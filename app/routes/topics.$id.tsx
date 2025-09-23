@@ -54,28 +54,24 @@ export async function loader({ params }: LoaderFunctionArgs) {
 }
 
 function FavoriteButton({ answerId }: { answerId: number }) {
-  // fetcher-based favorite button that persists to server via this route's action
+  // Server-backed favorite button: optimistic toggle, server is source-of-truth.
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const fetcher = useFetcher();
   const [fav, setFav] = useState<boolean>(false);
 
+  // Only read identity from localStorage so we can prompt login when necessary.
   useEffect(() => {
     try {
       const uid =
         localStorage.getItem('currentSubUserId') ??
         localStorage.getItem('currentUserId');
       setCurrentUserId(uid);
-      // derive initial state from local cache when available; server truth will be set after toggle
-      if (uid) {
-        const key = `favorite:answer:${answerId}:user:${uid}`;
-        setFav(localStorage.getItem(key) === '1');
-      }
     } catch {
       setCurrentUserId(null);
-      setFav(false);
     }
-  }, [answerId]);
+  }, []);
 
+  // Reconcile server response when available (toggle returns { favorited: boolean }).
   useEffect(() => {
     if (!fetcher.data) return;
     try {
@@ -87,14 +83,6 @@ function FavoriteButton({ answerId }: { answerId: number }) {
     } catch {}
   }, [fetcher.data]);
 
-  useEffect(() => {
-    try {
-      if (!currentUserId) return;
-      const key = `favorite:answer:${answerId}:user:${currentUserId}`;
-      localStorage.setItem(key, fav ? '1' : '0');
-    } catch {}
-  }, [fav, answerId, currentUserId]);
-
   const handleClick = () => {
     if (!currentUserId) {
       try {
@@ -103,8 +91,7 @@ function FavoriteButton({ answerId }: { answerId: number }) {
       return;
     }
     // optimistic toggle
-    const next = !fav;
-    setFav(next);
+    setFav(s => !s);
     const fd = new FormData();
     fd.set('op', 'toggle');
     fd.set('answerId', String(answerId));

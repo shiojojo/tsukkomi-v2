@@ -87,7 +87,8 @@ export async function action({ request }: ActionFunctionArgs) {
       // eslint-disable-next-line no-console
       console.log('action.toggleFavorite request', entries);
     } catch {}
-    if (!answerId || !profileId) return new Response('Invalid', { status: 400 });
+    if (!answerId || !profileId)
+      return new Response('Invalid', { status: 400 });
     const { toggleFavorite } = await import('~/lib/db');
     try {
       const res = await toggleFavorite({
@@ -249,26 +250,8 @@ export default function AnswersRoute() {
       fd.set('op', 'toggle');
       fd.set('answerId', String(answerId));
       fd.set('profileId', String(currentUserIdLocal));
-      try {
-        // debug: log client-side submission
-        // eslint-disable-next-line no-console
-        console.log('FavoriteButton.submit', { answerId, profileId: currentUserIdLocal });
-        fetcher.submit(fd, { method: 'post' });
-      } catch (e) {
-        try {
-          // eslint-disable-next-line no-console
-          console.error('fetcher.submit failed, falling back to fetch', e);
-        } catch {}
-        try {
-          // fallback: send raw fetch to current location
-          void fetch(window.location.href, { method: 'POST', body: fd });
-        } catch (err) {
-          try {
-            // eslint-disable-next-line no-console
-            console.error('fallback fetch failed', err);
-          } catch {}
-        }
-      }
+      // submit via fetcher (no fallback needed)
+      fetcher.submit(fd, { method: 'post' });
     };
 
     return (
