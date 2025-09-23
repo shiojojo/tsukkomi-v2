@@ -32,6 +32,24 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response('Not Found', { status: 404 });
   }
 
+  // Enrich answers with displayName when possible so UI shows human names instead of raw ids
+  try {
+    const { getProfilesByIds } = await import('~/lib/db');
+    const profileIds = (answers || [])
+      .map(a => (a as any).profileId)
+      .filter(Boolean);
+    if (profileIds.length) {
+      const names = await getProfilesByIds(profileIds);
+      const enriched = (answers || []).map(a => ({
+        ...(a as any),
+        displayName: names[String((a as any).profileId)],
+      }));
+      return { topic, answers: enriched } as const;
+    }
+  } catch {
+    // ignore enrichment errors and return base data
+  }
+
   return { topic, answers };
 }
 
@@ -659,9 +677,9 @@ function AnswerCard({
               <p className="text-xs text-gray-500 dark:text-white">
                 {new Date(a.created_at).toLocaleString()}
               </p>
-              {a.author ? (
+              {(a as any).displayName || a.profileId ? (
                 <p className="mt-2 text-sm font-medium text-gray-600 dark:text-white">
-                  — {a.author}
+                  — {(a as any).displayName ?? a.profileId}
                 </p>
               ) : null}
               {/* comments: lazy-load only when user opens details */}
@@ -677,7 +695,10 @@ function AnswerCard({
                       <li key={c.id} className="text-gray-700 dark:text-white">
                         <div className="whitespace-pre-wrap">{c.text}</div>
                         <span className="text-xs text-gray-400 dark:text-white">
-                          — {c.author || '名無し'}
+                          —{' '}
+                          {(c as any).displayName ??
+                            (c as any).profileId ??
+                            '名無し'}
                         </span>
                       </li>
                     ))}
@@ -703,7 +724,8 @@ function AnswerCard({
                         const newComment = {
                           id: tmpId,
                           text,
-                          author: currentUserName ?? undefined,
+                          profileId: currentUserId ?? undefined,
+                          displayName: currentUserName ?? undefined,
                           created_at: new Date().toISOString(),
                           pending: true,
                         } as any;

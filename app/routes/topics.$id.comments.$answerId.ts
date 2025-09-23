@@ -10,7 +10,12 @@ export async function loader({ params }: LoaderFunctionArgs) {
   // loader invoked for resource - no debug logging in production code
   const { getCommentsByAnswer } = await import('~/lib/db');
   const comments = await getCommentsByAnswer(answerId);
-  return new Response(JSON.stringify({ comments }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=5' } });
+  // resolve display names for returned comments to keep UI simple
+  const { getProfilesByIds } = await import('~/lib/db');
+  const profileIds = (comments || []).map(c => (c as any).profileId).filter(Boolean);
+  const names = await getProfilesByIds(profileIds);
+  const enriched = (comments || []).map(c => ({ ...c, displayName: names[String((c as any).profileId)] }));
+  return new Response(JSON.stringify({ comments: enriched }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=5' } });
 }
 
 // Resource routes must not export a default React component. Keep this file

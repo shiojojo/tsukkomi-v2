@@ -44,7 +44,7 @@ export async function getAnswers(): Promise<Answer[]> {
   const answers = (answerRows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
-    authorId: a.profile_id ?? undefined,
+  profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
   }));
@@ -276,7 +276,7 @@ export async function searchAnswers(opts: {
   let answers = (rows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
-    authorId: a.profile_id ?? undefined,
+  profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
     votes: { level1: 0, level2: 0, level3: 0 },
@@ -395,7 +395,7 @@ export async function getCommentsForAnswers(
     id: typeof c.id === 'string' ? Number(c.id) : c.id,
     answerId: c.answer_id ?? c.answerId,
     text: c.text,
-    authorId: c.profile_id ?? c.authorId,
+  profileId: c.profile_id ?? c.profileId ?? c.authorId,
     created_at: c.created_at ?? c.createdAt,
   });
 
@@ -409,6 +409,28 @@ export async function getCommentsForAnswers(
 
   // ensure every requested id has an array
   for (const id of answerIds) result[String(id)] = result[String(id)] ?? [];
+  return result;
+}
+
+/**
+ * getProfilesByIds
+ * Intent: bulk-resolve profile id -> display name mapping.
+ * Contract: accepts array of profile id strings, returns Record<id, name>.
+ * Environment: always queries Supabase.
+ */
+export async function getProfilesByIds(ids: Array<string | number>): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  const uniq = Array.from(new Set((ids ?? []).map(id => String(id)).filter(Boolean)));
+  if (uniq.length === 0) return result;
+  await ensureConnection();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', uniq);
+  if (error) throw error;
+  for (const r of (data ?? [])) {
+    if (r && r.id) result[String(r.id)] = r.name;
+  }
   return result;
 }
 
@@ -445,7 +467,7 @@ export async function addComment(input: { answerId: string | number; text: strin
     id: typeof d.id === 'string' ? Number(d.id) : d.id,
     answerId: d.answer_id ?? d.answerId,
     text: d.text,
-    authorId: d.profile_id ?? d.authorId,
+  profileId: d.profile_id ?? d.profileId ?? d.authorId,
     created_at: d.created_at ?? d.createdAt,
   };
 
@@ -738,7 +760,7 @@ export async function getAnswersByTopic(topicId: string | number) {
   const answers = (answerRows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
   text: a.text,
-  authorId: a.profile_id ?? undefined,
+  profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
   }));
@@ -821,7 +843,7 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20 }: 
   const rows = (data ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
   text: a.text,
-  authorId: a.profile_id ?? undefined,
+  profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
     votes: { level1: 0, level2: 0, level3: 0 },
@@ -931,7 +953,7 @@ export async function voteAnswer({
   const result = {
     id: Number(answerRow.id),
   text: answerRow.text,
-  authorId: answerRow.profile_id ?? undefined,
+  profileId: answerRow.profile_id ?? undefined,
     topicId: answerRow.topic_id ?? undefined,
     created_at: answerRow.created_at,
     votes: votesObj,

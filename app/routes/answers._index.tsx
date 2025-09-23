@@ -116,6 +116,13 @@ export default function AnswersRoute() {
   const commentsByAnswer: Record<string, Comment[]> =
     (data as any)?.commentsByAnswer ?? {};
   const users: User[] = (data as any)?.users ?? [];
+  // helper: resolve display name from loaded users by profileId
+  const usersById = Object.fromEntries(users.map(u => [String(u.id), u]));
+  const getNameByProfileId = (pid?: string | null) => {
+    if (!pid) return undefined;
+    const found = usersById[String(pid)];
+    return found ? found.name : undefined;
+  };
   // No pinned topic handling: topics are shown per-answer and topic-specific pages live under /topics/:id
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -274,9 +281,9 @@ export default function AnswersRoute() {
                 <span className="inline-flex items-center gap-1">
                   🤣3:{(a as any).votes?.level3 ?? 0}
                 </span>
-                {a.author && (
+                {getNameByProfileId((a as any).profileId) && (
                   <span className="inline-flex items-center gap-1">
-                    作者: {a.author}
+                    作者: {getNameByProfileId((a as any).profileId)}
                   </span>
                 )}
               </div>
@@ -303,7 +310,7 @@ export default function AnswersRoute() {
                   <li key={c.id} className="text-gray-700 dark:text-white">
                     {c.text}{' '}
                     <span className="text-xs text-gray-400 dark:text-white">
-                      — {c.author || '名無し'}
+                      — {getNameByProfileId((c as any).profileId) ?? '名無し'}
                     </span>
                   </li>
                 ))}

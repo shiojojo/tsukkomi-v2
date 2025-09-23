@@ -22,6 +22,21 @@ export async function loader({ params }: LoaderFunctionArgs) {
     a => a.topicId != null && Number((a as any).topicId) === id
   );
 
+  // Enrich answers with displayName when possible to avoid exposing raw profile ids
+  try {
+    const { getProfilesByIds } = await import('~/lib/db');
+    const profileIds = filtered.map(a => (a as any).profileId).filter(Boolean);
+    if (profileIds.length) {
+      const names = await getProfilesByIds(profileIds);
+      const enriched = filtered.map(a => ({
+        ...a,
+        displayName: names[String((a as any).profileId)],
+      }));
+      return { topic, answers: enriched };
+    }
+  } catch {
+    // ignore enrichment errors
+  }
   return { topic, answers: filtered };
 }
 
@@ -48,8 +63,10 @@ export default function TopicDetailRoute() {
                 {new Date(a.created_at).toLocaleString()}
               </p>
               <p className="mt-2 text-lg">{a.text}</p>
-              {a.author ? (
-                <p className="mt-2 text-xs text-gray-500">— {a.author}</p>
+              {a.profileId || (a as any).displayName ? (
+                <p className="mt-2 text-xs text-gray-500">
+                  — {(a as any).displayName ?? a.profileId}
+                </p>
               ) : null}
             </li>
           ))}

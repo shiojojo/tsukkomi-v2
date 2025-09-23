@@ -24,6 +24,26 @@ export async function loader({ params }: LoaderFunctionArgs) {
   // defer first page so shell (topic header) streams quickly
   const { getAnswersPageByTopic } = await import('~/lib/db');
   const firstPage = await getAnswersPageByTopic({ topicId: id, cursor: null });
+  // enrich answers with displayName when possible to avoid exposing raw profile ids
+  try {
+    const { getProfilesByIds } = await import('~/lib/db');
+    const profileIds = (firstPage.answers || [])
+      .map(a => (a as any).profileId)
+      .filter(Boolean);
+    if (profileIds.length) {
+      const names = await getProfilesByIds(profileIds);
+      const enriched = {
+        ...firstPage,
+        answers: (firstPage.answers || []).map(a => ({
+          ...(a as any),
+          displayName: names[String((a as any).profileId)],
+        })),
+      };
+      return { topic, firstPage: enriched } as const;
+    }
+  } catch {
+    // ignore enrichment errors; return base data
+  }
   return { topic, firstPage } as const;
 }
 
@@ -76,9 +96,9 @@ function AnswerCard({ answer }: { answer: Answer }) {
             <p className="text-xs text-gray-500">
               {new Date(answer.created_at).toLocaleString()}
             </p>
-            {answer.author && (
+            {answer.profileId && (
               <p className="mt-1 text-xs text-gray-400 dark:text-white">
-                — {answer.author}
+                — {answer.profileId}
               </p>
             )}
             <div className="mt-3">
@@ -91,7 +111,10 @@ function AnswerCard({ answer }: { answer: Answer }) {
                     <li key={c.id} className="text-gray-700 text-xs">
                       {c.text}{' '}
                       <span className="text-[10px] text-gray-400 dark:text-white">
-                        — {c.author || '名無し'}
+                        —{' '}
+                        {(c as any).displayName ??
+                          (c as any).profileId ??
+                          '名無し'}
                       </span>
                     </li>
                   ))}
