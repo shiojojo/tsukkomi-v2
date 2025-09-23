@@ -239,12 +239,15 @@ export async function searchAnswers(opts: {
         const score = (counts.level1 || 0) * 1 + (counts.level2 || 0) * 2 + (counts.level3 || 0) * 3;
         if (typeof minScore === 'number' && !Number.isNaN(minScore) && score < (minScore as number)) continue;
         if (hasComments && commentSetBatch && !commentSetBatch.has(id)) continue;
+        // keep original PostgREST field names (profile_id / topic_id) so later
+        // normalization/mapping logic can read them consistently and not lose
+        // the topic reference when derived filtering is active.
         matched.push({
           id,
           text: a.text,
           author: undefined,
-          authorId: a.profile_id ?? undefined,
-          topicId: a.topic_id ?? undefined,
+          profile_id: a.profile_id ?? undefined,
+          topic_id: a.topic_id ?? undefined,
           created_at: (a as any).created_at ?? (a as any).createdAt,
           votes: countsMapBatch[id] ?? { level1: 0, level2: 0, level3: 0 },
           votesBy: {},
