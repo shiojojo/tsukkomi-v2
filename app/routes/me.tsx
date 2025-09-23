@@ -122,6 +122,15 @@ export default function MeRoute() {
     window.location.reload();
   }
 
+  // End using sub-user and return to main user (clear sub selection)
+  function returnToMain() {
+    try {
+      localStorage.removeItem('currentSubUserId');
+      localStorage.removeItem('currentSubUserName');
+    } catch {}
+    window.location.reload();
+  }
+
   return (
     <div className="p-4 max-w-lg mx-auto">
       <h1 className="text-xl font-bold mb-2">アカウント / サブユーザー</h1>
@@ -150,6 +159,29 @@ export default function MeRoute() {
             </li>
           ))}
         </ul>
+      </section>
+
+      {/* Current status / return to main when acting as sub-user (list-item style) */}
+      <section className="mb-6">
+        {currentSubUserId ? (
+          <ul className="mt-2">
+            <li className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">{currentSubUserName}</div>
+                <div className="text-xs text-gray-500">
+                  メイン: {currentUserName}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button className="text-sm btn-inline" onClick={returnToMain}>
+                  サブユーザーを終了してメインに戻る
+                </button>
+              </div>
+            </li>
+          </ul>
+        ) : currentUserId ? (
+          <div className="text-xs text-gray-500">現在: {currentUserName}</div>
+        ) : null}
       </section>
 
       <section className="mb-6">
