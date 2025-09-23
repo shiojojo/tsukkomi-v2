@@ -9,6 +9,8 @@ import { UserSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { IdentitySchema } from '~/lib/schemas/identity';
 import { supabase, supabaseAdmin, ensureConnection } from './supabase';
+import { FavoriteSchema } from '~/lib/schemas/favorite';
+import { mockFavorites } from '~/mock/favorites';
 
 // Running always in production-like mode: local development should run a Supabase instance and
 // set VITE_SUPABASE_KEY / SUPABASE_KEY accordingly.
@@ -95,6 +97,97 @@ export async function getAnswers(): Promise<Answer[]> {
 
   return AnswerSchema.array().parse(normalized as any);
 }
+
+/**
+ * Favorites: add/remove/get counts
+ */
+export async function addFavorite(input: { answerId: number | string; profileId: string }) {
+  const parsed = FavoriteSchema.parse({ answerId: input.answerId, profileId: input.profileId });
+  const answerId = Number(parsed.answerId);
+  const profileId = parsed.profileId;
+  await ensureConnection();
+  const writeClient = supabaseAdmin ?? supabase;
+  if (!writeClient) throw new Error('No Supabase client available for writes');
+  // Insert if not exists: use upsert-like behavior by ignoring duplicate key error
+  const { error } = await writeClient
+    .from('favorites')
+    .insert({ answer_id: answerId, profile_id: profileId });
+  if (error) {
+    // ignore unique constraint violation (already favorited)
+    const msg = String(error?.message ?? '');
+    if (msg.includes('duplicate') || msg.includes('unique')) {
+      return { success: true } as const;
+    }
+    throw error;
+  }
+  try { invalidateCache(`favorites:answer:${answerId}`); } catch {}
+  return { success: true } as const;
+}
+
+export async function removeFavorite(input: { answerId: number | string; profileId: string }) {
+  const parsed = FavoriteSchema.parse({ answerId: input.answerId, profileId: input.profileId });
+  const answerId = Number(parsed.answerId);
+  const profileId = parsed.profileId;
+  await ensureConnection();
+  const writeClient = supabaseAdmin ?? supabase;
+  if (!writeClient) throw new Error('No Supabase client available for writes');
+  const { error } = await writeClient
+    .from('favorites')
+    .delete()
+    .eq('answer_id', answerId)
+    .eq('profile_id', profileId);
+  if (error) throw error;
+  try { invalidateCache(`favorites:answer:${answerId}`); } catch {}
+  return { success: true } as const;
+}
+
+export async function toggleFavorite(input: { answerId: number | string; profileId: string }) {
+  const parsed = FavoriteSchema.parse({ answerId: input.answerId, profileId: input.profileId });
+  const answerId = Number(parsed.answerId);
+  const profileId = parsed.profileId;
+  await ensureConnection();
+  const { data: existing, error: selErr } = await supabase
+    .from('favorites')
+    .select('id')
+    .eq('answer_id', answerId)
+    .eq('profile_id', profileId)
+    .maybeSingle();
+  if (selErr) throw selErr;
+  if (existing && existing.id) {
+    await removeFavorite({ answerId, profileId });
+    return { favorited: false } as const;
+  }
+  await addFavorite({ answerId, profileId });
+  return { favorited: true } as const;
+}
+
+export async function getFavoriteCounts(answerIds: Array<number | string>) {
+  const result: Record<number, number> = {};
+  const ids = (answerIds ?? []).map((v) => Number(v)).filter(Boolean);
+  if (!ids.length) return result;
+  await ensureConnection();
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('answer_id')
+    .in('answer_id', ids);
+  if (error) throw error;
+  for (const r of (data ?? [])) {
+    const aid = Number(r.answer_id);
+    result[aid] = (result[aid] ?? 0) + 1;
+  }
+  return result;
+}
+
+export async function getFavoritesForProfile(profileId: string, answerIds?: Array<number | string>) {
+  await ensureConnection();
+  let q = supabase.from('favorites').select('answer_id');
+  q = q.eq('profile_id', profileId);
+  if (answerIds && answerIds.length) q = q.in('answer_id', answerIds.map((v) => Number(v)).filter(Boolean));
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data ?? []).map((r: any) => Number(r.answer_id));
+}
+
 
 // Helper to record deprecation usage during tests or debug runs
 // warnIfLegacyAuthorUsed removed as legacy fields are deleted

@@ -43,10 +43,22 @@ export async function loader({ request }: LoaderFunctionArgs) {
     hasComments: hasComments ?? false,
     fromDate,
     toDate,
-  author,
+    author,
   });
   const answerIds = answers.map(a => a.id);
   const commentsByAnswer = await getCommentsForAnswers(answerIds);
+  // favorite counts for answers (DB-backed)
+  try {
+    const { getFavoriteCounts, getFavoritesForProfile } = await import(
+      '~/lib/db'
+    );
+    const favCounts = await getFavoriteCounts(answerIds);
+    // attach counts onto answers (non-destructive)
+    for (const a of answers) {
+      (a as any).favCount = favCounts[Number(a.id)] ?? 0;
+    }
+    // if request includes a profile id via query (not typical), attempt to fetch which are favorited
+  } catch (err) {}
 
   return {
     answers,
@@ -61,6 +73,43 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
+  // support favorite toggle ops
+  const op = form.get('op') ? String(form.get('op')) : undefined;
+  if (op === 'toggle') {
+    const answerId = form.get('answerId');
+    const profileId = form.get('profileId')
+      ? String(form.get('profileId'))
+      : undefined;
+    // debug: log incoming toggle request
+    try {
+      const entries: Record<string, any> = {};
+      for (const [k, v] of form.entries()) entries[k] = String(v);
+      // eslint-disable-next-line no-console
+      console.log('action.toggleFavorite request', entries);
+    } catch {}
+    if (!answerId || !profileId) return new Response('Invalid', { status: 400 });
+    const { toggleFavorite } = await import('~/lib/db');
+    try {
+      const res = await toggleFavorite({
+        answerId: Number(answerId),
+        profileId,
+      });
+      return new Response(JSON.stringify(res), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (e: any) {
+      // log server-side error for debugging
+      try {
+        // eslint-disable-next-line no-console
+        console.error('toggleFavorite failed', String(e?.message ?? e));
+      } catch {}
+      return new Response(
+        JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
   const answerId = form.get('answerId');
   const text = String(form.get('text') || '');
   // profileId must be supplied by the client (legacy author fields removed)
@@ -150,32 +199,41 @@ export default function AnswersRoute() {
     const [currentUserIdLocal, setCurrentUserIdLocal] = useState<string | null>(
       null
     );
-    const [favLocal, setFavLocal] = useState<boolean>(false);
-
+    const fetcher = useFetcher();
+    // initial favorited state derived from loader data when present
+    const [fav, setFav] = useState<boolean>(false);
     useEffect(() => {
       try {
-        // prefer selected sub-user identity when available so favorites are stored per-subuser
         const uid =
           localStorage.getItem('currentSubUserId') ??
           localStorage.getItem('currentUserId');
         setCurrentUserIdLocal(uid);
-        if (uid) {
-          const key = `favorite:answer:${answerId}:user:${uid}`;
-          setFavLocal(localStorage.getItem(key) === '1');
-        }
+        // initial state: server provided favCount doesn't mean this user favorited it
+        // we conservatively default to false and rely on fetcher response when toggled
       } catch {
         setCurrentUserIdLocal(null);
-        setFavLocal(false);
       }
     }, [answerId]);
 
     useEffect(() => {
+      if (!fetcher.data) return;
       try {
-        if (!currentUserIdLocal) return;
-        const key = `favorite:answer:${answerId}:user:${currentUserIdLocal}`;
-        localStorage.setItem(key, favLocal ? '1' : '0');
+        const d =
+          typeof fetcher.data === 'string'
+            ? JSON.parse(fetcher.data)
+            : fetcher.data;
+        // if server returned explicit favorited flag, use it
+        if (d && typeof d.favorited === 'boolean') {
+          setFav(Boolean(d.favorited));
+          return;
+        }
+        // if server returned ok:false, revert optimistic toggle
+        if (d && d.ok === false) {
+          setFav(s => !s); // revert optimistic
+          return;
+        }
       } catch {}
-    }, [favLocal, answerId, currentUserIdLocal]);
+    }, [fetcher.data]);
 
     const handleClick = () => {
       if (!currentUserIdLocal) {
@@ -184,24 +242,50 @@ export default function AnswersRoute() {
         } catch {}
         return;
       }
-      setFavLocal(s => !s);
+      // optimistic toggle
+      const next = !fav;
+      setFav(next);
+      const fd = new FormData();
+      fd.set('op', 'toggle');
+      fd.set('answerId', String(answerId));
+      fd.set('profileId', String(currentUserIdLocal));
+      try {
+        // debug: log client-side submission
+        // eslint-disable-next-line no-console
+        console.log('FavoriteButton.submit', { answerId, profileId: currentUserIdLocal });
+        fetcher.submit(fd, { method: 'post' });
+      } catch (e) {
+        try {
+          // eslint-disable-next-line no-console
+          console.error('fetcher.submit failed, falling back to fetch', e);
+        } catch {}
+        try {
+          // fallback: send raw fetch to current location
+          void fetch(window.location.href, { method: 'POST', body: fd });
+        } catch (err) {
+          try {
+            // eslint-disable-next-line no-console
+            console.error('fallback fetch failed', err);
+          } catch {}
+        }
+      }
     };
 
     return (
       <button
         type="button"
-        aria-pressed={favLocal}
+        aria-pressed={fav}
         onClick={handleClick}
-        className={`p-2 rounded-md ${favLocal ? 'text-red-500' : 'text-gray-400 dark:text-white'} hover:opacity-90`}
+        className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400 dark:text-white'} hover:opacity-90`}
         title={
           !currentUserIdLocal
             ? 'ログインしてお気に入り登録'
-            : favLocal
+            : fav
               ? 'お気に入り解除'
               : 'お気に入り'
         }
       >
-        {favLocal ? (
+        {fav ? (
           <svg
             className="w-5 h-5"
             viewBox="0 0 24 24"
@@ -367,7 +451,7 @@ export default function AnswersRoute() {
     try {
       const params = new URLSearchParams(window.location.search);
       setQuery(params.get('q') ?? '');
-  setAuthorQuery(params.get('authorName') ?? '');
+      setAuthorQuery(params.get('authorName') ?? '');
       setSortBy((params.get('sortBy') as any) ?? 'newest');
       setMinScore(params.get('minScore') ?? '');
       setHasComments(
@@ -477,7 +561,8 @@ export default function AnswersRoute() {
   const buildHref = (p: number) => {
     const parts: string[] = [];
     if (query) parts.push(`q=${encodeURIComponent(query)}`);
-  if (authorQuery) parts.push(`authorName=${encodeURIComponent(authorQuery)}`);
+    if (authorQuery)
+      parts.push(`authorName=${encodeURIComponent(authorQuery)}`);
     parts.push(`sortBy=${encodeURIComponent(String(sortBy))}`);
     parts.push(`page=${p}`);
     if (minScore)

@@ -54,17 +54,18 @@ export async function loader({ params }: LoaderFunctionArgs) {
 }
 
 function FavoriteButton({ answerId }: { answerId: number }) {
-  // read current user from localStorage (development login helper stores these)
+  // fetcher-based favorite button that persists to server via this route's action
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const fetcher = useFetcher();
   const [fav, setFav] = useState<boolean>(false);
 
   useEffect(() => {
     try {
-      // prefer an explicitly selected sub-user identity when present
       const uid =
         localStorage.getItem('currentSubUserId') ??
         localStorage.getItem('currentUserId');
       setCurrentUserId(uid);
+      // derive initial state from local cache when available; server truth will be set after toggle
       if (uid) {
         const key = `favorite:answer:${answerId}:user:${uid}`;
         setFav(localStorage.getItem(key) === '1');
@@ -76,26 +77,39 @@ function FavoriteButton({ answerId }: { answerId: number }) {
   }, [answerId]);
 
   useEffect(() => {
+    if (!fetcher.data) return;
+    try {
+      const d =
+        typeof fetcher.data === 'string'
+          ? JSON.parse(fetcher.data)
+          : fetcher.data;
+      if (d && typeof d.favorited === 'boolean') setFav(Boolean(d.favorited));
+    } catch {}
+  }, [fetcher.data]);
+
+  useEffect(() => {
     try {
       if (!currentUserId) return;
       const key = `favorite:answer:${answerId}:user:${currentUserId}`;
       localStorage.setItem(key, fav ? '1' : '0');
-    } catch {
-      // noop
-    }
+    } catch {}
   }, [fav, answerId, currentUserId]);
 
   const handleClick = () => {
     if (!currentUserId) {
-      // redirect to login page in dev scaffold
       try {
         window.location.href = '/login';
-      } catch {
-        // noop
-      }
+      } catch {}
       return;
     }
-    setFav(s => !s);
+    // optimistic toggle
+    const next = !fav;
+    setFav(next);
+    const fd = new FormData();
+    fd.set('op', 'toggle');
+    fd.set('answerId', String(answerId));
+    fd.set('profileId', String(currentUserId));
+    fetcher.submit(fd, { method: 'post' });
   };
 
   return (
@@ -139,6 +153,32 @@ function FavoriteButton({ answerId }: { answerId: number }) {
 
 export async function action({ request, params }: ActionFunctionArgs) {
   const form = await request.formData();
+  // support favorite toggle ops
+  const op = form.get('op') ? String(form.get('op')) : undefined;
+  if (op === 'toggle') {
+    const answerId = form.get('answerId');
+    const profileId = form.get('profileId')
+      ? String(form.get('profileId'))
+      : undefined;
+    if (!answerId || !profileId)
+      return new Response('Invalid', { status: 400 });
+    const { toggleFavorite } = await import('~/lib/db');
+    try {
+      const res = await toggleFavorite({
+        answerId: Number(answerId),
+        profileId,
+      });
+      return new Response(JSON.stringify(res), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (e: any) {
+      return new Response(
+        JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
   // comment submission (no auth required in this scaffold)
   const commentText = form.get('commentText');
   if (commentText) {
