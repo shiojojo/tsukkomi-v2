@@ -40,10 +40,17 @@ export default function TopicsRoute() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     try {
-      containerRef.current?.scrollIntoView({
-        behavior: 'auto',
-        block: 'start',
-      });
+      // Ensure the scrollable content area starts at the top when paging.
+      // Directly set scrollTop on the inner container to avoid jumping the
+      // outer document. Use a typed local variable to satisfy TypeScript.
+      const el = containerRef.current as HTMLDivElement | null;
+      if (el) {
+        // set scrollTop and also try scrollTo (modern API)
+        el.scrollTop = 0;
+        try {
+          el.scrollTo?.({ top: 0, behavior: 'auto' } as any);
+        } catch {}
+      }
     } catch {}
   }, [currentPage]);
 
