@@ -395,7 +395,15 @@ export async function addComment(input: { answerId: string | number; text: strin
  */
 export async function getTopics(): Promise<Topic[]> {
   if (DEBUG_DB_TIMINGS) console.time('db:ensureConnection');
-  await ensureConnection();
+  try {
+    await ensureConnection();
+  } catch (e) {
+    // If connection probe fails, return a safe empty list so loaders can finish
+    // quickly and the UI can show a fallback state instead of hanging.
+    // eslint-disable-next-line no-console
+    console.error('getTopics: ensureConnection failed, returning empty list', e);
+    return [];
+  }
   if (DEBUG_DB_TIMINGS) console.timeEnd('db:ensureConnection');
 
   if (DEBUG_DB_TIMINGS) console.time('db:topicsQuery');
@@ -419,7 +427,14 @@ export async function getTopics(): Promise<Topic[]> {
  */
 export async function getLatestTopic(): Promise<Topic | null> {
   if (DEBUG_DB_TIMINGS) console.time('db:latestTopic:ensureConnection');
-  await ensureConnection();
+  try {
+    await ensureConnection();
+  } catch (e) {
+    // If probe fails, return null quickly so callers can render fallback UI.
+    // eslint-disable-next-line no-console
+    console.error('getLatestTopic: ensureConnection failed, returning null', e);
+    return null;
+  }
   if (DEBUG_DB_TIMINGS) console.timeEnd('db:latestTopic:ensureConnection');
 
   if (DEBUG_DB_TIMINGS) console.time('db:latestTopic:query');
@@ -547,7 +562,14 @@ export async function getTopic(id: string | number): Promise<Topic | undefined> 
  * Contract: topicId may be string or number. Comparison coerces both sides to string.
  */
 export async function getAnswersByTopic(topicId: string | number) {
-  await ensureConnection();
+  try {
+    await ensureConnection();
+  } catch (e) {
+    // If connection fails, return empty answers to avoid hanging loaders.
+    // eslint-disable-next-line no-console
+    console.error('getAnswersByTopic: ensureConnection failed, returning empty list', e);
+    return [];
+  }
   const numericTopic = Number(topicId);
   const { data: answerRows, error: answerErr } = await supabase
     .from('answers')
@@ -622,7 +644,14 @@ export async function getAnswersByTopic(topicId: string | number) {
 export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20 }: { topicId: string | number; cursor: string | null; pageSize?: number }): Promise<{ answers: Answer[]; nextCursor: string | null }> {
   if (pageSize <= 0) return { answers: [], nextCursor: null };
   
-  await ensureConnection();
+  try {
+    await ensureConnection();
+  } catch (e) {
+    // If connection cannot be established, return empty page quickly so UI can finish loading.
+    // eslint-disable-next-line no-console
+    console.error('getAnswersPageByTopic: ensureConnection failed, returning empty page', e);
+    return { answers: [], nextCursor: null };
+  }
   const numericTopic = Number(topicId);
   let query = supabase
     .from('answers')

@@ -49,7 +49,10 @@ export async function ensureConnection(): Promise<void> {
   const clientToProbe = supabaseAdmin ?? supabase;
   if (!clientToProbe) throw new Error('No Supabase client available (public or secret key missing)');
 
-  // Start a lightweight probe and cache the in-flight promise so concurrent callers share it.
+  // Start a lightweight probe and cache the raced promise so concurrent callers
+  // share the same timeout behavior. Caching the raw probe promise caused a
+  // situation where a hung probe would be returned to later callers and never
+  // time out for them; using the race ensures all callers observe the timeout.
   const probePromise = (async () => {
     try {
       // lightweight probe: attempt to select 1 row from profiles (smallest safe table)
@@ -61,15 +64,19 @@ export async function ensureConnection(): Promise<void> {
     }
   })();
 
-  _connectionCheck = probePromise;
+  const timed = Promise.race([
+    probePromise,
+    new Promise<void>((_, reject) =>
+      setTimeout(() => reject(new Error('Supabase connection probe timed out')), CONNECTION_PROBE_TIMEOUT_MS)
+    ),
+  ]);
+
+  // Cache the raced promise (not the raw probe) so concurrent callers don't
+  // get stuck on the underlying probe if it never resolves.
+  _connectionCheck = timed;
 
   try {
-    await Promise.race([
-      probePromise,
-      new Promise<void>((_, reject) =>
-        setTimeout(() => reject(new Error('Supabase connection probe timed out')), CONNECTION_PROBE_TIMEOUT_MS)
-      ),
-    ]);
+    await timed;
     // mark success so subsequent calls are fast
     _connectionCheck = true;
   } catch (err) {
