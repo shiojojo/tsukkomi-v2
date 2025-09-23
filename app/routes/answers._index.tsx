@@ -476,57 +476,60 @@ export default function AnswersRoute() {
             >
               {/* q (text search) moved to advanced filters */}
 
-              {/* Author selector */}
-              <div className="flex items-center gap-2">
-                <div>
-                  <label className="text-xs text-gray-500 dark:text-white mb-1 block">
-                    作者
-                  </label>
+              {/* Group: author, sortBy, advanced toggle — keep single-line on small screens */}
+              <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <div>
+                    <label className="text-xs text-gray-500 dark:text-white mb-1 block">
+                      作者
+                    </label>
+                    <select
+                      name="author"
+                      value={authorQuery}
+                      onChange={e => setAuthorQuery(e.target.value)}
+                      className="form-select w-28 md:w-44"
+                    >
+                      <option value="">全て</option>
+                      {users.map(u => (
+                        <option key={u.id} value={u.name}>
+                          {u.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {authorQuery && (
+                    <button
+                      type="button"
+                      className="text-sm text-red-500"
+                      onClick={() => setAuthorQuery('')}
+                    >
+                      クリア
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex-shrink-0">
                   <select
-                    name="author"
-                    value={authorQuery}
-                    onChange={e => setAuthorQuery(e.target.value)}
-                    className="form-select w-44"
+                    name="sortBy"
+                    value={sortBy}
+                    onChange={e => setSortBy(e.target.value as any)}
+                    className="form-select w-20 md:w-32"
                   >
-                    <option value="">全て</option>
-                    {users.map(u => (
-                      <option key={u.id} value={u.name}>
-                        {u.name}
-                      </option>
-                    ))}
+                    <option value="newest">新着</option>
+                    <option value="oldest">古い順</option>
+                    <option value="scoreDesc">スコア順</option>
                   </select>
                 </div>
-                {authorQuery && (
+
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     type="button"
-                    className="text-sm text-red-500"
-                    onClick={() => setAuthorQuery('')}
+                    className="text-sm px-2 py-1 border rounded-md"
+                    onClick={toggleAdvancedFilters}
                   >
-                    クリア
+                    {showAdvancedFilters ? '詳細を閉じる' : '詳細フィルタ'}
                   </button>
-                )}
-              </div>
-
-              <select
-                name="sortBy"
-                value={sortBy}
-                onChange={e => setSortBy(e.target.value as any)}
-                className="form-select w-32"
-              >
-                <option value="newest">新着</option>
-                <option value="oldest">古い順</option>
-                <option value="scoreDesc">スコア順</option>
-              </select>
-
-              {/* Advanced filters toggle */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="text-sm px-2 py-1 border rounded-md"
-                  onClick={toggleAdvancedFilters}
-                >
-                  {showAdvancedFilters ? '詳細を閉じる' : '詳細フィルタ'}
-                </button>
+                </div>
               </div>
 
               {showAdvancedFilters && (
