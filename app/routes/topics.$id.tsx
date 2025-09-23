@@ -14,8 +14,14 @@ const CONTROL_BTN_ACTIVE = 'bg-blue-600 text-white border-blue-600';
 const CONTROL_BTN_INACTIVE =
   'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100';
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
   const id = String(params.id || '');
+  const url = new URL(request.url);
+  const profileId = url.searchParams.get('profileId') ?? undefined;
+  // allow optional profileId in query to indicate which user's favorites to prefetch
+  // e.g. /topics/123?profileId=<uuid>
+  // (in normal use the client may not include this; it's used for server-driven initial state)
+  // params passed into loader are only from route params; we can use request to read query params above
   if (!id) {
     throw new Response('Invalid topic id', { status: 400 });
   }
@@ -44,6 +50,19 @@ export async function loader({ params }: LoaderFunctionArgs) {
         ...(a as any),
         displayName: names[String((a as any).profileId)],
       }));
+      // if caller provided a profileId, fetch that profile's favorites for these answers
+      if (profileId) {
+        try {
+          const { getFavoritesForProfile } = await import('~/lib/db');
+          const favs = await getFavoritesForProfile(
+            profileId,
+            enriched.map((a: any) => a.id)
+          );
+          const favSet = new Set((favs || []).map(v => Number(v)));
+          for (const e of enriched)
+            (e as any).favorited = favSet.has(Number(e.id));
+        } catch {}
+      }
       return { topic, answers: enriched } as const;
     }
   } catch {
@@ -53,11 +72,17 @@ export async function loader({ params }: LoaderFunctionArgs) {
   return { topic, answers };
 }
 
-function FavoriteButton({ answerId }: { answerId: number }) {
+function FavoriteButton({
+  answerId,
+  initialFavorited,
+}: {
+  answerId: number;
+  initialFavorited?: boolean;
+}) {
   // Server-backed favorite button: optimistic toggle, server is source-of-truth.
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const fetcher = useFetcher();
-  const [fav, setFav] = useState<boolean>(false);
+  const [fav, setFav] = useState<boolean>(initialFavorited ?? false);
 
   // Only read identity from localStorage so we can prompt login when necessary.
   useEffect(() => {
@@ -66,10 +91,23 @@ function FavoriteButton({ answerId }: { answerId: number }) {
         localStorage.getItem('currentSubUserId') ??
         localStorage.getItem('currentUserId');
       setCurrentUserId(uid);
+      if (uid) {
+        const fd = new FormData();
+        fd.set('op', 'status');
+        fd.set('answerId', String(answerId));
+        fd.set('profileId', String(uid));
+        void fetch(window.location.href, { method: 'POST', body: fd })
+          .then(r => r.json())
+          .then(d => {
+            if (d && typeof d.favorited === 'boolean')
+              setFav(Boolean(d.favorited));
+          })
+          .catch(() => {});
+      }
     } catch {
       setCurrentUserId(null);
     }
-  }, []);
+  }, [answerId]);
 
   // Reconcile server response when available (toggle returns { favorited: boolean }).
   useEffect(() => {
@@ -156,6 +194,29 @@ export async function action({ request, params }: ActionFunctionArgs) {
         profileId,
       });
       return new Response(JSON.stringify(res), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (e: any) {
+      return new Response(
+        JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+  // support favorite status query (non-mutating) for client to ask whether a profile favorited an answer
+  if (op === 'status') {
+    const answerId = form.get('answerId');
+    const profileId = form.get('profileId')
+      ? String(form.get('profileId'))
+      : undefined;
+    if (!answerId || !profileId)
+      return new Response('Invalid', { status: 400 });
+    const { getFavoritesForProfile } = await import('~/lib/db');
+    try {
+      const list = await getFavoritesForProfile(profileId, [Number(answerId)]);
+      const favorited = (list || []).map(Number).includes(Number(answerId));
+      return new Response(JSON.stringify({ favorited }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -693,7 +754,10 @@ function AnswerCard({
 
             <div className="flex-shrink-0">
               <div className="flex items-center gap-2">
-                <FavoriteButton answerId={a.id} />
+                <FavoriteButton
+                  answerId={a.id}
+                  initialFavorited={(a as any).favorited}
+                />
                 <NumericVoteButtons answerId={a.id} initialVotes={votes} />
               </div>
             </div>

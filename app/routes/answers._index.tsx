@@ -11,6 +11,7 @@ import type { User } from '~/lib/schemas/user';
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const params = url.searchParams;
+  const profileIdQuery = params.get('profileId') ?? undefined;
   const q = params.get('q') ?? undefined;
   const author = params.get('authorName') ?? undefined;
   const page = Number(params.get('page') ?? '1');
@@ -58,6 +59,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
       (a as any).favCount = favCounts[Number(a.id)] ?? 0;
     }
     // if request includes a profile id via query (not typical), attempt to fetch which are favorited
+    if (profileIdQuery) {
+      try {
+        const favs = await getFavoritesForProfile(profileIdQuery, answerIds);
+        const favSet = new Set((favs || []).map(v => Number(v)));
+        for (const a of answers) {
+          (a as any).favorited = favSet.has(Number(a.id));
+        }
+      } catch {}
+    }
   } catch (err) {}
 
   return {
@@ -105,6 +115,29 @@ export async function action({ request }: ActionFunctionArgs) {
         // eslint-disable-next-line no-console
         console.error('toggleFavorite failed', String(e?.message ?? e));
       } catch {}
+      return new Response(
+        JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+  // support favorite status query (non-mutating) for client to ask whether a profile favorited an answer
+  if (op === 'status') {
+    const answerId = form.get('answerId');
+    const profileId = form.get('profileId')
+      ? String(form.get('profileId'))
+      : undefined;
+    if (!answerId || !profileId)
+      return new Response('Invalid', { status: 400 });
+    const { getFavoritesForProfile } = await import('~/lib/db');
+    try {
+      const list = await getFavoritesForProfile(profileId, [Number(answerId)]);
+      const favorited = (list || []).map(Number).includes(Number(answerId));
+      return new Response(JSON.stringify({ favorited }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    } catch (e: any) {
       return new Response(
         JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
@@ -196,13 +229,21 @@ export default function AnswersRoute() {
   }, []);
 
   // Local FavoriteButton (user-scoped) — mirrors behavior used elsewhere
-  function FavoriteButton({ answerId }: { answerId: number }) {
+  function FavoriteButton({
+    answerId,
+    initialFavorited,
+  }: {
+    answerId: number;
+    initialFavorited?: boolean;
+  }) {
     const [currentUserIdLocal, setCurrentUserIdLocal] = useState<string | null>(
       null
     );
     const fetcher = useFetcher();
     // initial favorited state derived from loader data when present
-    const [fav, setFav] = useState<boolean>(false);
+    const [fav, setFav] = useState<boolean>(() =>
+      Boolean(initialFavorited ?? false)
+    );
     useEffect(() => {
       try {
         const uid =
@@ -211,6 +252,20 @@ export default function AnswersRoute() {
         setCurrentUserIdLocal(uid);
         // initial state: server provided favCount doesn't mean this user favorited it
         // we conservatively default to false and rely on fetcher response when toggled
+        if (uid) {
+          // request server for current favorited status to show cross-device state
+          const fd = new FormData();
+          fd.set('op', 'status');
+          fd.set('answerId', String(answerId));
+          fd.set('profileId', String(uid));
+          void fetch(window.location.href, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(d => {
+              if (d && typeof d.favorited === 'boolean')
+                setFav(Boolean(d.favorited));
+            })
+            .catch(() => {});
+        }
       } catch {
         setCurrentUserIdLocal(null);
       }
@@ -365,7 +420,10 @@ export default function AnswersRoute() {
               >
                 {open ? '閉じる' : '詳細'}
               </button>
-              <FavoriteButton answerId={a.id} />
+              <FavoriteButton
+                answerId={a.id}
+                initialFavorited={(a as any).favorited}
+              />
             </div>
           </div>
 
