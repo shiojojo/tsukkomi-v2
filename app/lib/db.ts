@@ -186,11 +186,83 @@ export async function searchAnswers(opts: {
   let rows: any[] | null = null;
   let count: number | null = null;
   if (derivedFiltering) {
-    // fetch up to HARD_CAP rows (no manual pagination yet)
-    const { data, error, count: c } = await baseQuery.range(0, HARD_CAP - 1);
-    if (error) throw error;
-    rows = data ?? [];
-    count = c ?? rows.length; // base count before derived filter
+    // Incremental, batched scan to avoid loading a very large set at once.
+    // Strategy: fetch small batches (batchSize configurable), evaluate derived
+    // filters for those ids (vote counts / comment presence), accumulate matches
+    // until we have enough rows to serve the requested page or we hit maxScan.
+    const batchSize = Math.min(Math.max(pageSize * 5, 50), 500); // 5x pageSize, clamped
+    const maxScan = Math.min(HARD_CAP, 2000); // cap scanned rows (lower than HARD_CAP)
+    let offset = 0;
+    let scanned = 0;
+    const matched: any[] = [];
+
+    while (matched.length < pageSize * page && scanned < maxScan) {
+      const end = offset + batchSize - 1;
+      const { data: batchData, error: batchErr } = await baseQuery.range(offset, end);
+      if (batchErr) throw batchErr;
+      const batchRows = batchData ?? [];
+      if (!batchRows.length) break; // no more rows available
+
+      const ids = batchRows.map((r: any) => Number(r.id)).filter(Boolean);
+      // fetch counts for this batch
+      const countsMapBatch: Record<number, { level1: number; level2: number; level3: number }> = {};
+      if (ids.length) {
+        const { data: countsData, error: countsErr } = await supabase
+          .from('answer_vote_counts')
+          .select('answer_id, level1, level2, level3')
+          .in('answer_id', ids);
+        if (countsErr) throw countsErr;
+        for (const c of countsData ?? []) {
+          countsMapBatch[Number(c.answer_id)] = {
+            level1: Number(c.level1 ?? 0),
+            level2: Number(c.level2 ?? 0),
+            level3: Number(c.level3 ?? 0),
+          };
+        }
+      }
+
+      // optional: fetch comment presence for this batch if needed
+      let commentSetBatch: Set<number> | null = null;
+      if (hasComments && ids.length) {
+        const { data: commentIds, error: commentsErr } = await supabase
+          .from('comments')
+          .select('answer_id')
+          .in('answer_id', ids);
+        if (commentsErr) throw commentsErr;
+        commentSetBatch = new Set((commentIds ?? []).map((r: any) => Number(r.answer_id)));
+      }
+
+      // evaluate batchRows against derived filters and push matching normalized rows
+      for (const a of batchRows) {
+        const id = typeof a.id === 'string' ? Number(a.id) : a.id;
+        const counts = countsMapBatch[id] ?? { level1: 0, level2: 0, level3: 0 };
+        const score = (counts.level1 || 0) * 1 + (counts.level2 || 0) * 2 + (counts.level3 || 0) * 3;
+        if (typeof minScore === 'number' && !Number.isNaN(minScore) && score < (minScore as number)) continue;
+        if (hasComments && commentSetBatch && !commentSetBatch.has(id)) continue;
+        matched.push({
+          id,
+          text: a.text,
+          author: undefined,
+          authorId: a.profile_id ?? undefined,
+          topicId: a.topic_id ?? undefined,
+          created_at: (a as any).created_at ?? (a as any).createdAt,
+          votes: countsMapBatch[id] ?? { level1: 0, level2: 0, level3: 0 },
+          votesBy: {},
+        });
+      }
+
+      scanned += batchRows.length;
+      offset += batchRows.length;
+      // if batch was smaller than requested batchSize, no more data left
+      if (batchRows.length < batchSize) break;
+    }
+
+    // matched now contains the rows that satisfied derived filters in scanned window
+    const totalFiltered = matched.length;
+    const start = (page - 1) * pageSize;
+    const slice = matched.slice(start, start + pageSize);
+    rows = slice;
+    count = totalFiltered;
   } else {
     // normal fast path with DB pagination
     const offset = (page - 1) * pageSize;
@@ -509,13 +581,55 @@ export async function getLatestTopic(): Promise<Topic | null> {
  * getUsers
  * Intent: return available users in dev (mock). prod: not implemented
  */
-export async function getUsers(): Promise<User[]> {
+export async function getUsers(opts?: { limit?: number; onlyMain?: boolean }): Promise<User[]> {
   // fetch profiles and attach sub_users
-  const { data, error } = await supabase.from('profiles').select('id, parent_id, name, line_id, created_at');
-  if (error) throw error;
-  const identitiesTmp = (data ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
-  const mains = identitiesTmp.filter(i => i.parentId == null);
-  const rows = mains.map(m => ({ id: m.id, name: m.name, line_id: m.line_id, subUsers: identitiesTmp.filter(c => c.parentId === m.id).map(c => ({ id: c.id, name: c.name, line_id: c.line_id })) }));
+  // If opts.limit is provided, only fetch up to that many profiles and then fetch
+  // sub-users for the returned main users. This avoids scanning the full profiles
+  // table on pages that don't need the entire list (e.g. /answers loader).
+  const limit = opts?.limit;
+  if (limit && limit <= 0) return [];
+
+  if (!limit) {
+    // original full-fetch behavior
+    const { data, error } = await supabase.from('profiles').select('id, parent_id, name, line_id, created_at');
+    if (error) throw error;
+    const identitiesTmp = (data ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+    const mains = identitiesTmp.filter(i => i.parentId == null);
+    const rows = mains.map(m => ({ id: m.id, name: m.name, line_id: m.line_id, subUsers: identitiesTmp.filter(c => c.parentId === m.id).map(c => ({ id: c.id, name: c.name, line_id: c.line_id })) }));
+    return UserSchema.array().parse(rows as any);
+  }
+
+  // limited fetch: get first `limit` profiles (may include mains and subs), then
+  // determine mains and fetch their sub-users explicitly.
+  const { data: dataLimited, error: errLimited } = await supabase
+    .from('profiles')
+    .select('id, parent_id, name, line_id, created_at')
+    .order('created_at', { ascending: false })
+    .range(0, limit - 1);
+  if (errLimited) throw errLimited;
+  const fetched = (dataLimited ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+
+  const mains = fetched.filter(i => i.parentId == null);
+  const mainIds = mains.map(m => m.id).filter(Boolean);
+
+  // fetch sub-users belonging to these mains (if any)
+  let subs: any[] = [];
+  if (mainIds.length) {
+    const { data: subData, error: subErr } = await supabase
+      .from('profiles')
+      .select('id, parent_id, name, line_id')
+      .in('parent_id', mainIds);
+    if (subErr) throw subErr;
+    subs = (subData ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+  }
+
+  const rows = mains.map(m => ({
+    id: m.id,
+    name: m.name,
+    line_id: m.line_id,
+    subUsers: subs.filter((c: any) => c.parentId === m.id).map((c: any) => ({ id: c.id, name: c.name, line_id: c.line_id })),
+  }));
+
   return UserSchema.array().parse(rows as any);
 }
 

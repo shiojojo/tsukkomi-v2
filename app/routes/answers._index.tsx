@@ -25,13 +25,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const fromDate = params.get('fromDate') || undefined;
   const toDate = params.get('toDate') || undefined;
 
-  const { getTopics, searchAnswers, getCommentsForAnswers } = await import(
-    '~/lib/db'
-  );
-  const { getUsers } = await import('~/lib/db');
+  const { getTopics, searchAnswers, getCommentsForAnswers, getUsers } =
+    await import('~/lib/db');
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
-  const users = await getUsers();
+  // Limit users fetched for the answers listing to avoid scanning the entire profiles table
+  const users = await getUsers({ limit: 200 });
 
   const { answers, total } = await searchAnswers({
     q,
