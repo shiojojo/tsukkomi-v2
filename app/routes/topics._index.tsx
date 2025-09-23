@@ -64,12 +64,12 @@ export default function TopicsRoute() {
                   aria-label="お題を検索"
                 />
 
-                <div className="mt-2 flex gap-2 items-center">
+                <div className="mt-2 flex flex-wrap gap-2 items-center">
                   <input
                     name="fromDate"
                     defaultValue={fromDateParam}
                     type="date"
-                    className="form-input w-36"
+                    className="form-input w-28 sm:w-36 min-w-0"
                     aria-label="開始日"
                     placeholder="開始日"
                   />
@@ -77,7 +77,7 @@ export default function TopicsRoute() {
                     name="toDate"
                     defaultValue={toDateParam}
                     type="date"
-                    className="form-input w-36"
+                    className="form-input w-28 sm:w-36 min-w-0"
                     aria-label="終了日"
                     placeholder="終了日"
                   />
@@ -107,20 +107,23 @@ export default function TopicsRoute() {
             <li key={t.id}>
               <Link
                 to={`/topics/${t.id}`}
-                className="block p-0 border rounded-md overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="block p-0 border rounded-md overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-w-0"
                 aria-label={`お題 ${t.title} の回答を見る`}
               >
                 {t.image ? (
-                  <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                  <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
                     <img
                       src={t.image}
                       alt={t.title}
-                      className="w-full h-auto max-h-60 object-contain"
+                      className="w-full max-w-full h-auto max-h-60 object-contain"
+                      style={{ display: 'block' }}
                     />
                   </div>
                 ) : (
-                  <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <h2 className="text-lg font-medium">{t.title}</h2>
+                  <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 min-w-0">
+                    <h2 className="text-lg font-medium break-words">
+                      {t.title}
+                    </h2>
                   </div>
                 )}
               </Link>

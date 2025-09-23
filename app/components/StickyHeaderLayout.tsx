@@ -35,7 +35,7 @@ export default function StickyHeaderLayout({
         display: 'grid',
         gridTemplateRows: 'auto 1fr',
       }}
-      className={`p-4 max-w-3xl mx-auto overflow-hidden grid ${className}`}
+      className={`p-4 max-w-3xl mx-auto overflow-hidden overflow-x-hidden grid min-w-0 ${className}`}
     >
       {/* Header row (in normal flow) */}
       <div style={{ paddingTop: 'var(--app-header-height, 0px)', zIndex: 30 }}>
@@ -46,7 +46,7 @@ export default function StickyHeaderLayout({
           the child to shrink correctly in grid/flex layouts. */}
       <div
         ref={contentRef}
-        className="mt-2 overflow-auto pb-20 sm:pb-28"
+        className="mt-2 overflow-auto pb-20 sm:pb-28 min-w-0"
         style={{
           minHeight: 0,
           paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)',
