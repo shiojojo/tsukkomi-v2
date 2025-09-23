@@ -8,6 +8,13 @@ import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
 
+// Simple in-memory guard to suppress very short-window duplicate POSTs.
+// Keyed by `${op}:${profileId}:${answerId}` and stores last timestamp (ms).
+// This is intentionally simple (in-memory) and exists to mitigate accidental
+// client-side storms while a proper fix (client batching / server rate-limit)
+// is implemented. It may be reset on server restart.
+const _recentPostGuard = new Map<string, number>();
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const params = url.searchParams;
@@ -90,6 +97,20 @@ export async function action({ request }: ActionFunctionArgs) {
     const profileId = form.get('profileId')
       ? String(form.get('profileId'))
       : undefined;
+    // duplicate suppression: ignore identical requests within short window
+    try {
+      const key = `toggle:${String(profileId)}:${String(answerId)}`;
+      const now = Date.now();
+      const prev = _recentPostGuard.get(key) ?? 0;
+      if (now - prev < 800) {
+        // treat as no-op success to avoid client confusion
+        return new Response(JSON.stringify({ ok: true, deduped: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      _recentPostGuard.set(key, now);
+    } catch {}
     // debug: log incoming toggle request
     try {
       const entries: Record<string, any> = {};
@@ -127,6 +148,22 @@ export async function action({ request }: ActionFunctionArgs) {
     const profileId = form.get('profileId')
       ? String(form.get('profileId'))
       : undefined;
+    // duplicate suppression for status checks as well
+    try {
+      const key = `status:${String(profileId)}:${String(answerId)}`;
+      const now = Date.now();
+      const prev = _recentPostGuard.get(key) ?? 0;
+      if (now - prev < 800) {
+        return new Response(
+          JSON.stringify({ favorited: false, deduped: true }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }
+        );
+      }
+      _recentPostGuard.set(key, now);
+    } catch {}
     if (!answerId || !profileId)
       return new Response('Invalid', { status: 400 });
     const { getFavoritesForProfile } = await import('~/lib/db');
