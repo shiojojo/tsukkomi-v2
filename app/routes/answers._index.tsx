@@ -474,15 +474,7 @@ export default function AnswersRoute() {
               method="get"
               className="flex flex-wrap gap-2 items-start md:items-center"
             >
-              <input
-                name="q"
-                type="search"
-                placeholder="検索: テキスト or 作者"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                className="form-input flex-1 min-w-[180px]"
-                aria-label="回答検索"
-              />
+              {/* q (text search) moved to advanced filters */}
 
               {/* Author selector */}
               <div className="flex items-center gap-2">
@@ -539,6 +531,20 @@ export default function AnswersRoute() {
 
               {showAdvancedFilters && (
                 <div className="flex flex-col gap-3 w-full mt-2">
+                  <div className="w-full">
+                    <label className="text-xs text-gray-500 dark:text-white mb-1 block">
+                      お題タイトル
+                    </label>
+                    <input
+                      name="q"
+                      type="search"
+                      placeholder="飲み"
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                      className="form-input w-full"
+                      aria-label="お題タイトル検索"
+                    />
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center gap-1">
                       <button

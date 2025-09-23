@@ -149,8 +149,22 @@ export async function searchAnswers(opts: {
     }
     baseQuery = baseQuery.in('profile_id', profileIds);
   }
-  // allow explicit author-only search via `author` param; fallback to `q` which searches text OR author
-  if (q) baseQuery = baseQuery.ilike('text', `%${q}%`);
+  // allow explicit author-only search via `author` param; for `q` we interpret it as
+  // お題タイトル (topic title) search per UI label: resolve matching topics and
+  // filter answers by topic_id. If no matching topic exists return empty result.
+  if (q) {
+    const nameToMatch = String(q).trim();
+    const { data: matchingTopics, error: topicErr } = await supabase
+      .from('topics')
+      .select('id')
+      .ilike('title', `%${nameToMatch}%`);
+    if (topicErr) throw topicErr;
+    const topicIds = (matchingTopics ?? []).map((t: any) => t.id).filter(Boolean);
+    if (topicIds.length === 0) {
+      return { answers: [], total: 0 };
+    }
+    baseQuery = baseQuery.in('topic_id', topicIds);
+  }
   if (fromDate) {
     // direct gte for fromDate
     baseQuery = baseQuery.gte('created_at', fromDate.includes('T') ? fromDate : `${fromDate}T00:00:00.000Z`);
