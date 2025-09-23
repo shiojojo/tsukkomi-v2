@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 
@@ -50,6 +50,19 @@ export default function TopicsRoute() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20; // reasonable mobile page size for large lists
 
+  // scroll to top of topics list when page changes
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    try {
+      // scroll the container into view so new page starts from top
+      // instant jump instead of a smooth animation
+      containerRef.current?.scrollIntoView({
+        behavior: 'auto',
+        block: 'start',
+      });
+    } catch {}
+  }, [page]);
+
   // reset page when query changes to keep user on first page of results
   useEffect(() => {
     setPage(1);
@@ -64,7 +77,7 @@ export default function TopicsRoute() {
   );
 
   return (
-    <div className="p-4 pb-24 md:pb-4 max-w-3xl mx-auto">
+    <div ref={containerRef} className="p-4 pb-24 md:pb-4 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold mb-4">お題一覧</h1>
       <div className="mb-4">
         <input
