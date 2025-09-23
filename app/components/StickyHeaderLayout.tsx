@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 
 /**
  * StickyHeaderLayout
@@ -16,10 +16,12 @@ export default function StickyHeaderLayout({
   header,
   children,
   className = '',
+  contentRef,
 }: {
   header: ReactNode;
   children: ReactNode;
   className?: string;
+  contentRef?: RefObject<HTMLDivElement | null>;
 }) {
   return (
     // Grid layout: header gets its intrinsic height (auto) and the second
@@ -43,6 +45,7 @@ export default function StickyHeaderLayout({
       {/* Content row: this is the scroll container. Use min-h-0 to allow
           the child to shrink correctly in grid/flex layouts. */}
       <div
+        ref={contentRef}
         className="mt-2 overflow-auto pb-20 sm:pb-28"
         style={{
           minHeight: 0,

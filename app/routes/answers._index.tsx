@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
 import { useEffect, useState, useRef } from 'react';
+import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
@@ -481,201 +482,195 @@ export default function AnswersRoute() {
   };
 
   return (
-    <div
-      style={{ paddingTop: 'var(--app-header-height, 0px)' }}
-      className="p-4 pb-24 md:pb-4 max-w-3xl mx-auto flex flex-col"
-    >
-      <div className="sticky top-0 md:top-16 z-20 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-        <div className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-semibold">大喜利 - 回答一覧</h1>
+    <StickyHeaderLayout
+      header={
+        <div className="z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
+          <div className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-semibold">大喜利 - 回答一覧</h1>
+              </div>
+              {/* removed link to /topics per UX: not needed on search screen */}
             </div>
-            {/* removed link to /topics per UX: not needed on search screen */}
-          </div>
 
-          {/* Filters: search and sort (server-driven via GET) */}
-          <div className="mt-3">
-            <Form
-              method="get"
-              className="flex flex-wrap gap-2 items-start md:items-center"
-            >
-              {/* q (text search) moved to advanced filters */}
+            {/* Filters: search and sort (server-driven via GET) */}
+            <div className="mt-3">
+              <Form
+                method="get"
+                className="flex flex-wrap gap-2 items-start md:items-center"
+              >
+                {/* q (text search) moved to advanced filters */}
 
-              {/* Group: author, sortBy, advanced toggle — keep single-line on small screens */}
-              <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div>
-                    <label className="text-xs text-gray-500 dark:text-white mb-1 block">
-                      作者
-                    </label>
+                {/* Group: author, sortBy, advanced toggle — keep single-line on small screens */}
+                <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <div>
+                      <label className="text-xs text-gray-500 dark:text-white mb-1 block">
+                        作者
+                      </label>
+                      <select
+                        name="author"
+                        value={authorQuery}
+                        onChange={e => setAuthorQuery(e.target.value)}
+                        className="form-select w-28 md:w-44"
+                      >
+                        <option value="">全て</option>
+                        {users.map(u => (
+                          <option key={u.id} value={u.name}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {authorQuery && (
+                      <button
+                        type="button"
+                        className="text-sm text-red-500"
+                        onClick={() => setAuthorQuery('')}
+                      >
+                        クリア
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex-shrink-0">
                     <select
-                      name="author"
-                      value={authorQuery}
-                      onChange={e => setAuthorQuery(e.target.value)}
-                      className="form-select w-28 md:w-44"
+                      name="sortBy"
+                      value={sortBy}
+                      onChange={e => setSortBy(e.target.value as any)}
+                      className="form-select w-20 md:w-32"
                     >
-                      <option value="">全て</option>
-                      {users.map(u => (
-                        <option key={u.id} value={u.name}>
-                          {u.name}
-                        </option>
-                      ))}
+                      <option value="newest">新着</option>
+                      <option value="oldest">古い順</option>
+                      <option value="scoreDesc">スコア順</option>
                     </select>
                   </div>
-                  {authorQuery && (
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <button
                       type="button"
-                      className="text-sm text-red-500"
-                      onClick={() => setAuthorQuery('')}
+                      className="text-sm px-2 py-1 border rounded-md"
+                      onClick={toggleAdvancedFilters}
                     >
-                      クリア
+                      {showAdvancedFilters ? '詳細を閉じる' : '詳細フィルタ'}
                     </button>
-                  )}
+                  </div>
                 </div>
 
-                <div className="flex-shrink-0">
-                  <select
-                    name="sortBy"
-                    value={sortBy}
-                    onChange={e => setSortBy(e.target.value as any)}
-                    className="form-select w-20 md:w-32"
-                  >
-                    <option value="newest">新着</option>
-                    <option value="oldest">古い順</option>
-                    <option value="scoreDesc">スコア順</option>
-                  </select>
-                </div>
+                {showAdvancedFilters && (
+                  <div className="flex flex-col gap-3 w-full mt-2">
+                    <div className="w-full">
+                      <label className="text-xs text-gray-500 dark:text-white mb-1 block">
+                        お題タイトル
+                      </label>
+                      <input
+                        name="q"
+                        type="search"
+                        placeholder="飲み"
+                        value={query}
+                        onChange={e => setQuery(e.target.value)}
+                        className="form-input w-full"
+                        aria-label="お題タイトル検索"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={decrementMinScore}
+                          className="px-2 py-1 border rounded"
+                        >
+                          -
+                        </button>
+                        <input
+                          name="minScore"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          min={0}
+                          placeholder="min score"
+                          value={minScore}
+                          onChange={e =>
+                            setMinScore(e.target.value.replace(/[^0-9]/g, ''))
+                          }
+                          className="form-input w-20 text-center"
+                        />
+                        <button
+                          type="button"
+                          onClick={incrementMinScore}
+                          className="px-2 py-1 border rounded"
+                        >
+                          +
+                        </button>
+                      </div>
 
-                <div className="flex items-center gap-2 flex-shrink-0">
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          name="hasComments"
+                          type="checkbox"
+                          checked={hasComments}
+                          onChange={e => setHasComments(e.target.checked)}
+                          value="1"
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm">has comments</span>
+                      </label>
+                    </div>
+
+                    <div className="w-full flex items-center gap-4">
+                      <div className="flex-1 flex flex-col">
+                        <label className="text-xs text-gray-500 dark:text-white mb-1">
+                          開始日
+                        </label>
+                        <input
+                          name="fromDate"
+                          type="date"
+                          value={fromDate}
+                          onChange={e => setFromDate(e.target.value)}
+                          className="form-input w-full"
+                          aria-label="開始日"
+                        />
+                      </div>
+
+                      <div className="flex-1 flex flex-col">
+                        <label className="text-xs text-gray-500 dark:text-white mb-1">
+                          終了日
+                        </label>
+                        <input
+                          name="toDate"
+                          type="date"
+                          value={toDate}
+                          onChange={e => setToDate(e.target.value)}
+                          className="form-input w-full"
+                          aria-label="終了日"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button type="submit" className="btn-inline">
+                    検索
+                  </button>
                   <button
                     type="button"
-                    className="text-sm px-2 py-1 border rounded-md"
-                    onClick={toggleAdvancedFilters}
+                    onClick={resetFilters}
+                    className="text-sm px-2 py-1 border rounded-md text-gray-600 dark:text-white"
                   >
-                    {showAdvancedFilters ? '詳細を閉じる' : '詳細フィルタ'}
+                    リセット
                   </button>
                 </div>
-              </div>
-
-              {showAdvancedFilters && (
-                <div className="flex flex-col gap-3 w-full mt-2">
-                  <div className="w-full">
-                    <label className="text-xs text-gray-500 dark:text-white mb-1 block">
-                      お題タイトル
-                    </label>
-                    <input
-                      name="q"
-                      type="search"
-                      placeholder="飲み"
-                      value={query}
-                      onChange={e => setQuery(e.target.value)}
-                      className="form-input w-full"
-                      aria-label="お題タイトル検索"
-                    />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={decrementMinScore}
-                        className="px-2 py-1 border rounded"
-                      >
-                        -
-                      </button>
-                      <input
-                        name="minScore"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        min={0}
-                        placeholder="min score"
-                        value={minScore}
-                        onChange={e =>
-                          setMinScore(e.target.value.replace(/[^0-9]/g, ''))
-                        }
-                        className="form-input w-20 text-center"
-                      />
-                      <button
-                        type="button"
-                        onClick={incrementMinScore}
-                        className="px-2 py-1 border rounded"
-                      >
-                        +
-                      </button>
-                    </div>
-
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        name="hasComments"
-                        type="checkbox"
-                        checked={hasComments}
-                        onChange={e => setHasComments(e.target.checked)}
-                        value="1"
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">has comments</span>
-                    </label>
-                  </div>
-
-                  <div className="w-full flex items-center gap-4">
-                    <div className="flex-1 flex flex-col">
-                      <label className="text-xs text-gray-500 dark:text-white mb-1">
-                        開始日
-                      </label>
-                      <input
-                        name="fromDate"
-                        type="date"
-                        value={fromDate}
-                        onChange={e => setFromDate(e.target.value)}
-                        className="form-input w-full"
-                        aria-label="開始日"
-                      />
-                    </div>
-
-                    <div className="flex-1 flex flex-col">
-                      <label className="text-xs text-gray-500 dark:text-white mb-1">
-                        終了日
-                      </label>
-                      <input
-                        name="toDate"
-                        type="date"
-                        value={toDate}
-                        onChange={e => setToDate(e.target.value)}
-                        className="form-input w-full"
-                        aria-label="終了日"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2">
-                <button type="submit" className="btn-inline">
-                  検索
-                </button>
-                <button
-                  type="button"
-                  onClick={resetFilters}
-                  className="text-sm px-2 py-1 border rounded-md text-gray-600 dark:text-white"
-                >
-                  リセット
-                </button>
-              </div>
-            </Form>
-            {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
+              </Form>
+              {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Scrollable answers container.
-          - On small screens we subtract space for the header + bottom nav (~56px each => 112px).
-          - On md+ we subtract the top nav (approx 64px). These are reasonable assumptions based on the app's nav sizes.
-        */}
-      <div
-        ref={answersContainerRef}
-        className="overflow-auto px-0 py-4 space-y-4 w-full max-h-[calc(100vh-112px)] md:max-h-[calc(100vh-64px)]"
-      >
+      }
+      contentRef={answersContainerRef}
+    >
+      {/* Scrollable answers container. The scroll container is provided by StickyHeaderLayout */}
+      <div className="px-0 py-4 space-y-4 w-full">
         {paged.length === 0 ? (
           <p className="text-gray-600 dark:text-white px-4">
             表示される回答がありません。
@@ -800,6 +795,6 @@ export default function AnswersRoute() {
           );
         })()}
       </div>
-    </div>
+    </StickyHeaderLayout>
   );
 }
