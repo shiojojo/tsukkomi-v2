@@ -15,7 +15,7 @@ import { supabase, supabaseAdmin, ensureConnection } from './supabase';
 // Opt-in debug timings. Set DEBUG_DB_TIMINGS=1 in the environment to enable lightweight console timings
 const DEBUG_DB_TIMINGS = Boolean(process.env.DEBUG_DB_TIMINGS ?? (import.meta.env.DEBUG_DB_TIMINGS as any) ?? false);
 // Enable deprecation logging for migration debugging: set DEBUG_DB_DEPRECATION=1
-const DEBUG_DB_DEPRECATION = Boolean(process.env.DEBUG_DB_DEPRECATION ?? (import.meta.env.DEBUG_DB_DEPRECATION as any) ?? false);
+// Legacy author deprecation removed: profileId is now authoritative.
 
 // Note: in-memory caching and edge-config have been removed to always query
 // the database directly for freshest results and to avoid cache wait delays.
@@ -97,14 +97,7 @@ export async function getAnswers(): Promise<Answer[]> {
 }
 
 // Helper to record deprecation usage during tests or debug runs
-export function warnIfLegacyAuthorUsed(obj: any, context = 'db') {
-  if (!DEBUG_DB_DEPRECATION) return;
-  if (!obj) return;
-  if (obj.author || obj.authorId) {
-    // eslint-disable-next-line no-console
-    console.warn(`[deprecation] legacy author/authorId used in ${context}`, { author: obj.author, authorId: obj.authorId });
-  }
-}
+// warnIfLegacyAuthorUsed removed as legacy fields are deleted
 
 /**
  * searchAnswers
@@ -407,7 +400,7 @@ export async function getCommentsForAnswers(
     id: typeof c.id === 'string' ? Number(c.id) : c.id,
     answerId: c.answer_id ?? c.answerId,
     text: c.text,
-  profileId: c.profile_id ?? c.profileId ?? c.authorId,
+  profileId: c.profile_id ?? c.profileId,
     created_at: c.created_at ?? c.createdAt,
   });
 
@@ -479,7 +472,7 @@ export async function addComment(input: { answerId: string | number; text: strin
     id: typeof d.id === 'string' ? Number(d.id) : d.id,
     answerId: d.answer_id ?? d.answerId,
     text: d.text,
-  profileId: d.profile_id ?? d.profileId ?? d.authorId,
+  profileId: d.profile_id ?? d.profileId,
     created_at: d.created_at ?? d.createdAt,
   };
 

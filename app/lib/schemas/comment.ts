@@ -12,14 +12,9 @@ export const CommentSchema = z
     id: z.number(),
     answerId: z.union([z.number(), z.string()]),
     text: z.string().min(1).max(500),
-    author: z.string().optional(),
-    profileId: z.string().optional(),
-    authorId: z.string().optional(),
+  profileId: z.string().optional(),
     created_at: z.string(),
   })
-  .transform(c => {
-    // keep legacy authorId mapping for transition tests
-    return { ...c, profileId: c.profileId ?? c.authorId };
-  });
+  .transform(c => ({ ...c }));
 
 export type Comment = z.infer<typeof CommentSchema>;

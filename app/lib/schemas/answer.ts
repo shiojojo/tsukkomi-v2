@@ -13,10 +13,8 @@ export const AnswerSchema = z
   .object({
     id: z.number(),
     text: z.string().min(1).max(1000),
-    author: z.string().optional(),
-    // profileId replaces authorId (deprecated). Keep both for transition.
-    profileId: z.string().optional(),
-  authorId: z.string().optional(),
+  // profileId is now the canonical identity for answers
+  profileId: z.string().optional(),
     topicId: z.union([z.string(), z.number()]).optional(),
     created_at: z.string(),
     votes: z
@@ -29,10 +27,6 @@ export const AnswerSchema = z
       .default({ level1: 0, level2: 0, level3: 0 }),
     votesBy: z.record(z.number().int()).optional().default({}),
   })
-  .transform(a => {
-    // normalize legacy authorId -> profileId for transition
-    const normalized = { ...a, profileId: a.profileId ?? a.authorId };
-    return normalized;
-  });
+  .transform(a => ({ ...a }));
 
 export type Answer = z.infer<typeof AnswerSchema>;
