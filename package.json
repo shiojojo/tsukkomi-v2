@@ -6,6 +6,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "node ./scripts/start-server.mjs",
+    "test": "node ./scripts/test-schemas.cjs",
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {

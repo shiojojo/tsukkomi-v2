@@ -14,6 +14,8 @@ import { supabase, supabaseAdmin, ensureConnection } from './supabase';
 // set VITE_SUPABASE_KEY / SUPABASE_KEY accordingly.
 // Opt-in debug timings. Set DEBUG_DB_TIMINGS=1 in the environment to enable lightweight console timings
 const DEBUG_DB_TIMINGS = Boolean(process.env.DEBUG_DB_TIMINGS ?? (import.meta.env.DEBUG_DB_TIMINGS as any) ?? false);
+// Enable deprecation logging for migration debugging: set DEBUG_DB_DEPRECATION=1
+const DEBUG_DB_DEPRECATION = Boolean(process.env.DEBUG_DB_DEPRECATION ?? (import.meta.env.DEBUG_DB_DEPRECATION as any) ?? false);
 
 // Note: in-memory caching and edge-config have been removed to always query
 // the database directly for freshest results and to avoid cache wait delays.
@@ -92,6 +94,16 @@ export async function getAnswers(): Promise<Answer[]> {
   }));
 
   return AnswerSchema.array().parse(normalized as any);
+}
+
+// Helper to record deprecation usage during tests or debug runs
+export function warnIfLegacyAuthorUsed(obj: any, context = 'db') {
+  if (!DEBUG_DB_DEPRECATION) return;
+  if (!obj) return;
+  if (obj.author || obj.authorId) {
+    // eslint-disable-next-line no-console
+    console.warn(`[deprecation] legacy author/authorId used in ${context}`, { author: obj.author, authorId: obj.authorId });
+  }
 }
 
 /**

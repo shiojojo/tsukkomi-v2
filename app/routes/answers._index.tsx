@@ -12,7 +12,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const params = url.searchParams;
   const q = params.get('q') ?? undefined;
-  const author = params.get('author') ?? undefined;
+  const author = params.get('authorName') ?? undefined;
   const page = Number(params.get('page') ?? '1');
   const pageSize = Number(params.get('pageSize') ?? '20');
   const sortBy = (params.get('sortBy') as any) ?? 'newest';
@@ -43,7 +43,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     hasComments: hasComments ?? false,
     fromDate,
     toDate,
-    author,
+  author,
   });
   const answerIds = answers.map(a => a.id);
   const commentsByAnswer = await getCommentsForAnswers(answerIds);
@@ -367,7 +367,7 @@ export default function AnswersRoute() {
     try {
       const params = new URLSearchParams(window.location.search);
       setQuery(params.get('q') ?? '');
-      setAuthorQuery(params.get('author') ?? '');
+  setAuthorQuery(params.get('authorName') ?? '');
       setSortBy((params.get('sortBy') as any) ?? 'newest');
       setMinScore(params.get('minScore') ?? '');
       setHasComments(
@@ -477,7 +477,7 @@ export default function AnswersRoute() {
   const buildHref = (p: number) => {
     const parts: string[] = [];
     if (query) parts.push(`q=${encodeURIComponent(query)}`);
-    if (authorQuery) parts.push(`author=${encodeURIComponent(authorQuery)}`);
+  if (authorQuery) parts.push(`authorName=${encodeURIComponent(authorQuery)}`);
     parts.push(`sortBy=${encodeURIComponent(String(sortBy))}`);
     parts.push(`page=${p}`);
     if (minScore)
@@ -516,7 +516,7 @@ export default function AnswersRoute() {
                         作者
                       </label>
                       <select
-                        name="author"
+                        name="authorName"
                         value={authorQuery}
                         onChange={e => setAuthorQuery(e.target.value)}
                         className="form-select w-28 md:w-44"
@@ -722,7 +722,7 @@ export default function AnswersRoute() {
             const parts: string[] = [];
             if (query) parts.push(`q=${encodeURIComponent(query)}`);
             if (authorQuery)
-              parts.push(`author=${encodeURIComponent(authorQuery)}`);
+              parts.push(`authorName=${encodeURIComponent(authorQuery)}`);
             parts.push(`sortBy=${encodeURIComponent(String(sortBy))}`);
             parts.push(`page=${p}`);
             if (minScore)
