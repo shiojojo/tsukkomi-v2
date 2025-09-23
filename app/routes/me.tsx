@@ -258,10 +258,7 @@ export default function MeRoute() {
         )}
       </section>
 
-      <div className="flex gap-4">
-        <Link to="/settings/account" className="text-blue-600">
-          アカウント設定
-        </Link>
+      <div className="flex">
         <Link to="/" className="text-gray-600">
           ホームへ
         </Link>

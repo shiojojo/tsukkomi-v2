@@ -27,7 +27,6 @@ app/
 		posts._index.tsx    ← /posts （一覧）
 		posts.$id.tsx       ← /posts/:id （動的セグメント = $）
 		posts.new.tsx       ← /posts/new
-		settings.account.tsx← /settings/account
 	components/           ← 再利用 UI（ビジネスロジック含めない）
 	lib/
 		supabase.ts         ← Supabase クライアント生成（本番専用 init）
