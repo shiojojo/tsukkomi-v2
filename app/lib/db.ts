@@ -431,6 +431,48 @@ export async function getTopics(): Promise<Topic[]> {
 }
 
 /**
+ * getTopicsPaged
+ * Intent: server-driven pagination for topics listing with optional title/date filters.
+ * Contract: returns { topics, total } where topics is the requested page slice and total is the total matching count.
+ * Environment: always queries Supabase.
+ */
+export async function getTopicsPaged(opts: {
+  page?: number;
+  pageSize?: number;
+  q?: string | undefined;
+  fromDate?: string | undefined;
+  toDate?: string | undefined;
+}): Promise<{ topics: Topic[]; total: number }> {
+  const { page = 1, pageSize = 10, q, fromDate, toDate } = opts;
+  await ensureConnection();
+
+  let query = supabase
+    .from('topics')
+    .select('id, title, created_at, image', { count: 'exact' });
+
+  if (q) query = query.ilike('title', `%${String(q).trim()}%`);
+  if (fromDate) query = query.gte('created_at', fromDate.includes('T') ? fromDate : `${fromDate}T00:00:00.000Z`);
+  if (toDate) {
+    if (!toDate.includes('T')) {
+      const d = new Date(toDate + 'T00:00:00.000Z');
+      const next = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+      query = query.lt('created_at', next.toISOString());
+    } else {
+      query = query.lte('created_at', toDate);
+    }
+  }
+
+  // order by created_at desc by default
+  query = query.order('created_at', { ascending: false });
+
+  const offset = (page - 1) * pageSize;
+  const { data, error, count } = await query.range(offset, offset + pageSize - 1);
+  if (error) throw error;
+  const rows = (data ?? []).map((r: any) => ({ id: r.id, title: r.title, created_at: r.created_at ?? r.createdAt, image: r.image }));
+  return { topics: TopicSchema.array().parse(rows as any), total: Number(count ?? rows.length) };
+}
+
+/**
  * getLatestTopic
  * Intent: return the single latest Topic (by created_at desc) used on home screens.
  * Contract: returns Topic or null when none exist.
