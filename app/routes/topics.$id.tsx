@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
 import { useState, useEffect, useRef } from 'react';
+import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 // server-only imports are dynamically loaded inside loader/action
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
@@ -191,56 +192,43 @@ export default function TopicDetailRoute() {
   // votes are handled locally for now; no server roundtrip on click.
 
   return (
-    <div
-      style={{ paddingTop: 'var(--app-header-height, 0px)' }}
-      className="p-4 max-w-3xl mx-auto"
-    >
-      {/* Sticky header */}
-      <div
-        className={`sticky z-30 ${
-          topic.image
-            ? 'bg-transparent pt-0 pb-0'
-            : 'bg-white dark:bg-gray-950 pt-4 pb-2'
-        }`}
-        style={{ top: 'var(--app-header-height, 0px)' }}
-      >
-        <div className="mb-4">
-          <div className="w-full">
-            {topic.image ? (
-              // Photo-only topic: use the same layout as the topics list so the image centers the same way.
-              <div className="block p-0 border rounded-md overflow-hidden">
-                <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                  <img
-                    src={topic.image}
-                    alt={topic.title}
-                    className="w-full h-auto max-h-60 object-contain"
-                  />
+    <StickyHeaderLayout
+      header={
+        <div
+          className={`z-30 ${
+            topic.image
+              ? 'bg-transparent pt-0 pb-0'
+              : 'bg-white dark:bg-gray-950 pt-4 pb-2'
+          }`}
+        >
+          <div className="mb-4">
+            <div className="w-full">
+              {topic.image ? (
+                <div className="block p-0 border rounded-md overflow-hidden">
+                  <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                    <img
+                      src={topic.image}
+                      alt={topic.title}
+                      className="w-full h-auto max-h-60 object-contain"
+                    />
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <h1 className="text-2xl md:text-3xl font-extrabold leading-tight text-gray-900 dark:text-gray-100">
-                {topic.title}
-              </h1>
-            )}
+              ) : (
+                <h1 className="text-2xl md:text-3xl font-extrabold leading-tight text-gray-900 dark:text-gray-100">
+                  {topic.title}
+                </h1>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Scrollable answers region */}
-      <div
-        className="mt-2 overflow-auto max-h-[calc(100vh-140px)] pb-16 sm:pb-24"
-        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 4rem)' }}
-      >
-        {answers.length === 0 ? (
-          <p className="text-gray-600">まだ回答が投稿されていません。</p>
-        ) : (
-          <ProgressiveAnswersList
-            answers={answers}
-            topicId={String(topic.id)}
-          />
-        )}
-      </div>
-    </div>
+      }
+    >
+      {answers.length === 0 ? (
+        <p className="text-gray-600">まだ回答が投稿されていません。</p>
+      ) : (
+        <ProgressiveAnswersList answers={answers} topicId={String(topic.id)} />
+      )}
+    </StickyHeaderLayout>
   );
 }
 
