@@ -44,8 +44,7 @@ export async function getAnswers(): Promise<Answer[]> {
   const answers = (answerRows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
-  author: undefined, // profile name can be resolved separately if needed
-  authorId: a.profile_id ?? undefined,
+    authorId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
   }));
@@ -245,7 +244,6 @@ export async function searchAnswers(opts: {
         matched.push({
           id,
           text: a.text,
-          author: undefined,
           profile_id: a.profile_id ?? undefined,
           topic_id: a.topic_id ?? undefined,
           created_at: (a as any).created_at ?? (a as any).createdAt,
@@ -278,7 +276,6 @@ export async function searchAnswers(opts: {
   let answers = (rows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
-    author: undefined,
     authorId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
@@ -386,17 +383,18 @@ export async function getCommentsForAnswers(
   const numericIds = answerIds.map((id) => Number(id));
   const { data, error } = await supabase
     .from('comments')
-    .select('id, answer_id, text, profile_id, created_at, profiles(name)')
+    // do not join profiles(name): we intentionally avoid resolving display names at DB layer
+    .select('id, answer_id, text, profile_id, created_at')
     .in('answer_id', numericIds)
     .order('created_at', { ascending: true });
   if (error) throw error;
 
   // helper: normalize raw postgrest row into Comment
+  // Note: we no longer resolve profile names here. Return profile id only.
   const mapRaw = (c: any) => ({
     id: typeof c.id === 'string' ? Number(c.id) : c.id,
     answerId: c.answer_id ?? c.answerId,
     text: c.text,
-    author: c.profiles && c.profiles.name ? c.profiles.name : undefined,
     authorId: c.profile_id ?? c.authorId,
     created_at: c.created_at ?? c.createdAt,
   });
@@ -447,23 +445,9 @@ export async function addComment(input: { answerId: string | number; text: strin
     id: typeof d.id === 'string' ? Number(d.id) : d.id,
     answerId: d.answer_id ?? d.answerId,
     text: d.text,
-    author: undefined as string | undefined,
     authorId: d.profile_id ?? d.authorId,
     created_at: d.created_at ?? d.createdAt,
   };
-
-  // Try to resolve profile name only when profile_id present
-  try {
-    const pid = d.profile_id ?? null;
-    if (pid) {
-      const { data: p, error: perr } = await supabase
-        .from('profiles')
-        .select('name')
-        .eq('id', pid)
-        .maybeSingle();
-      if (!perr && p) mapped.author = p.name;
-    }
-  } catch {}
 
   const row = mapped;
   // clear related caches after successful insert
@@ -753,8 +737,7 @@ export async function getAnswersByTopic(topicId: string | number) {
 
   const answers = (answerRows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
-    text: a.text,
-  author: undefined,
+  text: a.text,
   authorId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
@@ -837,8 +820,7 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20 }: 
   if (error) throw error;
   const rows = (data ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
-    text: a.text,
-  author: undefined,
+  text: a.text,
   authorId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
@@ -948,8 +930,7 @@ export async function voteAnswer({
 
   const result = {
     id: Number(answerRow.id),
-    text: answerRow.text,
-  author: undefined,
+  text: answerRow.text,
   authorId: answerRow.profile_id ?? undefined,
     topicId: answerRow.topic_id ?? undefined,
     created_at: answerRow.created_at,
