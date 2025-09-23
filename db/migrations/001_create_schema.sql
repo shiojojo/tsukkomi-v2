@@ -66,6 +66,17 @@ CREATE INDEX IF NOT EXISTS votes_answer_idx ON votes (answer_id);
 CREATE INDEX IF NOT EXISTS votes_profile_idx ON votes (profile_id);
 CREATE INDEX IF NOT EXISTS votes_answer_level_idx ON votes (answer_id, level);
 
+-- favorites (per-profile favorites for answers)
+CREATE TABLE IF NOT EXISTS favorites (
+  id bigserial PRIMARY KEY,
+  answer_id bigint NOT NULL REFERENCES answers(id) ON DELETE CASCADE,
+  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (answer_id, profile_id)
+);
+CREATE INDEX IF NOT EXISTS favorites_answer_idx ON favorites (answer_id);
+CREATE INDEX IF NOT EXISTS favorites_profile_idx ON favorites (profile_id);
+
 -- vote counts view
 CREATE OR REPLACE VIEW answer_vote_counts AS
 SELECT

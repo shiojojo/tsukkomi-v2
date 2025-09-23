@@ -122,3 +122,23 @@ CREATE POLICY votes_delete_identity ON votes FOR DELETE USING (
   profile_id = auth.uid()::uuid OR
   profile_id IN (SELECT id FROM profiles WHERE parent_id = auth.uid()::uuid)
 );
+
+-- favorites RLS (aligns with votes policies)
+ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS favorites_public_select ON favorites;
+CREATE POLICY favorites_public_select ON favorites FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS favorites_insert_identity ON favorites;
+CREATE POLICY favorites_insert_identity ON favorites FOR INSERT WITH CHECK (
+  auth.uid() IS NOT NULL AND (
+    profile_id = auth.uid()::uuid OR
+    profile_id IN (SELECT id FROM profiles WHERE parent_id = auth.uid()::uuid)
+  )
+);
+
+DROP POLICY IF EXISTS favorites_delete_identity ON favorites;
+CREATE POLICY favorites_delete_identity ON favorites FOR DELETE USING (
+  profile_id = auth.uid()::uuid OR
+  profile_id IN (SELECT id FROM profiles WHERE parent_id = auth.uid()::uuid)
+);
