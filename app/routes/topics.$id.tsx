@@ -85,25 +85,15 @@ function FavoriteButton({
   const [fav, setFav] = useState<boolean>(initialFavorited ?? false);
 
   // Only read identity from localStorage so we can prompt login when necessary.
+  // Avoid issuing an automatic POST-per-answer to request favorite status on mount
+  // since rendering many answers caused a flood of POST /topics/:id (or /answers)
+  // requests. If needed implement a batched status endpoint instead.
   useEffect(() => {
     try {
       const uid =
         localStorage.getItem('currentSubUserId') ??
         localStorage.getItem('currentUserId');
       setCurrentUserId(uid);
-      if (uid) {
-        const fd = new FormData();
-        fd.set('op', 'status');
-        fd.set('answerId', String(answerId));
-        fd.set('profileId', String(uid));
-        void fetch(window.location.href, { method: 'POST', body: fd })
-          .then(r => r.json())
-          .then(d => {
-            if (d && typeof d.favorited === 'boolean')
-              setFav(Boolean(d.favorited));
-          })
-          .catch(() => {});
-      }
     } catch {
       setCurrentUserId(null);
     }

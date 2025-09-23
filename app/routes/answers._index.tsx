@@ -244,28 +244,16 @@ export default function AnswersRoute() {
     const [fav, setFav] = useState<boolean>(() =>
       Boolean(initialFavorited ?? false)
     );
+    // Only set local current user id on mount/update. Avoid making an automatic
+    // POST per-answer to ask for favorited status — that caused a storm of
+    // POST /answers requests when many answers were rendered. If cross-device
+    // favorite sync is required, implement a batched endpoint instead.
     useEffect(() => {
       try {
         const uid =
           localStorage.getItem('currentSubUserId') ??
           localStorage.getItem('currentUserId');
         setCurrentUserIdLocal(uid);
-        // initial state: server provided favCount doesn't mean this user favorited it
-        // we conservatively default to false and rely on fetcher response when toggled
-        if (uid) {
-          // request server for current favorited status to show cross-device state
-          const fd = new FormData();
-          fd.set('op', 'status');
-          fd.set('answerId', String(answerId));
-          fd.set('profileId', String(uid));
-          void fetch(window.location.href, { method: 'POST', body: fd })
-            .then(r => r.json())
-            .then(d => {
-              if (d && typeof d.favorited === 'boolean')
-                setFav(Boolean(d.favorited));
-            })
-            .catch(() => {});
-        }
       } catch {
         setCurrentUserIdLocal(null);
       }
