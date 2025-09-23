@@ -130,6 +130,25 @@ export async function searchAnswers(opts: {
     .from('answers')
     .select('id, text, profile_id, topic_id, created_at', { count: 'exact' });
   if (topicId != null) baseQuery = baseQuery.eq('topic_id', Number(topicId));
+  // allow explicit author-only search via `author` param by resolving profile ids
+  // NOTE: profiles are stored separately now (profile_id on answers). We map author
+  // (profile.name) -> profile_id and filter by profile_id. If no matching profile is
+  // found we can immediately return an empty result set to avoid extra DB work.
+  if (author) {
+    // profile names are authoritative; match exact stored name to find profile_id(s)
+    const nameToMatch = String(author).trim();
+    const { data: matchingProfiles, error: profErr } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('name', nameToMatch);
+    if (profErr) throw profErr;
+  // profile ids may be UUID strings; keep them as strings to avoid Number->NaN
+  const profileIds = (matchingProfiles ?? []).map((p: any) => String(p.id)).filter(Boolean);
+    if (profileIds.length === 0) {
+      return { answers: [], total: 0 };
+    }
+    baseQuery = baseQuery.in('profile_id', profileIds);
+  }
   // allow explicit author-only search via `author` param; fallback to `q` which searches text OR author
   if (q) baseQuery = baseQuery.ilike('text', `%${q}%`);
   if (fromDate) {
