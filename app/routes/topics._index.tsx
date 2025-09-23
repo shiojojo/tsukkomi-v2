@@ -155,6 +155,79 @@ export default function TopicsRoute() {
           次へ
         </button>
       </div>
+      {/* Desktop pagination controls (visible on md+) */}
+      <div className="hidden md:flex items-center justify-center mt-4 gap-2">
+        {(() => {
+          const windowSize = 3;
+          const start = Math.max(1, currentPage - windowSize);
+          const end = Math.min(pageCount, currentPage + windowSize);
+
+          return (
+            <nav
+              aria-label="ページネーション"
+              className="flex items-center gap-2"
+            >
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                aria-label="前のページ"
+                className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+              >
+                前へ
+              </button>
+
+              <div className="flex items-center gap-1">
+                {start > 1 && (
+                  <>
+                    <button
+                      onClick={() => setPage(1)}
+                      className="px-2 py-1 rounded-md border bg-white"
+                    >
+                      1
+                    </button>
+                    {start > 2 && <span className="px-2">…</span>}
+                  </>
+                )}
+
+                {Array.from(
+                  { length: end - start + 1 },
+                  (_, i) => start + i
+                ).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    aria-current={p === currentPage ? 'page' : undefined}
+                    className={`px-3 py-2 rounded-md border ${p === currentPage ? 'bg-blue-600 text-white' : 'bg-white'}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                {end < pageCount && (
+                  <>
+                    {end < pageCount - 1 && <span className="px-2">…</span>}
+                    <button
+                      onClick={() => setPage(pageCount)}
+                      className="px-2 py-1 rounded-md border bg-white"
+                    >
+                      {pageCount}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={() => setPage(p => Math.min(pageCount, p + 1))}
+                disabled={currentPage >= pageCount}
+                aria-label="次のページ"
+                className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+              >
+                次へ
+              </button>
+            </nav>
+          );
+        })()}
+      </div>
     </div>
   );
 }
