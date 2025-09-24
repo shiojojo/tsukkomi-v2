@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router';
 import { useEffect, useState, useRef } from 'react';
+import { useIdentity } from '~/hooks/useIdentity';
 
 /**
  * Responsive navigation component.
@@ -107,31 +108,28 @@ export default function ResponsiveNav() {
 }
 
 function UserBadge() {
-  const [name, setName] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      // prefer sub-user when present
-      setName(
-        localStorage.getItem('currentSubUserName') ??
-          localStorage.getItem('currentUserName')
-      );
-    } catch {
-      setName(null);
-    }
-  }, []);
-
-  if (name) {
+  const { effectiveName, subName, mainName } = useIdentity();
+  if (effectiveName) {
     return (
       <NavLink
         to="/me"
         className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline"
       >
-        <span>{name}</span>
+        <span>
+          {subName ? (
+            <>
+              {subName}
+              <span className="text-[10px] text-gray-500 ml-1">
+                ({mainName})
+              </span>
+            </>
+          ) : (
+            mainName
+          )}
+        </span>
       </NavLink>
     );
   }
-
   return (
     <NavLink to="/login" className="text-sm text-blue-600">
       ログイン
@@ -140,34 +138,19 @@ function UserBadge() {
 }
 
 function MobileUserButton() {
-  const [name, setName] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      // prefer sub-user when present
-      setName(
-        localStorage.getItem('currentSubUserName') ??
-          localStorage.getItem('currentUserName')
-      );
-    } catch {
-      setName(null);
-    }
-  }, []);
-
-  if (name) {
+  const { effectiveName, subName, mainName } = useIdentity();
+  if (effectiveName) {
     return (
       <NavLink
         to="/me"
         className="group flex flex-col items-center justify-center gap-1 py-2 px-3 text-sm leading-none w-full text-blue-600"
       >
-        {/* render the selected sub-user's name in the SVG spot */}
-        <div className="w-20 h-6 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-700 text-xs font-medium text-blue-700 dark:text-white truncate">
-          {name}
+        <div className="max-w-[72px] px-2 h-6 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-700 text-[10px] font-medium text-blue-700 dark:text-white truncate">
+          {subName ? subName : mainName}
         </div>
       </NavLink>
     );
   }
-
   return (
     <NavLink
       to="/login"

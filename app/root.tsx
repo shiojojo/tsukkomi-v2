@@ -59,9 +59,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      {/* Note: temporarily removed ResponsiveNav and ScrollRestoration on client
-          to isolate a script-injection warning source. Reintroduce after
-          debugging. */}
+      <ResponsiveNav />
+      {/* Note: ScrollRestoration は script を生成し React 19 の hoist 制約により
+          クライアント側 fragment 直下では警告を出すため SSR ドキュメント側のみ設置 */}
     </>
   );
 }
