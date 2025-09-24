@@ -92,7 +92,37 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
-  // build a rate limit key: prefer profileId (authenticated/subuser), then IP, then anon
+  // Throttled lightweight instrumentation to help diagnose noisy clients.
+  try {
+    const anyKey = Array.from(form.keys())[0];
+    const now = Date.now();
+    (globalThis as any).__answersActionLastLog =
+      (globalThis as any).__answersActionLastLog || 0;
+    if (now - (globalThis as any).__answersActionLastLog > 2000) {
+      (globalThis as any).__answersActionLastLog = now;
+      // eslint-disable-next-line no-console
+      console.debug(
+        'answers.action inbound keys',
+        anyKey ? [...form.keys()] : []
+      );
+    }
+  } catch {}
+
+  const op = form.get('op') ? String(form.get('op')) : undefined; // 'toggle' | 'status'
+  const answerIdRaw = form.get('answerId');
+  const commentTextRaw = form.get('text');
+  const hasMeaningfulIntent =
+    op === 'toggle' || op === 'status' || (answerIdRaw && commentTextRaw);
+
+  // If the POST contains no recognized fields, treat as benign noise and return 204 (no content)
+  if (!hasMeaningfulIntent) {
+    return new Response(JSON.stringify({ ok: true, ignored: true }), {
+      status: 204,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  // build a rate limit key only for meaningful intents
   let rateKey = 'anon';
   try {
     const profileIdCandidate = form.get('profileId')
@@ -100,7 +130,6 @@ export async function action({ request }: ActionFunctionArgs) {
       : undefined;
     if (profileIdCandidate) rateKey = `p:${profileIdCandidate}`;
     else {
-      // try to infer IP from headers — request.headers may include x-forwarded-for
       try {
         const hdr =
           request.headers && request.headers.get
@@ -111,18 +140,17 @@ export async function action({ request }: ActionFunctionArgs) {
       } catch {}
     }
   } catch {}
-  // attempt to consume a token; deny if exhausted
   if (!consumeToken(rateKey, 1)) {
     return new Response(
-      JSON.stringify({ ok: false, error: 'Too Many Requests' }),
+      JSON.stringify({ ok: false, error: 'Too Many Requests', rateKey }),
       {
         status: 429,
         headers: { 'Content-Type': 'application/json' },
       }
     );
   }
+
   // support favorite toggle ops
-  const op = form.get('op') ? String(form.get('op')) : undefined;
   if (op === 'toggle') {
     const answerId = form.get('answerId');
     const profileId = form.get('profileId')
