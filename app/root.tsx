@@ -27,24 +27,40 @@ export const links: Route.LinksFunction = () => [
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  // Render the full HTML document only on the server (where `document` is undefined).
+  // On the client, returning a fragment prevents React from attempting to mount
+  // another <html>/<head>/<body> into the existing document which can cause
+  // DOM removeChild errors during hydration and navigation.
+  if (typeof document === 'undefined') {
+    return (
+      <html lang="en">
+        <head>
+          <meta charSet="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <Meta />
+          <Links />
+        </head>
+        <body>
+          {children}
+          {/* Responsive nav: footer on mobile, header on md+ */}
+          <ResponsiveNav />
+          <ScrollRestoration />
+          <Scripts />
+        </body>
+      </html>
+    );
+  }
+
+  // Client: render children and global UI elements without recreating the
+  // document element. This avoids DOM mismatches when React hydrates into the
+  // existing document (hydrateRoot(document, ...)).
   return (
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <Meta />
-        <Links />
-      </head>
-      <body>
-        {children}
-        {/* Global loading overlay: displayed when navigation state is not idle */}
-        {/* This will be controlled by the App component which passes a prop. */}
-        {/* Responsive nav: footer on mobile, header on md+ */}
-        <ResponsiveNav />
-        <ScrollRestoration />
-        <Scripts />
-      </body>
-    </html>
+    <>
+      {children}
+      <ResponsiveNav />
+      <ScrollRestoration />
+      <Scripts />
+    </>
   );
 }
 
