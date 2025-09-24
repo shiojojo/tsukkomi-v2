@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, memo } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
@@ -259,6 +259,234 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
+// --- Extracted Components (moved outside AnswersRoute to avoid re-definition each render) ---
+
+type FavoriteButtonProps = { answerId: number; initialFavorited?: boolean };
+const FavoriteButton = memo(function FavoriteButton({
+  answerId,
+  initialFavorited,
+}: FavoriteButtonProps) {
+  const fetcher = useFetcher();
+  const [currentUserIdLocal, setCurrentUserIdLocal] = useState<string | null>(
+    null
+  );
+  const [fav, setFav] = useState<boolean>(() => Boolean(initialFavorited));
+
+  useEffect(() => {
+    try {
+      const uid =
+        localStorage.getItem('currentSubUserId') ??
+        localStorage.getItem('currentUserId');
+      setCurrentUserIdLocal(uid);
+    } catch {
+      setCurrentUserIdLocal(null);
+    }
+  }, [answerId]);
+
+  useEffect(() => {
+    if (!fetcher.data) return;
+    try {
+      const d =
+        typeof fetcher.data === 'string'
+          ? JSON.parse(fetcher.data)
+          : fetcher.data;
+      if (d && typeof d.favorited === 'boolean') {
+        setFav(Boolean(d.favorited));
+        return;
+      }
+      if (d && d.ok === false) {
+        setFav(s => !s);
+        return;
+      }
+    } catch {}
+  }, [fetcher.data]);
+
+  const handleClick = () => {
+    if (!currentUserIdLocal) {
+      try {
+        window.location.href = '/login';
+      } catch {}
+      return;
+    }
+    setFav(s => !s);
+    const fd = new FormData();
+    fd.set('op', 'toggle');
+    fd.set('answerId', String(answerId));
+    fd.set('profileId', String(currentUserIdLocal));
+    fetcher.submit(fd, { method: 'post' });
+  };
+
+  return (
+    <button
+      type="button"
+      aria-pressed={fav}
+      onClick={handleClick}
+      className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400 dark:text-white'} hover:opacity-90`}
+      title={
+        !currentUserIdLocal
+          ? 'ログインしてお気に入り登録'
+          : fav
+            ? 'お気に入り解除'
+            : 'お気に入り'
+      }
+    >
+      {fav ? (
+        <svg
+          className="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          aria-hidden
+        >
+          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        </svg>
+      ) : (
+        <svg
+          className="w-5 h-5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          aria-hidden
+        >
+          <path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24z" />
+        </svg>
+      )}
+    </button>
+  );
+});
+
+type AnswerCardProps = {
+  a: Answer;
+  score: number;
+  topic: Topic | null;
+  comments: Comment[];
+  getNameByProfileId: (pid?: string | null) => string | undefined;
+  currentUserName: string | null;
+  currentUserId: string | null;
+};
+
+const AnswerCard = memo(function AnswerCard({
+  a,
+  score,
+  topic,
+  comments,
+  getNameByProfileId,
+  currentUserName,
+  currentUserId,
+}: AnswerCardProps) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li className="p-4 border rounded-md bg-white/80 dark:bg-gray-950/80">
+      <div className="flex flex-col gap-3">
+        <div>
+          {topic ? (
+            topic.image ? (
+              <div className="block p-0 border rounded-md overflow-hidden">
+                <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                  <img
+                    src={topic.image}
+                    alt={topic.title}
+                    className="w-full h-auto max-h-40 object-contain"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-gray-100">
+                {topic.title}
+              </div>
+            )
+          ) : (
+            <div className="text-lg md:text-xl font-extrabold">
+              お題なし（フリー回答）
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 space-y-2">
+            <p className="text-lg leading-snug break-words">{a.text}</p>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-white">
+              <span className="inline-flex items-center gap-1 font-medium text-gray-700 dark:text-white">
+                Score:{' '}
+                <span className="text-gray-900 dark:text-gray-100">
+                  {score}
+                </span>
+              </span>
+              <span className="inline-flex items-center gap-1">
+                👍1:{(a as any).votes?.level1 ?? 0}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                😂2:{(a as any).votes?.level2 ?? 0}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                🤣3:{(a as any).votes?.level3 ?? 0}
+              </span>
+              {getNameByProfileId((a as any).profileId) && (
+                <span className="inline-flex items-center gap-1">
+                  作者: {getNameByProfileId((a as any).profileId)}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col items-end gap-2 min-w-[64px]">
+            <button
+              type="button"
+              onClick={() => setOpen(s => !s)}
+              aria-expanded={open}
+              className="text-xs px-2 py-1 rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
+            >
+              {open ? '閉じる' : '詳細'}
+            </button>
+            <FavoriteButton
+              answerId={a.id}
+              initialFavorited={(a as any).favorited}
+            />
+          </div>
+        </div>
+
+        {open && (
+          <div className="mt-3">
+            <h4 className="text-sm font-medium">コメント</h4>
+            <ul className="mt-2 space-y-2 text-sm">
+              {comments.map(c => (
+                <li key={c.id} className="text-gray-700 dark:text-white">
+                  {c.text}{' '}
+                  <span className="text-xs text-gray-400 dark:text-white">
+                    — {getNameByProfileId((c as any).profileId) ?? '名無し'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-3">
+              <div className="text-muted mb-2">
+                コメントとして: {currentUserName ?? '名無し'}
+              </div>
+              <Form method="post" className="flex gap-2" replace>
+                <input type="hidden" name="answerId" value={String(a.id)} />
+                <input
+                  type="hidden"
+                  name="profileId"
+                  value={currentUserId ?? ''}
+                />
+                <input
+                  name="text"
+                  className="form-input flex-1"
+                  placeholder="コメントを追加"
+                  aria-label="コメント入力"
+                />
+                <button className="btn-inline" aria-label="コメントを送信">
+                  送信
+                </button>
+              </Form>
+            </div>
+          </div>
+        )}
+      </div>
+    </li>
+  );
+});
+
 export default function AnswersRoute() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
   const data = useLoaderData() as LoaderData;
@@ -267,21 +495,18 @@ export default function AnswersRoute() {
   const commentsByAnswer: Record<string, Comment[]> =
     (data as any)?.commentsByAnswer ?? {};
   const users: User[] = (data as any)?.users ?? [];
-  // helper: resolve display name from loaded users by profileId
   const usersById = Object.fromEntries(users.map(u => [String(u.id), u]));
   const getNameByProfileId = (pid?: string | null) => {
     if (!pid) return undefined;
     const found = usersById[String(pid)];
     return found ? found.name : undefined;
   };
-  // No pinned topic handling: topics are shown per-answer and topic-specific pages live under /topics/:id
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      // prefer selected sub-user identity when available
       setCurrentUserId(
         localStorage.getItem('currentSubUserId') ??
           localStorage.getItem('currentUserId')
@@ -295,237 +520,6 @@ export default function AnswersRoute() {
       setCurrentUserName(null);
     }
   }, []);
-
-  // Local FavoriteButton (user-scoped) — mirrors behavior used elsewhere
-  function FavoriteButton({
-    answerId,
-    initialFavorited,
-  }: {
-    answerId: number;
-    initialFavorited?: boolean;
-  }) {
-    const [currentUserIdLocal, setCurrentUserIdLocal] = useState<string | null>(
-      null
-    );
-    const fetcher = useFetcher();
-    // initial favorited state derived from loader data when present
-    const [fav, setFav] = useState<boolean>(() =>
-      Boolean(initialFavorited ?? false)
-    );
-    // Only set local current user id on mount/update. Avoid making an automatic
-    // POST per-answer to ask for favorited status — that caused a storm of
-    // POST /answers requests when many answers were rendered. If cross-device
-    // favorite sync is required, implement a batched endpoint instead.
-    useEffect(() => {
-      try {
-        const uid =
-          localStorage.getItem('currentSubUserId') ??
-          localStorage.getItem('currentUserId');
-        setCurrentUserIdLocal(uid);
-      } catch {
-        setCurrentUserIdLocal(null);
-      }
-    }, [answerId]);
-
-    useEffect(() => {
-      if (!fetcher.data) return;
-      try {
-        const d =
-          typeof fetcher.data === 'string'
-            ? JSON.parse(fetcher.data)
-            : fetcher.data;
-        // if server returned explicit favorited flag, use it
-        if (d && typeof d.favorited === 'boolean') {
-          setFav(Boolean(d.favorited));
-          return;
-        }
-        // if server returned ok:false, revert optimistic toggle
-        if (d && d.ok === false) {
-          setFav(s => !s); // revert optimistic
-          return;
-        }
-      } catch {}
-    }, [fetcher.data]);
-
-    const handleClick = () => {
-      if (!currentUserIdLocal) {
-        try {
-          window.location.href = '/login';
-        } catch {}
-        return;
-      }
-      // optimistic toggle
-      const next = !fav;
-      setFav(next);
-      const fd = new FormData();
-      fd.set('op', 'toggle');
-      fd.set('answerId', String(answerId));
-      fd.set('profileId', String(currentUserIdLocal));
-      // submit via fetcher (no fallback needed)
-      fetcher.submit(fd, { method: 'post' });
-    };
-
-    return (
-      <button
-        type="button"
-        aria-pressed={fav}
-        onClick={handleClick}
-        className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400 dark:text-white'} hover:opacity-90`}
-        title={
-          !currentUserIdLocal
-            ? 'ログインしてお気に入り登録'
-            : fav
-              ? 'お気に入り解除'
-              : 'お気に入り'
-        }
-      >
-        {fav ? (
-          <svg
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden
-          >
-            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-          </svg>
-        ) : (
-          <svg
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            aria-hidden
-          >
-            <path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24z" />
-          </svg>
-        )}
-      </button>
-    );
-  }
-
-  // Per-answer card with topic header and expandable details (comments + form)
-  function AnswerCard({ a, score }: { a: Answer; score: number }) {
-    const [open, setOpen] = useState(false);
-    const topic = a.topicId ? topicsById[String(a.topicId)] : null;
-
-    return (
-      <li
-        key={a.id}
-        className="p-4 border rounded-md bg-white/80 dark:bg-gray-950/80"
-      >
-        <div className="flex flex-col gap-3">
-          {/* Topic shown at top of the card, large and unabbreviated */}
-          <div>
-            {topic ? (
-              topic.image ? (
-                <div className="block p-0 border rounded-md overflow-hidden">
-                  <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                    <img
-                      src={topic.image}
-                      alt={topic.title}
-                      className="w-full h-auto max-h-40 object-contain"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-gray-100">
-                  {topic.title}
-                </div>
-              )
-            ) : (
-              <div className="text-lg md:text-xl font-extrabold">
-                お題なし（フリー回答）
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 space-y-2">
-              <p className="text-lg leading-snug break-words">{a.text}</p>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-white">
-                <span className="inline-flex items-center gap-1 font-medium text-gray-700 dark:text-white">
-                  Score:{' '}
-                  <span className="text-gray-900 dark:text-gray-100">
-                    {score}
-                  </span>
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  👍1:{(a as any).votes?.level1 ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  😂2:{(a as any).votes?.level2 ?? 0}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  🤣3:{(a as any).votes?.level3 ?? 0}
-                </span>
-                {getNameByProfileId((a as any).profileId) && (
-                  <span className="inline-flex items-center gap-1">
-                    作者: {getNameByProfileId((a as any).profileId)}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end gap-2 min-w-[64px]">
-              <button
-                type="button"
-                onClick={() => setOpen(s => !s)}
-                aria-expanded={open}
-                className="text-xs px-2 py-1 rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
-              >
-                {open ? '閉じる' : '詳細'}
-              </button>
-              <FavoriteButton
-                answerId={a.id}
-                initialFavorited={(a as any).favorited}
-              />
-            </div>
-          </div>
-
-          {open && (
-            <div className="mt-3">
-              <h4 className="text-sm font-medium">コメント</h4>
-              <ul className="mt-2 space-y-2 text-sm">
-                {(commentsByAnswer[String(a.id)] || []).map(c => (
-                  <li key={c.id} className="text-gray-700 dark:text-white">
-                    {c.text}{' '}
-                    <span className="text-xs text-gray-400 dark:text-white">
-                      — {getNameByProfileId((c as any).profileId) ?? '名無し'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="mt-3">
-                <div className="text-muted mb-2">
-                  コメントとして: {currentUserName ?? '名無し'}
-                </div>
-                <Form method="post" className="flex gap-2" replace>
-                  <input type="hidden" name="answerId" value={String(a.id)} />
-                  <input
-                    type="hidden"
-                    name="profileId"
-                    value={currentUserId ?? ''}
-                  />
-                  {/* authorName removed: profileId is authoritative identity for comments */}
-                  <input
-                    name="text"
-                    className="form-input flex-1"
-                    placeholder="コメントを追加"
-                    aria-label="コメント入力"
-                  />
-                  <button className="btn-inline" aria-label="コメントを送信">
-                    送信
-                  </button>
-                </Form>
-              </div>
-            </div>
-          )}
-        </div>
-      </li>
-    );
-  }
 
   // Filter UI state (server-driven via GET form)
   const [query, setQuery] = useState('');
@@ -869,7 +863,16 @@ export default function AnswersRoute() {
             {/* Render answers in the exact order returned by the loader (preserve DB ordering) */}
             <ul className="space-y-4">
               {paged.map(({ answer: a, score }) => (
-                <AnswerCard key={a.id} a={a} score={score} />
+                <AnswerCard
+                  key={a.id}
+                  a={a}
+                  score={score}
+                  topic={a.topicId ? topicsById[String(a.topicId)] : null}
+                  comments={commentsByAnswer[String(a.id)] || []}
+                  getNameByProfileId={getNameByProfileId}
+                  currentUserName={currentUserName}
+                  currentUserId={currentUserId}
+                />
               ))}
             </ul>
           </div>
