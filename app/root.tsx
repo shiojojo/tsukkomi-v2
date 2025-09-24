@@ -39,13 +39,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <Meta />
           <Links />
+          {/* Place Scripts in the root head during SSR so runtime does not try to
+        render synchronous/defer scripts outside the main document. */}
+          <Scripts />
         </head>
         <body>
           {children}
           {/* Responsive nav: footer on mobile, header on md+ */}
           <ResponsiveNav />
           <ScrollRestoration />
-          <Scripts />
         </body>
       </html>
     );
@@ -57,8 +59,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
   return (
     <>
       {children}
-      <ResponsiveNav />
-      <ScrollRestoration />
+      {/* Note: temporarily removed ResponsiveNav and ScrollRestoration on client
+          to isolate a script-injection warning source. Reintroduce after
+          debugging. */}
     </>
   );
 }
