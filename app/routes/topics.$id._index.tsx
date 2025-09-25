@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 
@@ -50,30 +51,17 @@ export async function loader({ params }: LoaderFunctionArgs) {
 /** 単一回答カード (コメントは開閉時に取得) */
 function AnswerCard({ answer }: { answer: Answer }) {
   const [open, setOpen] = useState(false);
-  const [comments, setComments] = useState<any[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  // loader data already includes topic id via parent
-
-  useEffect(() => {
-    if (!open || comments) return;
-    let cancelled = false;
-    setLoading(true);
-    (async () => {
-      try {
-        const res = await fetch(`comments/${answer.id}`);
-        if (!res.ok) throw new Error('comment fetch failed');
-        const json = await res.json();
-        if (!cancelled) setComments(json.comments || []);
-      } catch {
-        if (!cancelled) setComments([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, comments, answer.id]);
+  // コメントは開いた時だけ取得しキャッシュ（再オープン高速化）
+  const { data: comments = [], isLoading: loading } = useQuery<any[]>({
+    queryKey: ['answerComments', answer.id],
+    queryFn: async () => {
+      const res = await fetch(`comments/${answer.id}`);
+      if (!res.ok) throw new Error('comment fetch failed');
+      return (await res.json()).comments || [];
+    },
+    enabled: open, // 開いた時のみ fetch
+    staleTime: 30_000,
+  });
 
   return (
     <li className="p-4 border rounded-md bg-white/80 dark:bg-gray-900/80">
@@ -139,34 +127,45 @@ export default function TopicRoute() {
     firstPage: { answers: Answer[]; nextCursor: string | null };
   };
 
-  const [pages, setPages] = useState<Answer[][]>([firstPage.answers]);
-  const [cursor, setCursor] = useState<string | null>(firstPage.nextCursor);
-  const [loadingMore, setLoadingMore] = useState(false);
+  // React Query による無限ロード（初期ページは loader 経由で既に取得済み）
+  type AnswersPage = { answers: Answer[]; nextCursor: string | null };
+  const { data, hasNextPage, fetchNextPage, isFetchingNextPage } =
+    useInfiniteQuery<
+      AnswersPage,
+      Error,
+      AnswersPage,
+      [string, string | number]
+    >({
+      queryKey: ['topicAnswers', String(topic.id)],
+      queryFn: async ({ pageParam }) => {
+        const cursorParam = pageParam
+          ? `?cursor=${encodeURIComponent(String(pageParam))}`
+          : '';
+        const res = await fetch(`/topics/${topic.id}/answers${cursorParam}`);
+        if (!res.ok) throw new Error('failed to fetch answers');
+        return (await res.json()) as AnswersPage;
+      },
+      initialPageParam: null,
+      getNextPageParam: last => last.nextCursor,
+      initialData: {
+        pages: [firstPage as AnswersPage],
+        pageParams: [null],
+      },
+      staleTime: 10_000,
+    });
+
+  const flatAnswers: Answer[] = Array.isArray((data as any)?.pages)
+    ? (data as any).pages.flatMap((p: AnswersPage) => p.answers)
+    : [];
+
   const loadMoreRef = useRef<HTMLButtonElement | null>(null);
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // after first page resolves, push into pages state
-  // first page already in state
-
-  const loadMore = useCallback(async () => {
-    if (!cursor || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const res = await fetch(
-        `/topics/${topic.id}/answers?cursor=${encodeURIComponent(cursor)}`
-      );
-      if (res.ok) {
-        const json = await res.json();
-        setPages(prev => [...prev, json.answers]);
-        setCursor(json.nextCursor);
-      }
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [cursor, loadingMore, topic.id]);
-
-  // intersection observer for auto-load on scroll (mobile friendly)
+  // IntersectionObserver で自動追加読み込み（モバイル親和性）
   useEffect(() => {
-    if (!cursor) return; // nothing more
+    if (!hasNextPage) return;
     const btn = loadMoreRef.current;
     if (!btn) return;
     const io = new IntersectionObserver(
@@ -179,7 +178,7 @@ export default function TopicRoute() {
     );
     io.observe(btn);
     return () => io.disconnect();
-  }, [cursor, loadMore]);
+  }, [hasNextPage, loadMore]);
 
   return (
     <div
@@ -192,16 +191,16 @@ export default function TopicRoute() {
         </h1>
       </header>
       <div>
-        {pages.flat().length === 0 ? (
+        {flatAnswers.length === 0 ? (
           <p className="text-gray-600">まだ回答が投稿されていません。</p>
         ) : (
           <ul className="space-y-4">
-            {pages.flat().map(a => (
+            {flatAnswers.map(a => (
               <AnswerCard key={a.id} answer={a} />
             ))}
           </ul>
         )}
-        {cursor && (
+        {hasNextPage && (
           // Ensure the load-more control is not hidden behind mobile footers / safe-area insets.
           <div
             className="mt-6 flex justify-center"
@@ -214,11 +213,11 @@ export default function TopicRoute() {
               <button
                 ref={loadMoreRef}
                 onClick={loadMore}
-                disabled={loadingMore}
+                disabled={isFetchingNextPage}
                 className="px-4 py-2 rounded-md border bg-white disabled:opacity-50 mb-4"
                 aria-label="もっと見る"
               >
-                {loadingMore ? '読み込み中…' : 'もっと見る'}
+                {isFetchingNextPage ? '読み込み中…' : 'もっと見る'}
               </button>
             </div>
           </div>

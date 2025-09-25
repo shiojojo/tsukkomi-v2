@@ -1,7 +1,6 @@
 import type { Route } from './+types/home';
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 
@@ -23,20 +22,7 @@ export default function Home() {
   const data = useLoaderData() as LoaderData;
   const latest: Topic | null = data?.latest ?? null;
 
-  const { data: apiData } = useQuery({
-    queryKey: ['latestTopic'],
-    queryFn: async () => {
-      const res = await fetch('/api/latest-topic');
-      if (!res.ok) throw new Error('failed to fetch latest');
-      return res.json();
-    },
-    initialData: { latest },
-    staleTime: 10000,
-    // avoid running during SSR; use loader's initial data on server and revalidate on client
-    enabled: typeof window !== 'undefined',
-  });
-
-  const current: Topic | null = (apiData && apiData.latest) ?? latest;
+  const current: Topic | null = latest;
 
   return (
     <main className="p-4">
