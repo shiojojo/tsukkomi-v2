@@ -7,6 +7,8 @@ import {
   ScrollRestoration,
   useNavigation,
 } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useEffect } from 'react';
 
 import type { Route } from './+types/root';
@@ -70,6 +72,10 @@ export default function App() {
   // useNavigation is only available inside the Router context (client-side)
   const navigation = useNavigation();
   const isLoading = navigation.state !== 'idle';
+
+  // QueryClient per app instance (client-side). Keep it lazy so SSR doesn't create one.
+  const [qc] = useState(() => new QueryClient());
+
   // Set CSS --vh to handle mobile browser UI changes (iOS address bar, safe
   // viewport). This ensures containers using `calc(var(--vh,1vh) * 100)` map
   // to the true visual viewport height and prevents outer page scrolling on
@@ -128,19 +134,21 @@ export default function App() {
   }, []);
 
   return (
-    <Layout>
-      <Outlet />
+    <QueryClientProvider client={qc}>
+      <Layout>
+        <Outlet />
 
-      {/* Loading overlay rendered at the top level so it covers route content */}
-      {isLoading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-slate-900/95 text-white rounded-lg p-4 flex items-center gap-3">
-            <div className="w-8 h-8 border-4 border-t-transparent border-white rounded-full animate-spin" />
-            <div className="text-sm">Loading…</div>
+        {/* Loading overlay rendered at the top level so it covers route content */}
+        {isLoading && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-slate-900/95 text-white rounded-lg p-4 flex items-center gap-3">
+              <div className="w-8 h-8 border-4 border-t-transparent border-white rounded-full animate-spin" />
+              <div className="text-sm">Loading…</div>
+            </div>
           </div>
-        </div>
-      )}
-    </Layout>
+        )}
+      </Layout>
+    </QueryClientProvider>
   );
 }
 

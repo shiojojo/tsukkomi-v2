@@ -661,16 +661,9 @@ export async function getTopicsPaged(opts: {
  * Errors: zod parsing errors or Supabase errors will throw.
  */
 export async function getLatestTopic(): Promise<Topic | null> {
-  if (DEBUG_DB_TIMINGS) console.time('db:latestTopic:ensureConnection');
-  try {
-    await ensureConnection();
-  } catch (e) {
-    // If probe fails, return null quickly so callers can render fallback UI.
-    // eslint-disable-next-line no-console
-    console.error('getLatestTopic: ensureConnection failed, returning null', e);
-    return null;
-  }
-  if (DEBUG_DB_TIMINGS) console.timeEnd('db:latestTopic:ensureConnection');
+  // NOTE: avoid a separate connection probe on the hot path to reduce initial
+  // request latency. We rely on the actual topics query to surface network
+  // errors quickly; callers receive null only if no topic exists.
 
   if (DEBUG_DB_TIMINGS) console.time('db:latestTopic:query');
   const { data, error } = await supabase
