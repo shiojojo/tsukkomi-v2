@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { useEffect } from 'react';
+import { logger } from '~/lib/logger';
 
 export function meta() {
   return [
@@ -10,24 +11,19 @@ export function meta() {
 
 export default function TestRoute() {
   useEffect(() => {
-    console.log('TestRoute mounted successfully');
-    console.log('Current location:', window.location.href);
-    console.log('React Router context available');
+    logger.log('TestRoute mounted successfully');
+    logger.log('Current location:', window.location.href);
+    logger.log('React Router context available');
 
     // Check for overlay elements that might be blocking clicks
     const overlays = document.querySelectorAll(
       '[class*="fixed"], [class*="absolute"]'
     );
-    console.log('Found overlay elements:', overlays.length);
+    logger.log('Found overlay elements:', overlays.length);
     overlays.forEach((el, i) => {
       const styles = window.getComputedStyle(el);
       if (styles.zIndex !== 'auto' && parseInt(styles.zIndex) > 10) {
-        console.log(
-          `High z-index element ${i}:`,
-          el,
-          'z-index:',
-          styles.zIndex
-        );
+        logger.log(`High z-index element ${i}:`, el, 'z-index:', styles.zIndex);
       }
     });
   }, []);
@@ -70,7 +66,7 @@ export default function TestRoute() {
         </button>
         <button
           onClick={() => {
-            console.log('Navigation button clicked');
+            logger.log('Navigation button clicked');
             window.location.href = '/';
           }}
           className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 ml-2"

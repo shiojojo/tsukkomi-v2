@@ -10,6 +10,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useEffect } from 'react';
+import { logger } from '~/lib/logger';
 
 import type { Route } from './+types/root';
 import './app.css';
@@ -106,7 +107,7 @@ export default function App() {
 
   // Debug navigation state - client-side only
   useEffect(() => {
-    console.log('Navigation state:', navigation.state, 'isLoading:', isLoading);
+    logger.log('Navigation state:', navigation.state, 'isLoading:', isLoading);
   }, [navigation.state, isLoading]);
 
   // Add timeout for loading state to prevent permanent loading overlay

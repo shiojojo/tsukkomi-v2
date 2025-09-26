@@ -12,6 +12,7 @@ import {
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
+import { logger } from '~/lib/logger';
 
 // Shared button styles (mobile-first)
 const CONTROL_BTN_BASE =
@@ -93,7 +94,7 @@ function FavoriteButton({
 
   // Update favorite state when initialFavorited prop changes (from user data sync)
   useEffect(() => {
-    console.log(
+    logger.log(
       `[FavoriteButton ${answerId}] initialFavorited changed:`,
       initialFavorited
     );
@@ -124,7 +125,7 @@ function FavoriteButton({
           ? JSON.parse(fetcher.data)
           : fetcher.data;
       if (d && typeof d.favorited === 'boolean') {
-        console.log(
+        logger.log(
           `[FavoriteButton ${answerId}] Server response:`,
           d.favorited
         );
@@ -143,7 +144,7 @@ function FavoriteButton({
       return;
     }
     // optimistic toggle
-    console.log(`[FavoriteButton ${answerId}] Optimistic toggle: ${!fav}`);
+    logger.log(`[FavoriteButton ${answerId}] Optimistic toggle: ${!fav}`);
     setFav(s => !s);
     const fd = new FormData();
     fd.set('op', 'toggle');
@@ -346,12 +347,12 @@ export default function TopicDetailRoute() {
 
   // Debug: Check if server-side favorited data exists (client-side only)
   useEffect(() => {
-    console.log(
+    logger.log(
       '[TopicDetailRoute] Server answers favorited status:',
       answers.slice(0, 3).map(a => ({ id: a.id, favorited: a.favorited }))
     );
-    console.log('[TopicDetailRoute] Current user ID:', currentUserId);
-    console.log('[TopicDetailRoute] User data:', userData);
+    logger.log('[TopicDetailRoute] Current user ID:', currentUserId);
+    logger.log('[TopicDetailRoute] User data:', userData);
   }, [answers, currentUserId, userData]);
 
   // Merge server data with user-specific data
@@ -371,7 +372,7 @@ export default function TopicDetailRoute() {
   // Debug enriched answers (client-side only)
   useEffect(() => {
     enrichedAnswers.slice(0, 3).forEach(answer => {
-      console.log(
+      logger.log(
         `[TopicDetailRoute] Answer ${answer.id}: server=${answers.find(a => a.id === answer.id)?.favorited}, client=${userData?.favorites.has(answer.id)}, final=${answer.favorited}`
       );
     });

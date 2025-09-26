@@ -4,6 +4,7 @@
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { logger } from '~/lib/logger';
 
 export interface AnswerUserData {
   votes: Record<number, number>; // answerId -> vote level
@@ -64,9 +65,9 @@ export function useAnswerUserData(answerIds: number[], enabled: boolean = true) 
   // Debug logging (client-side only)
   useEffect(() => {
     if (query.isLoading) {
-      console.log('[useAnswerUserData] Fetching data for userId:', userId, 'answerIds:', answerIds);
+      logger.log('[useAnswerUserData] Fetching data for userId:', userId, 'answerIds:', answerIds);
     } else if (query.data) {
-      console.log('[useAnswerUserData] Data received:', query.data);
+      logger.log('[useAnswerUserData] Data received:', query.data);
     }
   }, [query.isLoading, query.data, userId, answerIds]);
 

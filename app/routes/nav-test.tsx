@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { logger } from '~/lib/logger';
 
 export function meta() {
   return [{ title: 'Simple Navigation Test' }];
@@ -79,7 +80,7 @@ export default function SimpleNavTest() {
 
         <button
           onClick={() => {
-            console.log('Programmatic navigation test');
+            logger.log('Programmatic navigation test');
             window.location.href = '/';
           }}
           style={{

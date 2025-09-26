@@ -8,6 +8,7 @@ import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
+import { logger } from '~/lib/logger';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 // Keyed by `${op}:${profileId}:${answerId}` and stores last timestamp (ms).
@@ -103,7 +104,7 @@ export async function action({ request }: ActionFunctionArgs) {
     if (now - (globalThis as any).__answersActionLastLog > 2000) {
       (globalThis as any).__answersActionLastLog = now;
       // eslint-disable-next-line no-console
-      console.debug(
+      logger.debug(
         'answers.action inbound keys',
         anyKey ? [...form.keys()] : []
       );
@@ -177,7 +178,7 @@ export async function action({ request }: ActionFunctionArgs) {
       const entries: Record<string, any> = {};
       for (const [k, v] of form.entries()) entries[k] = String(v);
       // eslint-disable-next-line no-console
-      console.log('action.toggleFavorite request', entries);
+      logger.log('action.toggleFavorite request', entries);
     } catch {}
     if (!answerId || !profileId)
       return new Response('Invalid', { status: 400 });
@@ -304,7 +305,7 @@ const FavoriteButton = memo(function FavoriteButton({
 
   // Debug log for initialFavorited changes
   useEffect(() => {
-    console.log(
+    logger.log(
       `[FavoriteButton ${answerId}] initialFavorited changed:`,
       initialFavorited
     );
