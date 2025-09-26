@@ -32,7 +32,6 @@ app/
 		supabase.ts         ← Supabase クライアント生成（本番専用 init）
 		db.ts               ← すべてのデータアクセス統合ポイント
 		schemas/            ← zod スキーマ（I/O 変換 & 型出力）
-	mock/                 ← 開発用メモリ内/fixture データ
 	hooks/                ← 再利用カスタムフック
 	styles/               ← Tailwind / グローバル CSS
 ```
@@ -55,16 +54,15 @@ app/
 
 ## � 環境切替ポリシー（最重要）
 
-| 環境 | 判定                           | データソース                       | I/O                                     | 外部通信     |
-| ---- | ------------------------------ | ---------------------------------- | --------------------------------------- | ------------ |
-| 開発 | `import.meta.env.DEV === true` | `app/mock` のインメモリ or fixture | 失敗 = throw Error（Supabase 呼ばない） | なし         |
-| 本番 | それ以外                       | Supabase                           | 失敗 = 例外を補足し 500 相当レスポンス  | Supabase API |
+| 環境 | 判定     | データソース | I/O                                    | 外部通信     |
+| ---- | -------- | ------------ | -------------------------------------- | ------------ |
+| 本番 | それ以外 | Supabase     | 失敗 = 例外を補足し 500 相当レスポンス | Supabase API |
 
 強制ルール:
 
 1. Supabase 直接利用禁止 (例: `supabase.from(...)`) → 例外: `app/lib/supabase.ts` 内部のみ。
 2. ルート / フック / コンポーネント は `import { getPosts } from "~/lib/db";` のみ。
-3. 新しい DB 操作を追加する際は: (a) zod スキーマ → (b) db.ts に関数 → (c) mock 実装 → (d) 本番 Supabase 実装。
+3. 新しい DB 操作を追加する際は: (a) zod スキーマ → (b) db.ts に関数 → (c) 本番 Supabase 実装。
 4. モックは「最小に追従」：スキーマ追加時はフィールド欠落を放置しない。
 5. 機密値は `.env` に `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`。`supabase.ts` で参照。
 
@@ -89,50 +87,6 @@ export async function addPost(input: {
 • 分岐は return 形を一致させる（型差異禁止）
 • 例外はそのまま throw（呼び出し側 loader が捕捉する）
 • 入力は zod で検証し、出力スキーマも定義可（必要に応じ `schemas/post.ts`）
-
-例 (改善版):
-
-```ts
-// db.ts 内概略
-import { supabase } from './supabase';
-import { mockPosts } from '../mock/posts';
-import { z } from 'zod';
-
-const PostInsertSchema = z.object({ content: z.string().min(1).max(500) });
-export type Post = { id: number; content: string; created_at: string };
-
-export async function getPosts(): Promise<Post[]> {
-  const isDev = import.meta.env.DEV;
-  if (isDev)
-    return [...mockPosts].sort((a, b) =>
-      a.created_at < b.created_at ? 1 : -1
-    );
-  const { data, error } = await supabase
-    .from('posts')
-    .select('id, content, created_at')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data as Post[];
-}
-
-export async function addPost(raw: { content: string }) {
-  const { content } = PostInsertSchema.parse(raw);
-  const isDev = import.meta.env.DEV;
-  if (isDev) {
-    mockPosts.unshift({
-      id: Date.now(),
-      content,
-      created_at: new Date().toISOString(),
-    });
-    return { success: true } as const;
-  }
-  const { error } = await supabase.from('posts').insert({ content });
-  if (error) throw error;
-  return { success: true } as const;
-}
-```
-
-⸻
 
 ## 🧪 loader / action の標準パターン
 
@@ -294,24 +248,10 @@ NG: モックと本番で戻り値型が不一致
 ## ✅ 追加時チェックリスト（開発者向け）
 
 1. 新規エンティティ: `schemas/xxx.ts` に zod スキーマ & 型 export
-2. `mock/xxx.ts` を作成（最小サンプル 2 件以上 / ID 一意）
-3. `db.ts` に CRUD 関数追加（isDev 分岐 / 戻り値統一）
-4. ルートファイル: `loader` で取得 / `action` で mutate
-5. 必要なら `useQuery` を補助的に追加（キー命名: `['entity', id]`）
-6. UI コンポーネントは props 経由
-7. ESLint / TypeScript エラー 0 を確認
-
-⸻
-
-## 📌 サンプル: mock データ（最小）
-
-```ts
-// app/mock/posts.ts
-export const mockPosts = [
-  { id: 1, content: 'Hello from mock!', created_at: '2024-08-01T12:00:00Z' },
-  { id: 2, content: 'Another test post', created_at: '2024-08-02T15:30:00Z' },
-];
-```
+2. ルートファイル: `loader` で取得 / `action` で mutate
+3. 必要なら `useQuery` を補助的に追加（キー命名: `['entity', id]`）
+4. UI コンポーネントは props 経由
+5. ESLint / TypeScript エラー 0 を確認
 
 ⸻
 
@@ -383,11 +323,10 @@ export const mockPosts = [
 ```ts
 /**
  * 概要: 投稿一覧を新しい順で取得するクエリ集約層。
- * Intent: ルートやフックからデータソース差異 (mock / supabase) を隠蔽。
+ * Intent: ルートやフックからデータソース差異 (supabase) を隠蔽。
  * Contract:
  *   - Output: created_at 降順 / 全件 / フィールド固定(id, content, created_at)
  * Environment:
- *   - dev: mockPosts をコピーしソート（配列破壊しない）
  *   - prod: Supabase posts SELECT + ORDER desc(created_at)
  * Errors: Supabase error そのまま throw。
  */
