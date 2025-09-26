@@ -4,11 +4,14 @@ import { useLoaderData, Link } from 'react-router';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
   const id = Number(params.id);
   if (Number.isNaN(id)) {
     throw new Response('Invalid topic id', { status: 400 });
   }
+
+  const url = new URL(request.url);
+  const profileId = url.searchParams.get('profileId') ?? undefined;
 
   const { getTopics, getAnswers } = await import('~/lib/db');
   const topics = await getTopics();
@@ -17,7 +20,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
     throw new Response('Not Found', { status: 404 });
   }
 
-  const answers = await getAnswers();
+  const answers = await getAnswers(profileId);
   const filtered = answers.filter(
     a => a.topicId != null && Number((a as any).topicId) === id
   );

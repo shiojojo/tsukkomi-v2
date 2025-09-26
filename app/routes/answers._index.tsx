@@ -54,6 +54,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     fromDate,
     toDate,
     author,
+    profileId: profileIdQuery,
   });
   const answerIds = answers.map(a => a.id);
   const commentsByAnswer = await getCommentsForAnswers(answerIds);

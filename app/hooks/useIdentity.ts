@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import * as identityStorage from '~/lib/identityStorage';
 
 /**
  * 概要: localStorage に保存されたメイン/サブユーザー情報をリアクティブに提供するフック。
@@ -53,10 +54,10 @@ function empty() {
 function read() {
   if (typeof window === 'undefined') return empty();
   try {
-    const mainId = localStorage.getItem('currentUserId');
-    const mainName = localStorage.getItem('currentUserName');
-    const subId = localStorage.getItem('currentSubUserId');
-    const subName = localStorage.getItem('currentSubUserName');
+  const mainId = identityStorage.getItem('currentUserId');
+  const mainName = identityStorage.getItem('currentUserName');
+  const subId = identityStorage.getItem('currentSubUserId');
+  const subName = identityStorage.getItem('currentSubUserName');
     return {
       mainId,
       mainName,

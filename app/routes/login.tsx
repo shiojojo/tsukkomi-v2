@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useFetcher } from 'react-router';
 import { useEffect, useState } from 'react';
+import * as identityStorage from '~/lib/identityStorage';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 
 /**
@@ -50,10 +51,10 @@ export default function LoginRoute() {
   // 初期状態読み込み
   useEffect(() => {
     try {
-      setCurrentUserId(localStorage.getItem('currentUserId'));
-      setCurrentUserName(localStorage.getItem('currentUserName'));
-      setCurrentSubUserId(localStorage.getItem('currentSubUserId'));
-      setCurrentSubUserName(localStorage.getItem('currentSubUserName'));
+      setCurrentUserId(identityStorage.getItem('currentUserId'));
+      setCurrentUserName(identityStorage.getItem('currentUserName'));
+      setCurrentSubUserId(identityStorage.getItem('currentSubUserId'));
+      setCurrentSubUserName(identityStorage.getItem('currentSubUserName'));
     } catch {}
   }, []);
 
@@ -66,13 +67,13 @@ export default function LoginRoute() {
       (createFetcher.data as any).sub
     ) {
       try {
-        const sub = (createFetcher.data as any).sub;
-        const parentId = String((createFetcher.data as any).parentId || '');
-        const parent = users.find(u => u.id === parentId);
-        localStorage.setItem('currentUserId', parentId);
-        if (parent) localStorage.setItem('currentUserName', parent.name);
-        localStorage.setItem('currentSubUserId', sub.id);
-        localStorage.setItem('currentSubUserName', sub.name);
+  const sub = (createFetcher.data as any).sub;
+  const parentId = String((createFetcher.data as any).parentId || '');
+  const parent = users.find(u => u.id === parentId);
+  identityStorage.setItem('currentUserId', parentId);
+  if (parent) identityStorage.setItem('currentUserName', parent.name);
+  identityStorage.setItem('currentSubUserId', sub.id);
+  identityStorage.setItem('currentSubUserName', sub.name);
       } catch {}
       window.location.href = '/';
     }
@@ -80,28 +81,28 @@ export default function LoginRoute() {
 
   function selectMain(u: any) {
     try {
-      localStorage.setItem('currentUserId', u.id);
-      localStorage.setItem('currentUserName', u.name ?? '');
-      localStorage.removeItem('currentSubUserId');
-      localStorage.removeItem('currentSubUserName');
+  identityStorage.setItem('currentUserId', u.id);
+  identityStorage.setItem('currentUserName', u.name ?? '');
+  identityStorage.removeItem('currentSubUserId');
+  identityStorage.removeItem('currentSubUserName');
     } catch {}
     window.location.href = '/';
   }
 
   function selectSub(sub: any, parent: any) {
     try {
-      localStorage.setItem('currentUserId', parent.id);
-      localStorage.setItem('currentUserName', parent.name ?? '');
-      localStorage.setItem('currentSubUserId', sub.id);
-      localStorage.setItem('currentSubUserName', sub.name);
+  identityStorage.setItem('currentUserId', parent.id);
+  identityStorage.setItem('currentUserName', parent.name ?? '');
+  identityStorage.setItem('currentSubUserId', sub.id);
+  identityStorage.setItem('currentSubUserName', sub.name);
     } catch {}
     window.location.href = '/';
   }
 
   function clearSub() {
     try {
-      localStorage.removeItem('currentSubUserId');
-      localStorage.removeItem('currentSubUserName');
+  identityStorage.removeItem('currentSubUserId');
+  identityStorage.removeItem('currentSubUserName');
     } catch {}
     window.location.href = '/';
   }

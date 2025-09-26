@@ -16,15 +16,21 @@ import type { Answer } from '~/lib/schemas/answer';
  *   - prod: Supabase クエリ with limit/lt(created_at)
  * Errors: loader 内例外は 4xx/5xx Response として伝播。
  */
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
   const id = String(params.id || '');
   if (!id) throw new Response('Invalid topic id', { status: 400 });
   const { getTopic } = await import('~/lib/db');
   const topic = await getTopic(id);
   if (!topic) throw new Response('Not Found', { status: 404 });
   // defer first page so shell (topic header) streams quickly
+  const url = new URL(request.url);
+  const profileId = url.searchParams.get('profileId') ?? undefined;
   const { getAnswersPageByTopic } = await import('~/lib/db');
-  const firstPage = await getAnswersPageByTopic({ topicId: id, cursor: null });
+  const firstPage = await getAnswersPageByTopic({
+    topicId: id,
+    cursor: null,
+    profileId,
+  });
   // enrich answers with displayName when possible to avoid exposing raw profile ids
   try {
     const { getProfilesByIds } = await import('~/lib/db');

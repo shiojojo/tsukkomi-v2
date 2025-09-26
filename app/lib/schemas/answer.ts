@@ -26,6 +26,7 @@ export const AnswerSchema = z
       .optional()
       .default({ level1: 0, level2: 0, level3: 0 }),
     votesBy: z.record(z.number().int()).optional().default({}),
+    favorited: z.boolean().optional(), // whether the current user has favorited this answer
   })
   .transform(a => ({ ...a }));
 

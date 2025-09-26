@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useFetcher, Form } from 'react-router';
 import { consumeToken } from '~/lib/rateLimiter';
+import { getItem, setItem, removeItem } from '~/lib/identityStorage';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
@@ -84,10 +85,10 @@ export default function MeRoute() {
 
   useEffect(() => {
     try {
-      setCurrentUserId(localStorage.getItem('currentUserId'));
-      setCurrentUserName(localStorage.getItem('currentUserName'));
-      setCurrentSubUserId(localStorage.getItem('currentSubUserId'));
-      setCurrentSubUserName(localStorage.getItem('currentSubUserName'));
+  setCurrentUserId(getItem('currentUserId'));
+  setCurrentUserName(getItem('currentUserName'));
+  setCurrentSubUserId(getItem('currentSubUserId'));
+  setCurrentSubUserName(getItem('currentSubUserName'));
     } catch {
       // ignore
     }
@@ -99,11 +100,11 @@ export default function MeRoute() {
       try {
         const sub = add.data.sub as any;
         const parentId = String(add.data.parentId || '');
-        localStorage.setItem('currentUserId', parentId);
-        const parent = users.find(u => u.id === parentId);
-        if (parent) localStorage.setItem('currentUserName', parent.name ?? '');
-        localStorage.setItem('currentSubUserId', sub.id);
-        localStorage.setItem('currentSubUserName', sub.name);
+  setItem('currentUserId', parentId);
+  const parent = users.find(u => u.id === parentId);
+  if (parent) setItem('currentUserName', parent.name ?? '');
+  setItem('currentSubUserId', sub.id);
+  setItem('currentSubUserName', sub.name);
       } catch {}
       // reload to reflect updated server-side mock state
       window.location.reload();
@@ -115,9 +116,9 @@ export default function MeRoute() {
     if (remove.state === 'idle' && remove.data && remove.data.ok) {
       try {
         const removedId = String(remove.data.subId || '');
-        if (localStorage.getItem('currentSubUserId') === removedId) {
-          localStorage.removeItem('currentSubUserId');
-          localStorage.removeItem('currentSubUserName');
+        if (getItem('currentSubUserId') === removedId) {
+          removeItem('currentSubUserId');
+          removeItem('currentSubUserName');
         }
       } catch {}
       window.location.reload();
@@ -126,21 +127,21 @@ export default function MeRoute() {
 
   function selectMain(user: any) {
     try {
-      localStorage.setItem('currentUserId', user.id);
-      localStorage.setItem('currentUserName', user.name ?? '');
-      // clear any sub selection
-      localStorage.removeItem('currentSubUserId');
-      localStorage.removeItem('currentSubUserName');
+  setItem('currentUserId', user.id);
+  setItem('currentUserName', user.name ?? '');
+  // clear any sub selection
+  removeItem('currentSubUserId');
+  removeItem('currentSubUserName');
     } catch {}
     window.location.reload();
   }
 
   function switchToSub(sub: any, parent: any) {
     try {
-      localStorage.setItem('currentUserId', parent.id);
-      localStorage.setItem('currentUserName', parent.name ?? '');
-      localStorage.setItem('currentSubUserId', sub.id);
-      localStorage.setItem('currentSubUserName', sub.name);
+  setItem('currentUserId', parent.id);
+  setItem('currentUserName', parent.name ?? '');
+  setItem('currentSubUserId', sub.id);
+  setItem('currentSubUserName', sub.name);
     } catch {}
     window.location.reload();
   }
@@ -148,8 +149,8 @@ export default function MeRoute() {
   // End using sub-user and return to main user (clear sub selection)
   function returnToMain() {
     try {
-      localStorage.removeItem('currentSubUserId');
-      localStorage.removeItem('currentSubUserName');
+  removeItem('currentSubUserId');
+  removeItem('currentSubUserName');
     } catch {}
     window.location.reload();
   }

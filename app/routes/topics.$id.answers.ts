@@ -9,8 +9,9 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   if (!id) throw new Response('Bad Request', { status: 400 });
   const { searchParams } = new URL(request.url);
   const cursor = searchParams.get('cursor');
+  const profileId = searchParams.get('profileId') ?? undefined;
   const { getAnswersPageByTopic } = await import('~/lib/db');
-  const page = await getAnswersPageByTopic({ topicId: id, cursor, pageSize: 20 });
+  const page = await getAnswersPageByTopic({ topicId: id, cursor, pageSize: 20, profileId });
   return new Response(JSON.stringify(page), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=30, stale-while-revalidate=300' } });
 }
 

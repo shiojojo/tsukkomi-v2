@@ -36,9 +36,14 @@ function invalidateCache(_prefix: string) {
  *  - prod: Not implemented in this scaffold; implement Supabase client in app/lib/supabase.ts and update this file.
  * Errors: zod parsing errors will throw; prod will throw an Error until supabase is wired.
  */
-export async function getAnswers(): Promise<Answer[]> {
+export async function getAnswers(profileId?: string): Promise<Answer[]> {
   // always fetch fresh answers from DB
-  await ensureConnection();
+  try {
+    await ensureConnection();
+  } catch (error) {
+    console.error('Supabase connection failed in getAnswers:', error);
+    return []; // Return empty array on connection failure
+  }
   const { data: answerRows, error: answerErr } = await supabase
     .from('answers')
     .select('id, text, profile_id, topic_id, created_at')
@@ -89,10 +94,34 @@ export async function getAnswers(): Promise<Answer[]> {
     }
   }
 
+  // If profileId is provided, get user's votes and favorites for sync
+  let userVotes: Record<number, number> = {};
+  let userFavorites: Set<number> = new Set();
+  
+  if (profileId && ids.length) {
+    // Get user's votes for these answers
+    const { data: voteData, error: voteErr } = await supabase
+      .from('votes')
+      .select('answer_id, level')
+      .eq('profile_id', profileId)
+      .in('answer_id', ids);
+    
+    if (!voteErr && voteData) {
+      for (const vote of voteData) {
+        userVotes[Number(vote.answer_id)] = vote.level;
+      }
+    }
+
+    // Get user's favorites for these answers
+    const userFavs = await getFavoritesForProfile(profileId, ids);
+    userFavorites = new Set(userFavs);
+  }
+
   const normalized = answers.map((a: any) => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-    votesBy: {},
+    votesBy: profileId && userVotes[a.id] ? { [profileId]: userVotes[a.id] } : {},
+    favorited: profileId ? userFavorites.has(a.id) : undefined,
   }));
 
   return AnswerSchema.array().parse(normalized as any);
@@ -188,6 +217,41 @@ export async function getFavoritesForProfile(profileId: string, answerIds?: Arra
   return (data ?? []).map((r: any) => Number(r.answer_id));
 }
 
+/**
+ * Get user's votes for specific answers
+ * Returns a map of answerId -> vote level
+ */
+export async function getVotesForProfile(profileId: string, answerIds?: Array<number | string>) {
+  await ensureConnection();
+  let q = supabase.from('votes').select('answer_id, level');
+  q = q.eq('profile_id', profileId);
+  if (answerIds && answerIds.length) q = q.in('answer_id', answerIds.map((v) => Number(v)).filter(Boolean));
+  const { data, error } = await q;
+  if (error) throw error;
+  
+  const result: Record<number, number> = {};
+  for (const vote of (data ?? [])) {
+    result[Number(vote.answer_id)] = vote.level;
+  }
+  return result;
+}
+
+/**
+ * Get user's profile data including votes and favorites for answers
+ * This ensures the latest data is always fetched from DB
+ */
+export async function getProfileAnswerData(profileId: string, answerIds: Array<number | string>) {
+  const [votes, favorites] = await Promise.all([
+    getVotesForProfile(profileId, answerIds),
+    getFavoritesForProfile(profileId, answerIds)
+  ]);
+  
+  return {
+    votes,
+    favorites: new Set(favorites)
+  };
+}
+
 
 // Helper to record deprecation usage during tests or debug runs
 // warnIfLegacyAuthorUsed removed as legacy fields are deleted
@@ -209,6 +273,7 @@ export async function searchAnswers(opts: {
   hasComments?: boolean;
   fromDate?: string | undefined; // inclusive (YYYY-MM-DD or ISO)
   toDate?: string | undefined;   // inclusive (YYYY-MM-DD or ISO)
+  profileId?: string; // for vote and favorite sync
 }): Promise<{ answers: Answer[]; total: number }> {
   const { q, author, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments, fromDate, toDate } = opts;
   await ensureConnection();
@@ -410,10 +475,35 @@ export async function searchAnswers(opts: {
     commentSet = new Set((commentIds ?? []).map((r: any) => Number(r.answer_id)));
   }
 
-  // attach counts
+  // Get user-specific data if profileId provided
+  let userVotes: Record<number, number> = {};
+  let userFavorites: Set<number> = new Set();
+  
+  if (opts.profileId && ids.length) {
+    // Get user's votes for these answers
+    const { data: voteData, error: voteErr } = await supabase
+      .from('votes')
+      .select('answer_id, level')
+      .eq('profile_id', opts.profileId)
+      .in('answer_id', ids);
+    
+    if (!voteErr && voteData) {
+      for (const vote of voteData) {
+        userVotes[Number(vote.answer_id)] = vote.level;
+      }
+    }
+
+    // Get user's favorites for these answers
+    const userFavs = await getFavoritesForProfile(opts.profileId, ids);
+    userFavorites = new Set(userFavs);
+  }
+
+  // attach counts and user-specific data
   answers = answers.map(a => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+    votesBy: opts.profileId && userVotes[a.id] ? { [opts.profileId]: userVotes[a.id] } : {},
+    favorited: opts.profileId ? userFavorites.has(a.id) : undefined,
   }));
 
   if (derivedFiltering) {
@@ -599,14 +689,19 @@ export async function getTopics(): Promise<Topic[]> {
   }
   if (DEBUG_DB_TIMINGS) console.timeEnd('db:ensureConnection');
 
-  if (DEBUG_DB_TIMINGS) console.time('db:topicsQuery');
-  const { data, error } = await supabase
-    .from('topics')
-    .select('id, title, created_at, image')
-    .order('created_at', { ascending: false });
-  if (DEBUG_DB_TIMINGS) console.timeEnd('db:topicsQuery');
-  if (error) throw error;
-  return TopicSchema.array().parse(data ?? []);
+  try {
+    if (DEBUG_DB_TIMINGS) console.time('db:topicsQuery');
+    const { data, error } = await supabase
+      .from('topics')
+      .select('id, title, created_at, image')
+      .order('created_at', { ascending: false });
+    if (DEBUG_DB_TIMINGS) console.timeEnd('db:topicsQuery');
+    if (error) throw error;
+    return TopicSchema.array().parse(data ?? []);
+  } catch (error) {
+    console.error('Topics query failed:', error);
+    return []; // Return empty array on query failure
+  }
 }
 
 /**
@@ -665,16 +760,21 @@ export async function getLatestTopic(): Promise<Topic | null> {
   // request latency. We rely on the actual topics query to surface network
   // errors quickly; callers receive null only if no topic exists.
 
-  if (DEBUG_DB_TIMINGS) console.time('db:latestTopic:query');
-  const { data, error } = await supabase
-    .from('topics')
-    .select('id, title, created_at, image')
-    .order('created_at', { ascending: false })
-    .limit(1);
-  if (DEBUG_DB_TIMINGS) console.timeEnd('db:latestTopic:query');
-  if (error) throw error;
-  const row = (data ?? [])[0] ?? null;
-  return row ? TopicSchema.parse(row as any) : null;
+  try {
+    if (DEBUG_DB_TIMINGS) console.time('db:latestTopic:query');
+    const { data, error } = await supabase
+      .from('topics')
+      .select('id, title, created_at, image')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (DEBUG_DB_TIMINGS) console.timeEnd('db:latestTopic:query');
+    if (error) throw error;
+    const row = (data ?? [])[0] ?? null;
+    return row ? TopicSchema.parse(row as any) : null;
+  } catch (error) {
+    console.error('Supabase connection failed in getLatestTopic:', error);
+    return null; // Return null on connection failure
+  }
 }
 
 /**
@@ -831,7 +931,7 @@ export async function getTopic(id: string | number): Promise<Topic | undefined> 
  * Intent: return answers that belong to a given topic id.
  * Contract: topicId may be string or number. Comparison coerces both sides to string.
  */
-export async function getAnswersByTopic(topicId: string | number) {
+export async function getAnswersByTopic(topicId: string | number, profileId?: string) {
   try {
     await ensureConnection();
   } catch (e) {
@@ -889,10 +989,34 @@ export async function getAnswersByTopic(topicId: string | number) {
     }
   }
 
+  // If profileId is provided, get user's votes and favorites for sync
+  let userVotes: Record<number, number> = {};
+  let userFavorites: Set<number> = new Set();
+  
+  if (profileId && ids.length) {
+    // Get user's votes for these answers
+    const { data: voteData, error: voteErr } = await supabase
+      .from('votes')
+      .select('answer_id, level')
+      .eq('profile_id', profileId)
+      .in('answer_id', ids);
+    
+    if (!voteErr && voteData) {
+      for (const vote of voteData) {
+        userVotes[Number(vote.answer_id)] = vote.level;
+      }
+    }
+
+    // Get user's favorites for these answers
+    const userFavs = await getFavoritesForProfile(profileId, ids);
+    userFavorites = new Set(userFavs);
+  }
+
   const normalized = answers.map((a: any) => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-    votesBy: {},
+    votesBy: profileId && userVotes[a.id] ? { [profileId]: userVotes[a.id] } : {},
+    favorited: profileId ? userFavorites.has(a.id) : undefined,
   }));
 
   return AnswerSchema.array().parse(normalized as any);
@@ -910,7 +1034,7 @@ export async function getAnswersByTopic(topicId: string | number) {
  *  - prod: Supabase query with .lt('created_at', cursor) when cursor provided
  * Errors: Supabase error そのまま throw。
  */
-export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20 }: { topicId: string | number; cursor: string | null; pageSize?: number }): Promise<{ answers: Answer[]; nextCursor: string | null }> {
+export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20, profileId }: { topicId: string | number; cursor: string | null; pageSize?: number; profileId?: string }): Promise<{ answers: Answer[]; nextCursor: string | null }> {
   if (pageSize <= 0) return { answers: [], nextCursor: null };
   
   try {
@@ -937,10 +1061,75 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20 }: 
   profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
-    votes: { level1: 0, level2: 0, level3: 0 },
-    votesBy: {},
   }));
-  const answers = AnswerSchema.array().parse(rows as any);
+
+  // Get vote counts and user-specific data for these answers
+  const ids = rows.map((r: any) => Number(r.id)).filter(Boolean);
+  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
+  let userVotes: Record<number, number> = {};
+  let userFavorites: Set<number> = new Set();
+
+  if (ids.length) {
+    // Get vote counts
+    const { data: countsData, error: countsErr } = await supabase
+      .from('answer_vote_counts')
+      .select('answer_id, level1, level2, level3')
+      .in('answer_id', ids);
+    
+    if (!countsErr && countsData && countsData.length) {
+      for (const c of countsData) {
+        countsMap[Number(c.answer_id)] = {
+          level1: Number(c.level1 ?? 0),
+          level2: Number(c.level2 ?? 0),
+          level3: Number(c.level3 ?? 0),
+        };
+      }
+    } else {
+      // Fallback: aggregate from votes table
+      const { data: agg, error: aggErr } = await supabase
+        .from('votes')
+        .select('answer_id, level', { head: false })
+        .in('answer_id', ids);
+      if (aggErr) throw aggErr;
+      for (const row of agg ?? []) {
+        const aid = Number(row.answer_id);
+        countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
+        const lv = Number(row.level);
+        if (lv === 1) countsMap[aid].level1 += 1;
+        else if (lv === 2) countsMap[aid].level2 += 1;
+        else if (lv === 3) countsMap[aid].level3 += 1;
+      }
+    }
+
+    // If profileId is provided, get user's votes and favorites for sync
+    if (profileId) {
+      // Get user's votes for these answers
+      const { data: voteData, error: voteErr } = await supabase
+        .from('votes')
+        .select('answer_id, level')
+        .eq('profile_id', profileId)
+        .in('answer_id', ids);
+      
+      if (!voteErr && voteData) {
+        for (const vote of voteData) {
+          userVotes[Number(vote.answer_id)] = vote.level;
+        }
+      }
+
+      // Get user's favorites for these answers
+      const userFavs = await getFavoritesForProfile(profileId, ids);
+      userFavorites = new Set(userFavs);
+    }
+  }
+
+  const normalizedRows = rows.map((a: any) => ({
+    ...a,
+    votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+    votesBy: profileId && userVotes[a.id] ? { [profileId]: userVotes[a.id] } : {},
+    favorited: profileId ? userFavorites.has(a.id) : undefined,
+  }));
+
+  const answers = AnswerSchema.array().parse(normalizedRows as any);
   const next = answers.length === pageSize ? answers[answers.length - 1].created_at : null;
   return { answers, nextCursor: next };
 }
@@ -1038,8 +1227,19 @@ export async function voteAnswer({
   level2: counts?.level2 ?? 0,
   level3: counts?.level3 ?? 0,
   };
+  
+  // Get all current votes for this answer to provide accurate votesBy
+  const { data: allVotes, error: allVotesErr } = await supabase
+    .from('votes')
+    .select('profile_id, level')
+    .eq('answer_id', answerId);
+  
+  if (allVotesErr) throw allVotesErr;
+  
   const votesByObj: Record<string, number> = {};
-  if (userId && level !== 0) votesByObj[userId] = level;
+  for (const vote of (allVotes ?? [])) {
+    votesByObj[vote.profile_id] = vote.level;
+  }
 
   const result = {
     id: Number(answerRow.id),

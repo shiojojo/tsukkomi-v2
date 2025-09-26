@@ -3,6 +3,7 @@ import { useLoaderData, Link, Form, useFetcher } from 'react-router';
 import { consumeToken } from '~/lib/rateLimiter';
 import { useState, useEffect, useRef } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
+import { useAnswerUserData, useCurrentUserId } from '~/hooks/useAnswerUserData';
 // server-only imports are dynamically loaded inside loader/action
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
@@ -32,7 +33,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const { getTopic, getAnswersByTopic } = await import('~/lib/db');
   const [topic, answers] = await Promise.all([
     getTopic(id),
-    getAnswersByTopic(id),
+    getAnswersByTopic(id, profileId),
   ]);
 
   if (!topic) {
@@ -84,6 +85,11 @@ function FavoriteButton({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const fetcher = useFetcher();
   const [fav, setFav] = useState<boolean>(initialFavorited ?? false);
+
+  // Update favorite state when initialFavorited prop changes (from user data sync)
+  useEffect(() => {
+    setFav(initialFavorited ?? false);
+  }, [initialFavorited]);
 
   // Only read identity from localStorage so we can prompt login when necessary.
   // Avoid issuing an automatic POST-per-answer to request favorite status on mount
@@ -313,6 +319,22 @@ export default function TopicDetailRoute() {
   const topic: Topic = data.topic;
   // answers may be annotated with `voters: { id, name, level }[]`
   const answers: any[] = data.answers ?? [];
+
+  // Get current user ID and fetch user-specific data
+  const currentUserId = useCurrentUserId();
+  const answerIds = answers.map(a => Number(a.id)).filter(Boolean);
+  const { data: userData, isLoading: userDataLoading } =
+    useAnswerUserData(answerIds);
+
+  // Merge server data with user-specific data
+  const enrichedAnswers = answers.map(answer => ({
+    ...answer,
+    votesBy: userData?.votes[answer.id]
+      ? { [currentUserId!]: userData.votes[answer.id] }
+      : answer.votesBy || {},
+    favorited: userData?.favorites.has(answer.id) ?? answer.favorited,
+  }));
+
   // votes are handled locally for now; no server roundtrip on click.
 
   return (
@@ -347,10 +369,18 @@ export default function TopicDetailRoute() {
         </div>
       }
     >
-      {answers.length === 0 ? (
+      {userDataLoading && currentUserId ? (
+        <div className="flex items-center justify-center py-4">
+          <div className="text-sm text-gray-500">ユーザーデータを同期中...</div>
+        </div>
+      ) : null}
+      {enrichedAnswers.length === 0 ? (
         <p className="text-gray-600">まだ回答が投稿されていません。</p>
       ) : (
-        <ProgressiveAnswersList answers={answers} topicId={String(topic.id)} />
+        <ProgressiveAnswersList
+          answers={enrichedAnswers}
+          topicId={String(topic.id)}
+        />
       )}
     </StickyHeaderLayout>
   );
@@ -369,7 +399,7 @@ function ProgressiveAnswersList({
   return (
     <div>
       <ul className="space-y-5 px-1">
-        {visible.map(a => (
+        {visible.map((a: any) => (
           <AnswerCard key={a.id} answer={a} topicId={topicId} />
         ))}
       </ul>
@@ -399,9 +429,11 @@ function ProgressiveAnswersList({
 function NumericVoteButtons({
   answerId,
   initialVotes,
+  votesBy,
 }: {
   answerId: number;
   initialVotes: { level1: number; level2: number; level3: number };
+  votesBy?: Record<string, number>;
 }) {
   // local state for counts and selection. This intentionally keeps votes client-side only for now.
   const key = `vote:answer:${answerId}`;
@@ -412,6 +444,13 @@ function NumericVoteButtons({
         localStorage.getItem('currentSubUserId') ??
         localStorage.getItem('currentUserId');
       if (!uid) return null;
+
+      // First check if we have server-side votesBy data
+      if (votesBy && uid in votesBy) {
+        return votesBy[uid] as 1 | 2 | 3;
+      }
+
+      // Fallback to localStorage
       const k = `vote:answer:${answerId}:user:${uid}`;
       const v = localStorage.getItem(k);
       return v ? (Number(v) as 1 | 2 | 3) : null;
@@ -423,6 +462,12 @@ function NumericVoteButtons({
   const [selection, setSelection] = useState<1 | 2 | 3 | null>(
     typeof window !== 'undefined' ? readStored() : null
   );
+
+  // Update selection when votesBy prop changes (from user data sync)
+  useEffect(() => {
+    const newSelection = readStored();
+    setSelection(newSelection);
+  }, [votesBy]);
 
   // counts are intentionally not shown in the UI; keep local state for potential future use
   const [counts, setCounts] = useState(() => ({ ...initialVotes }));
@@ -776,7 +821,11 @@ function AnswerCard({
                   answerId={a.id}
                   initialFavorited={(a as any).favorited}
                 />
-                <NumericVoteButtons answerId={a.id} initialVotes={votes} />
+                <NumericVoteButtons
+                  answerId={a.id}
+                  initialVotes={votes}
+                  votesBy={(a as any).votesBy}
+                />
               </div>
             </div>
           </div>

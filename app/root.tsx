@@ -72,6 +72,33 @@ export default function App() {
   // useNavigation is only available inside the Router context (client-side)
   const navigation = useNavigation();
   const isLoading = navigation.state !== 'idle';
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+  // Debug navigation state
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      console.log(
+        'Navigation state:',
+        navigation.state,
+        'isLoading:',
+        isLoading
+      );
+    }
+  }, [navigation.state, isLoading]);
+
+  // Add timeout for loading state to prevent permanent loading overlay
+  useEffect(() => {
+    if (isLoading) {
+      setLoadingTimeout(false);
+      const timer = setTimeout(() => {
+        console.warn('Loading state timeout - hiding overlay');
+        setLoadingTimeout(true);
+      }, 10000); // 10 second timeout
+      return () => clearTimeout(timer);
+    } else {
+      setLoadingTimeout(false);
+    }
+  }, [isLoading]);
 
   // QueryClient per app instance (client-side). Keep it lazy so SSR doesn't create one.
   const [qc] = useState(() => new QueryClient());
@@ -138,13 +165,21 @@ export default function App() {
       <Layout>
         <Outlet />
 
-        {/* Loading overlay rendered at the top level so it covers route content */}
-        {isLoading && (
+        {/* Loading overlay TEMPORARILY DISABLED - suspect it's blocking clicks */}
+        {false && isLoading && !loadingTimeout && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="bg-slate-900/95 text-white rounded-lg p-4 flex items-center gap-3">
               <div className="w-8 h-8 border-4 border-t-transparent border-white rounded-full animate-spin" />
               <div className="text-sm">Loading…</div>
             </div>
+          </div>
+        )}
+
+        {/* Debug info - only in development */}
+        {typeof window !== 'undefined' && import.meta.env.DEV && (
+          <div className="fixed bottom-4 right-4 z-40 bg-black text-white text-xs p-2 rounded font-mono">
+            Nav: {navigation.state} | Loading: {isLoading ? 'YES' : 'NO'} |
+            Timeout: {loadingTimeout ? 'YES' : 'NO'}
           </div>
         )}
       </Layout>
