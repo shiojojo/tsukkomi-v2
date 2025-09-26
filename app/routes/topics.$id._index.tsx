@@ -103,7 +103,7 @@ function AnswerCard({ answer }: { answer: Answer }) {
                 <ul className="mt-2 space-y-2">
                   {(comments || []).map(c => (
                     <li key={c.id} className="text-gray-700 text-xs">
-                      {c.text}{' '}
+                      <div className="whitespace-pre-wrap">{c.text}</div>{' '}
                       <span className="text-[10px] text-gray-400 dark:text-white">
                         —{' '}
                         {(c as any).displayName ??

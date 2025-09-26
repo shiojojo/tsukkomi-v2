@@ -417,6 +417,8 @@ const AnswerCard = memo(function AnswerCard({
   userAnswerData,
 }: AnswerCardProps) {
   const [open, setOpen] = useState(false);
+  const commentInputRef = useRef<HTMLTextAreaElement>(null);
+  const commentFormRef = useRef<HTMLFormElement>(null);
   return (
     <li className="p-4 border rounded-md bg-white/80 dark:bg-gray-950/80">
       <div className="flex flex-col gap-3">
@@ -493,7 +495,7 @@ const AnswerCard = memo(function AnswerCard({
             <ul className="mt-2 space-y-2 text-sm">
               {comments.map(c => (
                 <li key={c.id} className="text-gray-700 dark:text-white">
-                  {c.text}{' '}
+                  <div className="whitespace-pre-wrap">{c.text}</div>{' '}
                   <span className="text-xs text-gray-400 dark:text-white">
                     — {getNameByProfileId((c as any).profileId) ?? '名無し'}
                   </span>
@@ -504,18 +506,35 @@ const AnswerCard = memo(function AnswerCard({
               <div className="text-muted mb-2">
                 コメントとして: {currentUserName ?? '名無し'}
               </div>
-              <Form method="post" className="flex gap-2" replace>
+              <Form
+                method="post"
+                className="flex gap-2"
+                replace
+                ref={commentFormRef}
+              >
                 <input type="hidden" name="answerId" value={String(a.id)} />
                 <input
                   type="hidden"
                   name="profileId"
                   value={currentUserId ?? ''}
                 />
-                <input
+                <textarea
                   name="text"
-                  className="form-input flex-1"
+                  ref={commentInputRef}
+                  className="form-input flex-1 min-h-[44px] resize-y p-2 rounded-md"
                   placeholder="コメントを追加"
                   aria-label="コメント入力"
+                  rows={2}
+                  onKeyDown={e => {
+                    const isEnter = e.key === 'Enter';
+                    const isMeta = e.metaKey || e.ctrlKey;
+                    if (isEnter && isMeta) {
+                      e.preventDefault();
+                      if (commentFormRef.current) {
+                        commentFormRef.current.requestSubmit();
+                      }
+                    }
+                  }}
                 />
                 <button className="btn-inline" aria-label="コメントを送信">
                   送信
