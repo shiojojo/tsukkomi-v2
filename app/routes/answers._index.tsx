@@ -419,6 +419,17 @@ const AnswerCard = memo(function AnswerCard({
   const [open, setOpen] = useState(false);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const commentFormRef = useRef<HTMLFormElement>(null);
+  const commentFetcher = useFetcher();
+
+  // フォーム送信成功後に入力欄をクリア
+  useEffect(() => {
+    if (commentFetcher.state === 'idle' && commentFetcher.data) {
+      // 送信成功後にフォームをリセット
+      if (commentFormRef.current) {
+        commentFormRef.current.reset();
+      }
+    }
+  }, [commentFetcher.state, commentFetcher.data]);
   return (
     <li className="p-4 border rounded-md bg-white/80 dark:bg-gray-950/80">
       <div className="flex flex-col gap-3">
@@ -506,10 +517,9 @@ const AnswerCard = memo(function AnswerCard({
               <div className="text-muted mb-2">
                 コメントとして: {currentUserName ?? '名無し'}
               </div>
-              <Form
+              <commentFetcher.Form
                 method="post"
                 className="flex gap-2"
-                replace
                 ref={commentFormRef}
               >
                 <input type="hidden" name="answerId" value={String(a.id)} />
@@ -521,25 +531,57 @@ const AnswerCard = memo(function AnswerCard({
                 <textarea
                   name="text"
                   ref={commentInputRef}
-                  className="form-input flex-1 min-h-[44px] resize-y p-2 rounded-md"
+                  className={`form-input flex-1 min-h-[44px] resize-y p-2 rounded-md ${commentFetcher.state === 'submitting' ? 'opacity-60' : ''}`}
                   placeholder="コメントを追加"
                   aria-label="コメント入力"
                   rows={2}
+                  disabled={commentFetcher.state === 'submitting'}
                   onKeyDown={e => {
                     const isEnter = e.key === 'Enter';
                     const isMeta = e.metaKey || e.ctrlKey;
                     if (isEnter && isMeta) {
                       e.preventDefault();
                       if (commentFormRef.current) {
-                        commentFormRef.current.requestSubmit();
+                        const formData = new FormData(commentFormRef.current);
+                        commentFetcher.submit(formData, { method: 'post' });
                       }
                     }
                   }}
                 />
-                <button className="btn-inline" aria-label="コメントを送信">
-                  送信
+                <button
+                  className={`btn-inline ${commentFetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''} flex items-center gap-2`}
+                  aria-label="コメントを送信"
+                  disabled={commentFetcher.state === 'submitting'}
+                >
+                  {commentFetcher.state === 'submitting' ? (
+                    <>
+                      <svg
+                        className="animate-spin h-4 w-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      送信中…
+                    </>
+                  ) : (
+                    '送信'
+                  )}
                 </button>
-              </Form>
+              </commentFetcher.Form>
             </div>
           </div>
         )}

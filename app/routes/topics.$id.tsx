@@ -953,10 +953,11 @@ function AnswerCard({
                     <textarea
                       name="commentText"
                       ref={inputRef}
-                      className="form-input flex-1 min-h-[44px] resize-y p-2 rounded-md"
+                      className={`form-input flex-1 min-h-[44px] resize-y p-2 rounded-md ${fetcher.state === 'submitting' ? 'opacity-60' : ''}`}
                       placeholder="コメントを追加"
                       aria-label="コメント入力"
                       rows={3}
+                      disabled={fetcher.state === 'submitting'}
                       onKeyDown={e => {
                         const isEnter = e.key === 'Enter';
                         const isMeta = e.metaKey || e.ctrlKey;
@@ -1000,12 +1001,38 @@ function AnswerCard({
                       }}
                     />
                     <button
-                      className={`btn-inline ${fetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''}`}
+                      className={`btn-inline ${fetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''} flex items-center gap-2`}
                       aria-label="コメントを送信"
                       aria-busy={fetcher.state === 'submitting'}
                       disabled={fetcher.state === 'submitting'}
                     >
-                      {fetcher.state === 'submitting' ? '送信中…' : '送信'}
+                      {fetcher.state === 'submitting' ? (
+                        <>
+                          <svg
+                            className="animate-spin h-4 w-4"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          送信中…
+                        </>
+                      ) : (
+                        '送信'
+                      )}
                     </button>
                   </fetcher.Form>
                 </div>
