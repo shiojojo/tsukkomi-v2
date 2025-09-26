@@ -1,6 +1,7 @@
 import type { Route } from './+types/home';
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
+import { useCurrentUserId } from '~/hooks/useAnswerUserData';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 
@@ -21,6 +22,7 @@ export default function Home() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
   const data = useLoaderData() as LoaderData;
   const latest: Topic | null = data?.latest ?? null;
+  const currentUserId = useCurrentUserId();
 
   const current: Topic | null = latest;
 
@@ -33,7 +35,11 @@ export default function Home() {
           <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-lg p-6">
             <div>
               <Link
-                to={`/topics/${current.id}`}
+                to={
+                  currentUserId
+                    ? `/topics/${current.id}?profileId=${currentUserId}`
+                    : `/topics/${current.id}`
+                }
                 className="block p-0 border rounded-md overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 aria-label={`お題 ${current.title} の回答を見る`}
               >

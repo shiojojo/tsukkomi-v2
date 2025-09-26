@@ -3,7 +3,11 @@ import { useLoaderData, Link, Form, useFetcher } from 'react-router';
 import { consumeToken } from '~/lib/rateLimiter';
 import { useState, useEffect, useRef } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
-import { useAnswerUserData, useCurrentUserId } from '~/hooks/useAnswerUserData';
+import {
+  useAnswerUserData,
+  useCurrentUserId,
+  useInvalidateAnswerUserData,
+} from '~/hooks/useAnswerUserData';
 // server-only imports are dynamically loaded inside loader/action
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
@@ -85,11 +89,16 @@ function FavoriteButton({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const fetcher = useFetcher();
   const [fav, setFav] = useState<boolean>(initialFavorited ?? false);
+  const invalidateUserData = useInvalidateAnswerUserData();
 
   // Update favorite state when initialFavorited prop changes (from user data sync)
   useEffect(() => {
+    console.log(
+      `[FavoriteButton ${answerId}] initialFavorited changed:`,
+      initialFavorited
+    );
     setFav(initialFavorited ?? false);
-  }, [initialFavorited]);
+  }, [initialFavorited, answerId]);
 
   // Only read identity from localStorage so we can prompt login when necessary.
   // Avoid issuing an automatic POST-per-answer to request favorite status on mount
@@ -114,9 +123,17 @@ function FavoriteButton({
         typeof fetcher.data === 'string'
           ? JSON.parse(fetcher.data)
           : fetcher.data;
-      if (d && typeof d.favorited === 'boolean') setFav(Boolean(d.favorited));
+      if (d && typeof d.favorited === 'boolean') {
+        console.log(
+          `[FavoriteButton ${answerId}] Server response:`,
+          d.favorited
+        );
+        setFav(Boolean(d.favorited));
+        // Invalidate user data cache to ensure fresh data on next fetch
+        invalidateUserData([answerId]);
+      }
     } catch {}
-  }, [fetcher.data]);
+  }, [fetcher.data, answerId, invalidateUserData]);
 
   const handleClick = () => {
     if (!currentUserId) {
@@ -126,6 +143,7 @@ function FavoriteButton({
       return;
     }
     // optimistic toggle
+    console.log(`[FavoriteButton ${answerId}] Optimistic toggle: ${!fav}`);
     setFav(s => !s);
     const fd = new FormData();
     fd.set('op', 'toggle');
@@ -326,14 +344,38 @@ export default function TopicDetailRoute() {
   const { data: userData, isLoading: userDataLoading } =
     useAnswerUserData(answerIds);
 
+  // Debug: Check if server-side favorited data exists (client-side only)
+  useEffect(() => {
+    console.log(
+      '[TopicDetailRoute] Server answers favorited status:',
+      answers.slice(0, 3).map(a => ({ id: a.id, favorited: a.favorited }))
+    );
+    console.log('[TopicDetailRoute] Current user ID:', currentUserId);
+    console.log('[TopicDetailRoute] User data:', userData);
+  }, [answers, currentUserId, userData]);
+
   // Merge server data with user-specific data
-  const enrichedAnswers = answers.map(answer => ({
-    ...answer,
-    votesBy: userData?.votes[answer.id]
-      ? { [currentUserId!]: userData.votes[answer.id] }
-      : answer.votesBy || {},
-    favorited: userData?.favorites.has(answer.id) ?? answer.favorited,
-  }));
+  const enrichedAnswers = answers.map(answer => {
+    const favorited = userData
+      ? userData.favorites.has(answer.id)
+      : answer.favorited;
+    return {
+      ...answer,
+      votesBy: userData?.votes[answer.id]
+        ? { [currentUserId!]: userData.votes[answer.id] }
+        : answer.votesBy || {},
+      favorited,
+    };
+  });
+
+  // Debug enriched answers (client-side only)
+  useEffect(() => {
+    enrichedAnswers.slice(0, 3).forEach(answer => {
+      console.log(
+        `[TopicDetailRoute] Answer ${answer.id}: server=${answers.find(a => a.id === answer.id)?.favorited}, client=${userData?.favorites.has(answer.id)}, final=${answer.favorited}`
+      );
+    });
+  }, [enrichedAnswers, userData, answers]);
 
   // votes are handled locally for now; no server roundtrip on click.
 

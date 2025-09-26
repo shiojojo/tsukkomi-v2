@@ -2,7 +2,7 @@
  * Custom hook to sync user's vote and favorite data for answers
  * This hook fetches user-specific data from the server and updates the local state
  */
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 export interface AnswerUserData {
@@ -34,7 +34,7 @@ export function useCurrentUserId(): string | null {
 export function useAnswerUserData(answerIds: number[], enabled: boolean = true) {
   const userId = useCurrentUserId();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['answerUserData', userId, answerIds.sort()],
     queryFn: async (): Promise<AnswerUserData> => {
       if (!userId || answerIds.length === 0) {
@@ -60,4 +60,39 @@ export function useAnswerUserData(answerIds: number[], enabled: boolean = true) 
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: false,
   });
+
+  // Debug logging (client-side only)
+  useEffect(() => {
+    if (query.isLoading) {
+      console.log('[useAnswerUserData] Fetching data for userId:', userId, 'answerIds:', answerIds);
+    } else if (query.data) {
+      console.log('[useAnswerUserData] Data received:', query.data);
+    }
+  }, [query.isLoading, query.data, userId, answerIds]);
+
+  return query;
+}
+
+/**
+ * Hook to invalidate answer user data cache
+ */
+export function useInvalidateAnswerUserData() {
+  const queryClient = useQueryClient();
+  const userId = useCurrentUserId();
+
+  return (answerIds?: number[]) => {
+    if (!userId) return;
+    
+    if (answerIds) {
+      // Invalidate specific query
+      queryClient.invalidateQueries({
+        queryKey: ['answerUserData', userId, answerIds.sort()]
+      });
+    } else {
+      // Invalidate all answerUserData queries for this user
+      queryClient.invalidateQueries({
+        queryKey: ['answerUserData', userId]
+      });
+    }
+  };
 }

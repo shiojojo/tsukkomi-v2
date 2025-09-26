@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
 import { useEffect, useState, useRef, memo } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
+import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
@@ -301,6 +302,15 @@ const FavoriteButton = memo(function FavoriteButton({
   );
   const [fav, setFav] = useState<boolean>(() => Boolean(initialFavorited));
 
+  // Debug log for initialFavorited changes
+  useEffect(() => {
+    console.log(
+      `[FavoriteButton ${answerId}] initialFavorited changed:`,
+      initialFavorited
+    );
+    setFav(Boolean(initialFavorited));
+  }, [answerId, initialFavorited]);
+
   useEffect(() => {
     try {
       const uid =
@@ -392,6 +402,7 @@ type AnswerCardProps = {
   getNameByProfileId: (pid?: string | null) => string | undefined;
   currentUserName: string | null;
   currentUserId: string | null;
+  userAnswerData: { votes: Record<number, number>; favorites: Set<number> };
 };
 
 const AnswerCard = memo(function AnswerCard({
@@ -402,6 +413,7 @@ const AnswerCard = memo(function AnswerCard({
   getNameByProfileId,
   currentUserName,
   currentUserId,
+  userAnswerData,
 }: AnswerCardProps) {
   const [open, setOpen] = useState(false);
   return (
@@ -469,7 +481,7 @@ const AnswerCard = memo(function AnswerCard({
             </button>
             <FavoriteButton
               answerId={a.id}
-              initialFavorited={(a as any).favorited}
+              initialFavorited={userAnswerData.favorites.has(a.id)}
             />
           </div>
         </div>
@@ -533,6 +545,14 @@ export default function AnswersRoute() {
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+
+  // Client-side user data sync for answers
+  const answerIds = answers.map(a => a.id);
+  const userDataQuery = useAnswerUserData(answerIds);
+  const userAnswerData = userDataQuery.data || {
+    votes: {},
+    favorites: new Set(),
+  };
 
   useEffect(() => {
     try {
@@ -901,6 +921,7 @@ export default function AnswersRoute() {
                   getNameByProfileId={getNameByProfileId}
                   currentUserName={currentUserName}
                   currentUserId={currentUserId}
+                  userAnswerData={userAnswerData}
                 />
               ))}
             </ul>

@@ -68,22 +68,45 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+// Client-only component to avoid hydration mismatches
+function ClientOnlyDebugInfo({
+  navigation,
+  isLoading,
+  loadingTimeout,
+}: {
+  navigation: any;
+  isLoading: boolean;
+  loadingTimeout: boolean;
+}) {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient || !import.meta.env.DEV) {
+    return null;
+  }
+
+  return (
+    <div className="fixed bottom-4 right-4 z-40 bg-black text-white text-xs p-2 rounded font-mono">
+      <div>Nav: {navigation.state}</div>
+      <div>Loading: {isLoading ? 'YES' : 'NO'}</div>
+      <div>Timeout: {loadingTimeout ? 'YES' : 'NO'}</div>
+      {navigation.location && <div>To: {navigation.location.pathname}</div>}
+    </div>
+  );
+}
+
 export default function App() {
   // useNavigation is only available inside the Router context (client-side)
   const navigation = useNavigation();
   const isLoading = navigation.state !== 'idle';
   const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  // Debug navigation state
+  // Debug navigation state - client-side only
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      console.log(
-        'Navigation state:',
-        navigation.state,
-        'isLoading:',
-        isLoading
-      );
-    }
+    console.log('Navigation state:', navigation.state, 'isLoading:', isLoading);
   }, [navigation.state, isLoading]);
 
   // Add timeout for loading state to prevent permanent loading overlay
@@ -91,9 +114,11 @@ export default function App() {
     if (isLoading) {
       setLoadingTimeout(false);
       const timer = setTimeout(() => {
-        console.warn('Loading state timeout - hiding overlay');
+        console.warn(
+          'Loading state timeout - switching to non-blocking indicator'
+        );
         setLoadingTimeout(true);
-      }, 10000); // 10 second timeout
+      }, 5000); // 5 second timeout - switch to non-blocking indicator
       return () => clearTimeout(timer);
     } else {
       setLoadingTimeout(false);
@@ -165,23 +190,38 @@ export default function App() {
       <Layout>
         <Outlet />
 
-        {/* Loading overlay TEMPORARILY DISABLED - suspect it's blocking clicks */}
-        {false && isLoading && !loadingTimeout && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-slate-900/95 text-white rounded-lg p-4 flex items-center gap-3">
-              <div className="w-8 h-8 border-4 border-t-transparent border-white rounded-full animate-spin" />
-              <div className="text-sm">Loading…</div>
+        {/* Loading overlay with timeout protection */}
+        {isLoading && !loadingTimeout && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 pointer-events-auto">
+            <div className="bg-slate-900/95 text-white rounded-lg p-4 flex items-center gap-3 shadow-lg">
+              <div className="w-6 h-6 border-2 border-t-transparent border-white rounded-full animate-spin" />
+              <div className="text-sm font-medium">
+                {navigation.state === 'loading' &&
+                  'ページを読み込んでいます...'}
+                {navigation.state === 'submitting' &&
+                  'データを送信しています...'}
+                {navigation.state !== 'loading' &&
+                  navigation.state !== 'submitting' &&
+                  'Loading...'}
+              </div>
             </div>
           </div>
         )}
 
-        {/* Debug info - only in development */}
-        {typeof window !== 'undefined' && import.meta.env.DEV && (
-          <div className="fixed bottom-4 right-4 z-40 bg-black text-white text-xs p-2 rounded font-mono">
-            Nav: {navigation.state} | Loading: {isLoading ? 'YES' : 'NO'} |
-            Timeout: {loadingTimeout ? 'YES' : 'NO'}
+        {/* Loading timeout fallback - shows a less intrusive loading indicator */}
+        {isLoading && loadingTimeout && (
+          <div className="fixed top-4 right-4 z-40 bg-blue-500 text-white text-sm px-3 py-2 rounded-lg shadow-lg flex items-center gap-2">
+            <div className="w-4 h-4 border border-t-transparent border-white rounded-full animate-spin" />
+            <span>Loading...</span>
           </div>
         )}
+
+        {/* Debug info - only in development */}
+        <ClientOnlyDebugInfo
+          navigation={navigation}
+          isLoading={isLoading}
+          loadingTimeout={loadingTimeout}
+        />
       </Layout>
     </QueryClientProvider>
   );
