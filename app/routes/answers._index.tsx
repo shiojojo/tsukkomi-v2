@@ -292,16 +292,28 @@ export async function action({ request }: ActionFunctionArgs) {
 
 // --- Extracted Components (moved outside AnswersRoute to avoid re-definition each render) ---
 
-type FavoriteButtonProps = { answerId: number; initialFavorited?: boolean };
+type FavoriteButtonProps = {
+  answerId: number;
+  initialFavorited?: boolean;
+  onServerFavorited?: (answerId: number, favorited: boolean) => void;
+};
 const FavoriteButton = memo(function FavoriteButton({
   answerId,
   initialFavorited,
+  onServerFavorited,
 }: FavoriteButtonProps) {
   const fetcher = useFetcher();
   const [currentUserIdLocal, setCurrentUserIdLocal] = useState<string | null>(
     null
   );
   const [fav, setFav] = useState<boolean>(() => Boolean(initialFavorited));
+  const lastProcessedResponseRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (fetcher.state === 'submitting') {
+      lastProcessedResponseRef.current = null;
+    }
+  }, [fetcher.state]);
 
   // Debug log for initialFavorited changes
   useEffect(() => {
@@ -324,22 +336,37 @@ const FavoriteButton = memo(function FavoriteButton({
   }, [answerId]);
 
   useEffect(() => {
-    if (!fetcher.data) return;
+    if (!fetcher.data || fetcher.state !== 'idle') return;
+
+    const rawPayload =
+      typeof fetcher.data === 'string'
+        ? fetcher.data
+        : JSON.stringify(fetcher.data);
+
+    if (lastProcessedResponseRef.current === rawPayload) return;
+    lastProcessedResponseRef.current = rawPayload;
+
     try {
-      const d =
+      const parsed =
         typeof fetcher.data === 'string'
           ? JSON.parse(fetcher.data)
           : fetcher.data;
-      if (d && typeof d.favorited === 'boolean') {
-        setFav(Boolean(d.favorited));
+      if (parsed && typeof parsed.favorited === 'boolean') {
+        const next = Boolean(parsed.favorited);
+        setFav(next);
+        onServerFavorited?.(answerId, next);
         return;
       }
-      if (d && d.ok === false) {
+      if (parsed && parsed.ok === false) {
         setFav(s => !s);
-        return;
       }
-    } catch {}
-  }, [fetcher.data]);
+    } catch (error) {
+      logger.error(
+        `[FavoriteButton ${answerId}] Failed to parse fetcher response`,
+        error
+      );
+    }
+  }, [fetcher.data, fetcher.state, answerId, onServerFavorited]);
 
   const handleClick = () => {
     if (!currentUserIdLocal) {
@@ -404,6 +431,7 @@ type AnswerCardProps = {
   currentUserName: string | null;
   currentUserId: string | null;
   userAnswerData: { votes: Record<number, number>; favorites: Set<number> };
+  onFavoriteUpdate?: (answerId: number, favorited: boolean) => void;
 };
 
 const AnswerCard = memo(function AnswerCard({
@@ -415,6 +443,7 @@ const AnswerCard = memo(function AnswerCard({
   currentUserName,
   currentUserId,
   userAnswerData,
+  onFavoriteUpdate,
 }: AnswerCardProps) {
   const [open, setOpen] = useState(false);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
@@ -496,6 +525,7 @@ const AnswerCard = memo(function AnswerCard({
             <FavoriteButton
               answerId={a.id}
               initialFavorited={userAnswerData.favorites.has(a.id)}
+              onServerFavorited={onFavoriteUpdate}
             />
           </div>
         </div>
@@ -610,11 +640,7 @@ export default function AnswersRoute() {
 
   // Client-side user data sync for answers
   const answerIds = answers.map(a => a.id);
-  const userDataQuery = useAnswerUserData(answerIds);
-  const userAnswerData = userDataQuery.data || {
-    votes: {},
-    favorites: new Set(),
-  };
+  const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);
 
   useEffect(() => {
     try {
@@ -984,6 +1010,7 @@ export default function AnswersRoute() {
                   currentUserName={currentUserName}
                   currentUserId={currentUserId}
                   userAnswerData={userAnswerData}
+                  onFavoriteUpdate={markFavorite}
                 />
               ))}
             </ul>

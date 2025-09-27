@@ -1,13 +1,9 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
 import { consumeToken } from '~/lib/rateLimiter';
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
-import {
-  useAnswerUserData,
-  useCurrentUserId,
-  useInvalidateAnswerUserData,
-} from '~/hooks/useAnswerUserData';
+import { useAnswerUserData, useCurrentUserId } from '~/hooks/useAnswerUserData';
 // server-only imports are dynamically loaded inside loader/action
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
@@ -82,15 +78,23 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 function FavoriteButton({
   answerId,
   initialFavorited,
+  onServerFavorited,
 }: {
   answerId: number;
   initialFavorited?: boolean;
+  onServerFavorited?: (answerId: number, favorited: boolean) => void;
 }) {
   // Server-backed favorite button: optimistic toggle, server is source-of-truth.
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const fetcher = useFetcher();
   const [fav, setFav] = useState<boolean>(initialFavorited ?? false);
-  const invalidateUserData = useInvalidateAnswerUserData();
+  const lastProcessedResponseRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (fetcher.state === 'submitting') {
+      lastProcessedResponseRef.current = null;
+    }
+  }, [fetcher.state]);
 
   // Update favorite state when initialFavorited prop changes (from user data sync)
   useEffect(() => {
@@ -118,23 +122,37 @@ function FavoriteButton({
 
   // Reconcile server response when available (toggle returns { favorited: boolean }).
   useEffect(() => {
-    if (!fetcher.data) return;
+    if (!fetcher.data || fetcher.state !== 'idle') return;
+
+    const rawPayload =
+      typeof fetcher.data === 'string'
+        ? fetcher.data
+        : JSON.stringify(fetcher.data);
+
+    if (lastProcessedResponseRef.current === rawPayload) return;
+    lastProcessedResponseRef.current = rawPayload;
+
     try {
-      const d =
+      const parsed =
         typeof fetcher.data === 'string'
           ? JSON.parse(fetcher.data)
           : fetcher.data;
-      if (d && typeof d.favorited === 'boolean') {
+      if (parsed && typeof parsed.favorited === 'boolean') {
         logger.log(
           `[FavoriteButton ${answerId}] Server response:`,
-          d.favorited
+          parsed.favorited
         );
-        setFav(Boolean(d.favorited));
-        // Invalidate user data cache to ensure fresh data on next fetch
-        invalidateUserData([answerId]);
+        const next = Boolean(parsed.favorited);
+        setFav(next);
+        onServerFavorited?.(answerId, next);
       }
-    } catch {}
-  }, [fetcher.data, answerId, invalidateUserData]);
+    } catch (error) {
+      logger.error(
+        `[FavoriteButton ${answerId}] Failed to parse fetcher response`,
+        error
+      );
+    }
+  }, [fetcher.data, fetcher.state, answerId, onServerFavorited]);
 
   const handleClick = () => {
     if (!currentUserId) {
@@ -342,8 +360,18 @@ export default function TopicDetailRoute() {
   // Get current user ID and fetch user-specific data
   const currentUserId = useCurrentUserId();
   const answerIds = answers.map(a => Number(a.id)).filter(Boolean);
-  const { data: userData, isLoading: userDataLoading } =
-    useAnswerUserData(answerIds);
+  const {
+    data: userData,
+    isLoading: userDataLoading,
+    markFavorite,
+  } = useAnswerUserData(answerIds);
+
+  const handleFavoriteSync = useCallback(
+    (answerId: number, favorited: boolean) => {
+      markFavorite(answerId, favorited);
+    },
+    [markFavorite]
+  );
 
   // Debug: Check if server-side favorited data exists (client-side only)
   useEffect(() => {
@@ -423,6 +451,7 @@ export default function TopicDetailRoute() {
         <ProgressiveAnswersList
           answers={enrichedAnswers}
           topicId={String(topic.id)}
+          onFavoriteUpdate={handleFavoriteSync}
         />
       )}
     </StickyHeaderLayout>
@@ -432,9 +461,11 @@ export default function TopicDetailRoute() {
 function ProgressiveAnswersList({
   answers,
   topicId,
+  onFavoriteUpdate,
 }: {
   answers: any[];
   topicId: string;
+  onFavoriteUpdate?: (answerId: number, favorited: boolean) => void;
 }) {
   const PAGE = 10;
   const [count, setCount] = useState(Math.min(PAGE, answers.length));
@@ -443,7 +474,12 @@ function ProgressiveAnswersList({
     <div>
       <ul className="space-y-5 px-1">
         {visible.map((a: any) => (
-          <AnswerCard key={a.id} answer={a} topicId={topicId} />
+          <AnswerCard
+            key={a.id}
+            answer={a}
+            topicId={topicId}
+            onFavoriteUpdate={onFavoriteUpdate}
+          />
         ))}
       </ul>
       {count < answers.length ? (
@@ -644,10 +680,12 @@ function AnswerCard({
   answer,
   comments,
   topicId,
+  onFavoriteUpdate,
 }: {
   answer: any;
   comments?: Comment[];
   topicId?: string;
+  onFavoriteUpdate?: (answerId: number, favorited: boolean) => void;
 }) {
   const a = answer;
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -863,6 +901,7 @@ function AnswerCard({
                 <FavoriteButton
                   answerId={a.id}
                   initialFavorited={(a as any).favorited}
+                  onServerFavorited={onFavoriteUpdate}
                 />
                 <NumericVoteButtons
                   answerId={a.id}
