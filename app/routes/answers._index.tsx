@@ -461,7 +461,7 @@ const AnswerCard = memo(function AnswerCard({
   }, [commentFetcher.state, commentFetcher.data]);
   return (
     <li className="p-4 border rounded-md bg-white/80 dark:bg-gray-950/80">
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         <div>
           {topic ? (
             topic.image ? (
@@ -475,143 +475,138 @@ const AnswerCard = memo(function AnswerCard({
                 </div>
               </div>
             ) : (
-              <div className="text-lg md:text-xl font-extrabold text-gray-900 dark:text-gray-100">
+              <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">
                 {topic.title}
               </div>
             )
           ) : (
-            <div className="text-lg md:text-xl font-extrabold">
+            <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">
               お題なし（フリー回答）
             </div>
           )}
         </div>
 
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 space-y-2">
-            <p className="text-lg leading-snug break-words">{a.text}</p>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-white">
-              <span className="inline-flex items-center gap-1 font-medium text-gray-700 dark:text-white">
-                Score:{' '}
-                <span className="text-gray-900 dark:text-gray-100">
-                  {score}
-                </span>
-              </span>
-              <span className="inline-flex items-center gap-1">
-                👍1:{(a as any).votes?.level1 ?? 0}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                😂2:{(a as any).votes?.level2 ?? 0}
-              </span>
-              <span className="inline-flex items-center gap-1">
-                🤣3:{(a as any).votes?.level3 ?? 0}
-              </span>
-              {getNameByProfileId((a as any).profileId) && (
-                <span className="inline-flex items-center gap-1">
-                  作者: {getNameByProfileId((a as any).profileId)}
-                </span>
-              )}
+        <div className="space-y-3">
+          <p className="text-lg leading-snug break-words whitespace-pre-wrap">
+            {a.text}
+          </p>
+          {getNameByProfileId((a as any).profileId) && (
+            <div className="text-xs text-gray-500 dark:text-gray-300">
+              作者: {getNameByProfileId((a as any).profileId)}
             </div>
-          </div>
-
-          <div className="flex flex-col items-end gap-2 min-w-[64px]">
-            <button
-              type="button"
-              onClick={() => setOpen(s => !s)}
-              aria-expanded={open}
-              className="text-xs px-2 py-1 rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
-            >
-              {open ? '閉じる' : '詳細'}
-            </button>
-            <FavoriteButton
-              answerId={a.id}
-              initialFavorited={userAnswerData.favorites.has(a.id)}
-              onServerFavorited={onFavoriteUpdate}
-            />
+          )}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
+              Score:{' '}
+              <span className="text-gray-900 dark:text-gray-50">{score}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FavoriteButton
+                answerId={a.id}
+                initialFavorited={userAnswerData.favorites.has(a.id)}
+                onServerFavorited={onFavoriteUpdate}
+              />
+              <button
+                type="button"
+                onClick={() => setOpen(prev => !prev)}
+                aria-expanded={open}
+                className="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
+              >
+                {open ? '閉じる' : 'コメント表示'}
+              </button>
+            </div>
           </div>
         </div>
 
         {open && (
-          <div className="mt-3">
-            <h4 className="text-sm font-medium">コメント</h4>
-            <ul className="mt-2 space-y-2 text-sm">
-              {comments.map(c => (
-                <li key={c.id} className="text-gray-700 dark:text-white">
-                  <div className="whitespace-pre-wrap">{c.text}</div>{' '}
-                  <span className="text-xs text-gray-400 dark:text-white">
-                    — {getNameByProfileId((c as any).profileId) ?? '名無し'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-3">
-              <div className="text-muted mb-2">
-                コメントとして: {currentUserName ?? '名無し'}
-              </div>
-              <commentFetcher.Form
-                method="post"
-                className="flex gap-2"
-                ref={commentFormRef}
-              >
-                <input type="hidden" name="answerId" value={String(a.id)} />
-                <input
-                  type="hidden"
-                  name="profileId"
-                  value={currentUserId ?? ''}
-                />
-                <textarea
-                  name="text"
-                  ref={commentInputRef}
-                  className={`form-input flex-1 min-h-[44px] resize-y p-2 rounded-md ${commentFetcher.state === 'submitting' ? 'opacity-60' : ''}`}
-                  placeholder="コメントを追加"
-                  aria-label="コメント入力"
-                  rows={2}
-                  disabled={commentFetcher.state === 'submitting'}
-                  onKeyDown={e => {
-                    const isEnter = e.key === 'Enter';
-                    const isMeta = e.metaKey || e.ctrlKey;
-                    if (isEnter && isMeta) {
-                      e.preventDefault();
-                      if (commentFormRef.current) {
-                        const formData = new FormData(commentFormRef.current);
-                        commentFetcher.submit(formData, { method: 'post' });
-                      }
-                    }
-                  }}
-                />
-                <button
-                  className={`btn-inline ${commentFetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''} flex items-center gap-2`}
-                  aria-label="コメントを送信"
-                  disabled={commentFetcher.state === 'submitting'}
+          <div className="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-4">
+            <div className="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
+              <span>👍1:{(a as any).votes?.level1 ?? 0}</span>
+              <span>😂2:{(a as any).votes?.level2 ?? 0}</span>
+              <span>🤣3:{(a as any).votes?.level3 ?? 0}</span>
+            </div>
+            <div>
+              <h4 className="text-sm font-medium">コメント</h4>
+              <ul className="mt-2 space-y-2 text-sm">
+                {comments.map(c => (
+                  <li key={c.id} className="text-gray-700 dark:text-gray-100">
+                    <div className="whitespace-pre-wrap">{c.text}</div>{' '}
+                    <span className="text-xs text-gray-400 dark:text-gray-400">
+                      — {getNameByProfileId((c as any).profileId) ?? '名無し'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3">
+                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                  コメントとして: {currentUserName ?? '名無し'}
+                </div>
+                <commentFetcher.Form
+                  method="post"
+                  className="flex gap-2"
+                  ref={commentFormRef}
                 >
-                  {commentFetcher.state === 'submitting' ? (
-                    <>
-                      <svg
-                        className="animate-spin h-4 w-4"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      送信中…
-                    </>
-                  ) : (
-                    '送信'
-                  )}
-                </button>
-              </commentFetcher.Form>
+                  <input type="hidden" name="answerId" value={String(a.id)} />
+                  <input
+                    type="hidden"
+                    name="profileId"
+                    value={currentUserId ?? ''}
+                  />
+                  <textarea
+                    name="text"
+                    ref={commentInputRef}
+                    className={`form-input flex-1 min-h-[44px] resize-y p-2 rounded-md ${commentFetcher.state === 'submitting' ? 'opacity-60' : ''}`}
+                    placeholder="コメントを追加"
+                    aria-label="コメント入力"
+                    rows={2}
+                    disabled={commentFetcher.state === 'submitting'}
+                    onKeyDown={e => {
+                      const isEnter = e.key === 'Enter';
+                      const isMeta = e.metaKey || e.ctrlKey;
+                      if (isEnter && isMeta) {
+                        e.preventDefault();
+                        if (commentFormRef.current) {
+                          const formData = new FormData(commentFormRef.current);
+                          commentFetcher.submit(formData, { method: 'post' });
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    className={`btn-inline ${commentFetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''} flex items-center gap-2`}
+                    aria-label="コメントを送信"
+                    disabled={commentFetcher.state === 'submitting'}
+                  >
+                    {commentFetcher.state === 'submitting' ? (
+                      <>
+                        <svg
+                          className="animate-spin h-4 w-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        送信中…
+                      </>
+                    ) : (
+                      '送信'
+                    )}
+                  </button>
+                </commentFetcher.Form>
+              </div>
             </div>
           </div>
         )}

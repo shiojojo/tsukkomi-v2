@@ -410,6 +410,91 @@ export async function getFavoritesForProfile(profileId: string, answerIds?: Arra
 }
 
 /**
+ * 概要: 指定プロフィールがお気に入り登録した回答一覧を取得する集約層。
+ * Intent: /answers/favorites ルートから DB 依存を隠蔽し、topic/comment 等の派生取得の土台を提供する。
+ * Contract:
+ *   - Input: profileId は UUID 文字列必須。favorites テーブルの created_at 降順で Answer を返却。
+ *   - Output: AnswerSchema[]（votes/votesBy/favorited を整形済み、favorited は常に true）。
+ * Environment:
+ *   - prod: Supabase favorites → answers → answer_vote_counts を参照し、片方向 join をクライアント側で整列。
+ * Errors: Supabase エラー / zod 失敗はそのまま throw。profileId 未指定はエラー扱い。
+ * SideEffects: なし（読み取り専用）。
+ */
+export async function getFavoriteAnswersForProfile(profileId: string): Promise<Answer[]> {
+  if (!profileId) {
+    throw new Error('getFavoriteAnswersForProfile: profileId is required');
+  }
+
+  await ensureConnection();
+  const { data: favRows, error: favError } = await supabase
+    .from('favorites')
+    .select('answer_id, created_at')
+    .eq('profile_id', profileId)
+    .order('created_at', { ascending: false });
+  if (favError) throw favError;
+
+  const orderedIds = (favRows ?? []).map((row: any) => Number(row.answer_id)).filter(Number.isFinite);
+  if (!orderedIds.length) return [];
+
+  const idOrder = new Map<number, number>();
+  orderedIds.forEach((id, index) => {
+    if (!idOrder.has(id)) idOrder.set(id, index);
+  });
+  const uniqueIds = Array.from(idOrder.keys());
+
+  const { data: answerRows, error: answerErr } = await supabase
+    .from('answers')
+    .select('id, text, profile_id, topic_id, created_at')
+    .in('id', uniqueIds);
+  if (answerErr) throw answerErr;
+
+  const answers = (answerRows ?? []).map((a: any) => ({
+    id: typeof a.id === 'string' ? Number(a.id) : a.id,
+    text: a.text,
+    profileId: a.profile_id ?? undefined,
+    topicId: a.topic_id ?? undefined,
+    created_at: a.created_at ?? a.createdAt,
+  }));
+
+  const ids = answers.map((a) => Number(a.id)).filter(Number.isFinite);
+  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
+  if (ids.length) {
+    const { data: countsData, error: countsErr } = await supabase
+      .from('answer_vote_counts')
+      .select('answer_id, level1, level2, level3')
+      .in('answer_id', ids);
+    if (countsErr) throw countsErr;
+    for (const c of countsData ?? []) {
+      countsMap[Number(c.answer_id)] = {
+        level1: Number(c.level1 ?? 0),
+        level2: Number(c.level2 ?? 0),
+        level3: Number(c.level3 ?? 0),
+      };
+    }
+  }
+
+  const profileData = await getProfileAnswerData(profileId, ids);
+
+  const normalized = answers
+    .map((a) => ({
+      ...a,
+      votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+      votesBy:
+        profileData.votes[a.id] != null
+          ? { [profileId]: profileData.votes[a.id] }
+          : {},
+      favorited: true,
+    }))
+    .sort((a, b) => {
+      const ai = idOrder.get(a.id) ?? 0;
+      const bi = idOrder.get(b.id) ?? 0;
+      return ai - bi;
+    });
+
+  return AnswerSchema.array().parse(normalized as any);
+}
+
+/**
  * Get user's votes for specific answers
  * Returns a map of answerId -> vote level
  */
