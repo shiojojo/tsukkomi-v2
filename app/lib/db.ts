@@ -13,7 +13,6 @@ import { IdentitySchema } from '~/lib/schemas/identity';
 import { LineAnswerIngestRequestSchema, type LineAnswerIngestRequest } from '~/lib/schemas/line-sync';
 import { supabase, supabaseAdmin, ensureConnection } from './supabase';
 import { FavoriteSchema } from '~/lib/schemas/favorite';
-import { mockFavorites } from '~/mock/favorites';
 
 // Running always in production-like mode: local development should run a Supabase instance and
 // set VITE_SUPABASE_KEY / SUPABASE_KEY accordingly.
