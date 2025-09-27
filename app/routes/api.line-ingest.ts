@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import { LineAnswerIngestRequestSchema } from '~/lib/schemas/line-sync';
-import { ingestLineAnswers } from '~/lib/db';
+// server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 
 const API_KEY_HEADER = 'x-api-key';
 
@@ -64,6 +64,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
+    const { ingestLineAnswers } = await import('~/lib/db');
     const result = await ingestLineAnswers(parsed.data);
     return jsonResponse({ ok: true, result });
   } catch (error) {
