@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useIdentity } from '~/hooks/useIdentity';
 
 /**

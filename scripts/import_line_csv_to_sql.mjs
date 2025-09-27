@@ -302,7 +302,6 @@ async function main() {
   // Profiles
   statements.push('-- Upsert profiles');
   if (profileMap.size) {
-    const profileRows = [];
     const profileValues = [];
     for (const p of profileMap.values()) {
       profileValues.push(

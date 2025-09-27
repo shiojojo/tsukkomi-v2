@@ -153,9 +153,6 @@ export async function action({ request }: ActionFunctionArgs) {
   if (levelRaw != null) {
     const answerId = Number(form.get('answerId'));
     const userId = form.get('userId') ? String(form.get('userId')) : undefined;
-    const previousLevel = form.get('previousLevel')
-      ? Number(form.get('previousLevel'))
-      : undefined;
     const levelParsed = Number(levelRaw);
     const level = levelParsed === 0 ? 0 : (levelParsed as 1 | 2 | 3);
     if (!answerId || !userId || level == null) {
@@ -165,7 +162,6 @@ export async function action({ request }: ActionFunctionArgs) {
     const updated = await voteAnswer({
       answerId,
       level,
-      previousLevel,
       userId,
     });
     return new Response(JSON.stringify({ answer: updated }), {

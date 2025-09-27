@@ -106,7 +106,7 @@ type ProcessedImage = {
   contentType: string;
 };
 
-async function createThumbnail(buffer: Buffer, extension: string, contentType: string | null | undefined): Promise<ProcessedImage | null> {
+async function createThumbnail(buffer: Buffer, extension: string): Promise<ProcessedImage | null> {
   const normalizedExt = extension.toLowerCase();
   const staticFormats = new Set(['jpg', 'jpeg', 'png', 'webp']);
   if (!staticFormats.has(normalizedExt)) {
@@ -174,7 +174,7 @@ async function uploadImageToSupabaseStorage(sourceUrl: string) {
   const originalExtension = deriveImageExtension(sourceUrl, contentType).toLowerCase();
   const buffer = Buffer.from(await response.arrayBuffer());
 
-  const processed = await createThumbnail(buffer, originalExtension, contentType);
+  const processed = await createThumbnail(buffer, originalExtension);
   const finalBuffer = processed?.buffer ?? buffer;
   const finalExtension = processed?.extension ?? originalExtension;
   const finalContentType = processed?.contentType ?? (() => {
@@ -1374,12 +1374,10 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20, pr
 export async function voteAnswer({
   answerId,
   level,
-  previousLevel,
   userId, // profileId
 }: {
   answerId: number;
   level: 0 | 1 | 2 | 3; // 0 = remove existing vote
-  previousLevel?: number | null;
   userId?: string | null;
 }): Promise<Answer> {
   

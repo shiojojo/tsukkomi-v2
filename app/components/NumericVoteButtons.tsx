@@ -20,7 +20,7 @@ const CONTROL_BTN_INACTIVE =
  * Contract:
  *   - initialVotes は現在の集計。ユーザー操作で optimistic に更新し、サーバー応答が counts を返した場合に同期。
  *   - votesBy に現在のユーザーの投票レベルが含まれると選択済みとして表示。
- *   - actionPath へ POST (FormData: answerId, level, previousLevel, userId)。省略時は現在パス。
+ *   - actionPath へ POST (FormData: answerId, level, userId)。省略時は現在パス。
  * Environment: ブラウザ専用 (localStorage / window 参照あり)。SSR では非アクティブ。
  * Errors: fetch 失敗時は console.error にログし UI は optimism 状態を維持。
  */
@@ -70,7 +70,7 @@ export function NumericVoteButtons({
   const [selection, setSelection] = useState<1 | 2 | 3 | null>(
     typeof window !== 'undefined' ? readStoredSelection() : null
   );
-  const [counts, setCounts] = useState(() => ({ ...initialVotes }));
+  const [, setCounts] = useState(() => ({ ...initialVotes }));
 
   useEffect(() => {
     setCounts({ ...initialVotes });
@@ -127,9 +127,6 @@ export function NumericVoteButtons({
         const form = new FormData();
         form.append('answerId', String(answerId));
         form.append('level', String(isToggleOff ? 0 : level));
-        if (typeof prev === 'number') {
-          form.append('previousLevel', String(prev));
-        }
         form.append('userId', String(uid));
 
         const res = await fetch(resolvedActionPath, {

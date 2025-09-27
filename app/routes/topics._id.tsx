@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from 'react-router';
-import { useLoaderData, Link } from 'react-router';
+import { useLoaderData } from 'react-router';
 // server-only imports are done inside loader to avoid shipping Supabase client to the browser
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';

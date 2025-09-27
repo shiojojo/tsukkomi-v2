@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, useFetcher, Form } from 'react-router';
+import { useLoaderData, useFetcher } from 'react-router';
 import { consumeToken } from '~/lib/rateLimiter';
 import { getItem, setItem, removeItem } from '~/lib/identityStorage';
 import { useEffect, useState } from 'react';
@@ -85,10 +85,10 @@ export default function MeRoute() {
 
   useEffect(() => {
     try {
-  setCurrentUserId(getItem('currentUserId'));
-  setCurrentUserName(getItem('currentUserName'));
-  setCurrentSubUserId(getItem('currentSubUserId'));
-  setCurrentSubUserName(getItem('currentSubUserName'));
+      setCurrentUserId(getItem('currentUserId'));
+      setCurrentUserName(getItem('currentUserName'));
+      setCurrentSubUserId(getItem('currentSubUserId'));
+      setCurrentSubUserName(getItem('currentSubUserName'));
     } catch {
       // ignore
     }
@@ -100,11 +100,11 @@ export default function MeRoute() {
       try {
         const sub = add.data.sub as any;
         const parentId = String(add.data.parentId || '');
-  setItem('currentUserId', parentId);
-  const parent = users.find(u => u.id === parentId);
-  if (parent) setItem('currentUserName', parent.name ?? '');
-  setItem('currentSubUserId', sub.id);
-  setItem('currentSubUserName', sub.name);
+        setItem('currentUserId', parentId);
+        const parent = users.find(u => u.id === parentId);
+        if (parent) setItem('currentUserName', parent.name ?? '');
+        setItem('currentSubUserId', sub.id);
+        setItem('currentSubUserName', sub.name);
       } catch {}
       // reload to reflect updated server-side mock state
       window.location.reload();
@@ -127,21 +127,21 @@ export default function MeRoute() {
 
   function selectMain(user: any) {
     try {
-  setItem('currentUserId', user.id);
-  setItem('currentUserName', user.name ?? '');
-  // clear any sub selection
-  removeItem('currentSubUserId');
-  removeItem('currentSubUserName');
+      setItem('currentUserId', user.id);
+      setItem('currentUserName', user.name ?? '');
+      // clear any sub selection
+      removeItem('currentSubUserId');
+      removeItem('currentSubUserName');
     } catch {}
     window.location.reload();
   }
 
   function switchToSub(sub: any, parent: any) {
     try {
-  setItem('currentUserId', parent.id);
-  setItem('currentUserName', parent.name ?? '');
-  setItem('currentSubUserId', sub.id);
-  setItem('currentSubUserName', sub.name);
+      setItem('currentUserId', parent.id);
+      setItem('currentUserName', parent.name ?? '');
+      setItem('currentSubUserId', sub.id);
+      setItem('currentSubUserName', sub.name);
     } catch {}
     window.location.reload();
   }
@@ -149,8 +149,8 @@ export default function MeRoute() {
   // End using sub-user and return to main user (clear sub selection)
   function returnToMain() {
     try {
-  removeItem('currentSubUserId');
-  removeItem('currentSubUserName');
+      removeItem('currentSubUserId');
+      removeItem('currentSubUserName');
     } catch {}
     window.location.reload();
   }
