@@ -8,6 +8,7 @@ import type { Comment } from '~/lib/schemas/comment';
 import { UserSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { IdentitySchema } from '~/lib/schemas/identity';
+import { LineAnswerIngestRequestSchema, type LineAnswerIngestRequest } from '~/lib/schemas/line-sync';
 import { supabase, supabaseAdmin, ensureConnection } from './supabase';
 import { FavoriteSchema } from '~/lib/schemas/favorite';
 import { mockFavorites } from '~/mock/favorites';
@@ -1254,6 +1255,187 @@ export async function voteAnswer({
   // invalidate cached answers so clients see updated vote counts
   try { invalidateCache('answers:all'); } catch {}
   return AnswerSchema.parse(result as any);
+}
+
+export type LineAnswerIngestResult = {
+  topicId: number;
+  inserted: number;
+  skipped: number;
+  createdTopic: boolean;
+  totalReceived: number;
+  createdProfiles: number;
+  updatedProfiles: number;
+};
+
+function normalizeLineAnswerText(text: string): string {
+  return String(text ?? '')
+    .replace(/\r\n?/g, '\n')
+    .trim();
+}
+
+/**
+ * 概要: LINE (GAS) 側 cron から送信された回答バッチを topics/profiles/answers に取り込む集約処理。
+ * Intent: 外部サービスからの一括同期を 1 箇所に閉じ、API ルートや他レイヤーからは関数呼び出しのみで完結させる。
+ * Contract:
+ *   - Input: LineAnswerIngestRequest (単一トピック + 回答配列)。topic.kind は現在 text のみ対応。
+ *   - Output: LineAnswerIngestResult (挿入件数 / スキップ件数 / トピック作成有無 等)。
+ * Environment:
+ *   - 常に Supabase を利用。書き込みには supabaseAdmin (service key) を優先し、無ければ public client。
+ * Errors: Supabase エラーやバリデーション失敗はそのまま throw (呼び出し元が 4xx/5xx を決定)。
+ * SideEffects: profiles/topics/answers への insert/update。成功時に関連キャッシュキーを無効化。
+ */
+export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineAnswerIngestResult> {
+  const payload = LineAnswerIngestRequestSchema.parse(input);
+  if (payload.topic.kind !== 'text') {
+    throw new Error(`Unsupported topic kind: ${payload.topic.kind}`);
+  }
+
+  await ensureConnection();
+  const writeClient = supabaseAdmin ?? supabase;
+  if (!writeClient) throw new Error('No Supabase client configured for writes');
+
+  const topicTitle = payload.topic.title.trim();
+  if (!topicTitle) {
+    throw new Error('Topic title must not be empty');
+  }
+  const topicCreatedAt = payload.topic.createdAt ?? new Date().toISOString();
+
+  const { data: topicExisting, error: topicQueryErr } = await writeClient
+    .from('topics')
+    .select('id, title')
+    .eq('title', topicTitle)
+    .is('image', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (topicQueryErr && topicQueryErr.code !== 'PGRST116') throw topicQueryErr;
+
+  let topicId: number | null = null;
+  let createdTopic = false;
+  if (topicExisting && topicExisting.id != null) {
+    topicId = Number(topicExisting.id);
+  } else {
+    const { data: topicInserted, error: topicInsertErr } = await writeClient
+      .from('topics')
+      .insert({ title: topicTitle, created_at: topicCreatedAt })
+      .select('id')
+      .single();
+    if (topicInsertErr) throw topicInsertErr;
+    topicId = Number(topicInserted.id);
+    createdTopic = true;
+    try { invalidateCache('topics:all'); } catch {}
+  }
+  if (topicId == null || Number.isNaN(topicId)) {
+    throw new Error('Failed to resolve topic id during ingestion');
+  }
+
+  const preferredNames = new Map<string, string>();
+  for (const answer of payload.answers) {
+    if (answer.displayName) {
+      const trimmed = answer.displayName.trim();
+      if (trimmed) preferredNames.set(answer.lineUserId, trimmed);
+    }
+  }
+
+  const profileIdMap = new Map<string, string>();
+  let createdProfiles = 0;
+  let updatedProfiles = 0;
+  const uniqueLineIds = Array.from(new Set(payload.answers.map(a => a.lineUserId)));
+  for (const lineId of uniqueLineIds) {
+    const displayName = preferredNames.get(lineId) ?? '名無し';
+    const { data: existingProfile, error: profileQueryErr } = await writeClient
+      .from('profiles')
+      .select('id, name')
+      .eq('line_id', lineId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (profileQueryErr && profileQueryErr.code !== 'PGRST116') throw profileQueryErr;
+
+    if (existingProfile && existingProfile.id) {
+      profileIdMap.set(lineId, String(existingProfile.id));
+      if (displayName && displayName !== existingProfile.name) {
+        const { error: updateErr } = await writeClient
+          .from('profiles')
+          .update({ name: displayName })
+          .eq('id', existingProfile.id);
+        if (updateErr) throw updateErr;
+        updatedProfiles += 1;
+      }
+    } else {
+      const { data: insertedProfile, error: profileInsertErr } = await writeClient
+        .from('profiles')
+        .insert({ name: displayName || '名無し', line_id: lineId })
+        .select('id')
+        .single();
+      if (profileInsertErr) throw profileInsertErr;
+      profileIdMap.set(lineId, String(insertedProfile.id));
+      createdProfiles += 1;
+    }
+  }
+  if (createdProfiles || updatedProfiles) {
+    try { invalidateCache('profiles:all'); } catch {}
+  }
+
+  const { data: existingAnswers, error: existingAnswersErr } = await writeClient
+    .from('answers')
+    .select('profile_id, text')
+    .eq('topic_id', topicId);
+  if (existingAnswersErr) throw existingAnswersErr;
+  const existingKeys = new Set<string>();
+  for (const row of existingAnswers ?? []) {
+    const profileId = row.profile_id ? String(row.profile_id) : '';
+    existingKeys.add(`${profileId}::${normalizeLineAnswerText(row.text ?? '')}`);
+  }
+
+  const rowsToInsert: Array<{ topic_id: number; profile_id: string; text: string; created_at: string }> = [];
+  let skipped = 0;
+  for (const answer of payload.answers) {
+    const profileId = profileIdMap.get(answer.lineUserId);
+    if (!profileId) {
+      skipped += 1;
+      continue;
+    }
+    const normalizedText = normalizeLineAnswerText(answer.text);
+    if (!normalizedText) {
+      skipped += 1;
+      continue;
+    }
+    const key = `${profileId}::${normalizedText}`;
+    if (existingKeys.has(key)) {
+      skipped += 1;
+      continue;
+    }
+    existingKeys.add(key);
+    const createdAt = answer.submittedAt ?? topicCreatedAt;
+    rowsToInsert.push({
+      topic_id: topicId,
+      profile_id: profileId,
+      text: normalizedText,
+      created_at: createdAt,
+    });
+  }
+
+  let inserted = 0;
+  if (rowsToInsert.length) {
+    const { data: insertedRows, error: insertErr } = await writeClient
+      .from('answers')
+      .insert(rowsToInsert)
+      .select('id');
+    if (insertErr) throw insertErr;
+    inserted = insertedRows?.length ?? rowsToInsert.length;
+    try { invalidateCache('answers:all'); } catch {}
+  }
+
+  return {
+    topicId,
+    inserted,
+    skipped,
+    createdTopic,
+    totalReceived: payload.answers.length,
+    createdProfiles,
+    updatedProfiles,
+  };
 }
 
 
