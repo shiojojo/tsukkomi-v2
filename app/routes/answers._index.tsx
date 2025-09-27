@@ -445,17 +445,6 @@ export default function AnswersRoute() {
     });
   };
 
-  // helper: whether answer is favorited by current user (localStorage)
-  const isFavoritedByCurrentUser = (answer: Answer) => {
-    if (!currentUserId) return false;
-    try {
-      const key = `favorite:answer:${answer.id}:user:${currentUserId}`;
-      return localStorage.getItem(key) === '1';
-    } catch {
-      return false;
-    }
-  };
-
   // Server-driven pagination: answers returned by the loader are already paged
   const serverPage = (data as any)?.page ?? 1;
   const serverPageSize = (data as any)?.pageSize ?? 20;

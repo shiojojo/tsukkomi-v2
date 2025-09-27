@@ -68,10 +68,3 @@ function read() {
     } as const;
   } catch { return empty(); }
 }
-
-/**
- * 同タブで localStorage を書き換えた直後に UI 更新させたい場合に呼び出す補助。
- */
-export function dispatchIdentityChange() {
-  try { window.dispatchEvent(new Event('identity-change')); } catch {}
-}

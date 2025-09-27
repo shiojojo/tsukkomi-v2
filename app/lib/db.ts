@@ -1110,51 +1110,6 @@ export async function getUsers(opts?: { limit?: number; onlyMain?: boolean }): P
 }
 
 /**
- * getUserById
- */
-export async function getUserById(id: string): Promise<User | undefined> {
-  await ensureConnection();
-  // Default public getter: do NOT return line_id. Use getUserByIdPrivate for server-only access.
-  const { data, error } = await supabase.from('profiles').select('id, parent_id, name, line_id').eq('id', id).maybeSingle();
-  if (error) throw error;
-  if (!data) return undefined;
-  // fetch sub_users separately
-  const { data: subs, error: subsErr } = await supabase.from('profiles').select('id, parent_id, name, line_id').eq('parent_id', id);
-  if (subsErr) throw subsErr;
-  const normalized = { id: String(data.id), name: data.name, subUsers: (subs ?? []).map((s: any) => ({ id: String(s.id), name: s.name })) || undefined };
-  return UserSchema.parse(normalized as any);
-}
-
-/**
- * getUserByIdPrivate
- * Server-only: returns user's profile including line_id for integration workflows.
- */
-export async function getUserByIdPrivate(id: string): Promise<User | undefined> {
-  await ensureConnection();
-  const { data, error } = await supabase.from('profiles').select('id, parent_id, name, line_id').eq('id', id).maybeSingle();
-  if (error) throw error;
-  if (!data) return undefined;
-  const { data: subs, error: subsErr } = await supabase.from('profiles').select('id, parent_id, name, line_id').eq('parent_id', id);
-  if (subsErr) throw subsErr;
-  const normalized = { id: String(data.id), name: data.name, line_id: data.line_id ?? undefined, subUsers: (subs ?? []).map((s: any) => ({ id: String(s.id), name: s.name })) || undefined };
-  return UserSchema.parse(normalized as any);
-}
-
-/**
- * getSubUsers
- * Intent: return subUsers for a parent user id in dev
- */
-export async function getSubUsers(parentId: string): Promise<SubUser[] | undefined> {
-  await ensureConnection();
-  const { data, error } = await supabase
-  .from('profiles')
-    .select('id, parent_id, name')
-    .eq('parent_id', parentId);
-  if (error) throw error;
-  return (data ?? []).map((r: any) => ({ id: String(r.id), name: r.name }));
-}
-
-/**
  * addSubUser
  * Intent: create a new sub-user in dev and return it
  * Contract: name validated elsewhere. id is generated to be unique within mockUsers.
