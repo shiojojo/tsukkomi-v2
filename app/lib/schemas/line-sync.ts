@@ -21,7 +21,7 @@ const BaseTopicSchema = z.object({
 });
 
 const TextTopicSchema = BaseTopicSchema.extend({
-  kind: z.literal('text').default('text'),
+  kind: z.literal('text'),
   title: z.string().min(1).max(300),
 });
 
@@ -32,13 +32,29 @@ const ImageTopicSchema = BaseTopicSchema.extend({
   altText: z.string().min(1).max(300).optional(),
 });
 
+const LegacyTextTopicSchema = BaseTopicSchema.extend({
+  title: z.string().min(1).max(300),
+  kind: z.undefined().optional(),
+});
+
+const DiscriminatedTopicSchema = z.discriminatedUnion('kind', [
+  TextTopicSchema,
+  ImageTopicSchema,
+]);
+
 /** Segment: topic metadata sent from LINE GAS cron */
 export const LineSyncTopicSchema = z
-  .union([TextTopicSchema, ImageTopicSchema])
+  .union([DiscriminatedTopicSchema, LegacyTextTopicSchema])
   .transform(topic => {
-    if (topic.kind === 'image') {
-      return topic;
+    if ('kind' in topic) {
+      return topic.kind === 'image'
+        ? topic
+        : {
+            ...topic,
+            kind: 'text' as const,
+          };
     }
+
     return {
       ...topic,
       kind: 'text' as const,
