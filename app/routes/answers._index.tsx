@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form, useFetcher } from 'react-router';
 import { useEffect, useState, useRef, memo } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
+import NumericVoteButtons from '~/components/NumericVoteButtons';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
@@ -114,8 +115,12 @@ export async function action({ request }: ActionFunctionArgs) {
   const op = form.get('op') ? String(form.get('op')) : undefined; // 'toggle' | 'status'
   const answerIdRaw = form.get('answerId');
   const commentTextRaw = form.get('text');
+  const levelRaw = form.get('level');
   const hasMeaningfulIntent =
-    op === 'toggle' || op === 'status' || (answerIdRaw && commentTextRaw);
+    op === 'toggle' ||
+    op === 'status' ||
+    levelRaw != null ||
+    (answerIdRaw && commentTextRaw);
 
   // If the POST contains no recognized fields, treat as benign noise and return 204 (no content)
   if (!hasMeaningfulIntent) {
@@ -242,6 +247,29 @@ export async function action({ request }: ActionFunctionArgs) {
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
+  }
+  if (levelRaw != null) {
+    const answerId = Number(form.get('answerId'));
+    const userId = form.get('userId') ? String(form.get('userId')) : undefined;
+    const previousLevel = form.get('previousLevel')
+      ? Number(form.get('previousLevel'))
+      : undefined;
+    const levelParsed = Number(levelRaw);
+    const level = levelParsed === 0 ? 0 : (levelParsed as 1 | 2 | 3);
+    if (!answerId || !userId || level == null) {
+      return new Response('Invalid vote', { status: 400 });
+    }
+    const { voteAnswer } = await import('~/lib/db');
+    const updated = await voteAnswer({
+      answerId,
+      level,
+      previousLevel,
+      userId,
+    });
+    return new Response(JSON.stringify({ answer: updated }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
   const answerId = form.get('answerId');
   const text = String(form.get('text') || '');
@@ -432,6 +460,7 @@ type AnswerCardProps = {
   currentUserId: string | null;
   userAnswerData: { votes: Record<number, number>; favorites: Set<number> };
   onFavoriteUpdate?: (answerId: number, favorited: boolean) => void;
+  actionPath: string;
 };
 
 const AnswerCard = memo(function AnswerCard({
@@ -444,6 +473,7 @@ const AnswerCard = memo(function AnswerCard({
   currentUserId,
   userAnswerData,
   onFavoriteUpdate,
+  actionPath,
 }: AnswerCardProps) {
   const [open, setOpen] = useState(false);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
@@ -512,7 +542,7 @@ const AnswerCard = memo(function AnswerCard({
                 aria-expanded={open}
                 className="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
               >
-                {open ? '閉じる' : 'コメント表示'}
+                {open ? '閉じる' : 'コメント / 採点'}
               </button>
             </div>
           </div>
@@ -520,10 +550,30 @@ const AnswerCard = memo(function AnswerCard({
 
         {open && (
           <div className="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-4">
-            <div className="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
-              <span>👍1:{(a as any).votes?.level1 ?? 0}</span>
-              <span>😂2:{(a as any).votes?.level2 ?? 0}</span>
-              <span>🤣3:{(a as any).votes?.level3 ?? 0}</span>
+            <div className="space-y-2">
+              <NumericVoteButtons
+                answerId={a.id}
+                initialVotes={{
+                  level1: Number((a as any).votes?.level1 ?? 0),
+                  level2: Number((a as any).votes?.level2 ?? 0),
+                  level3: Number((a as any).votes?.level3 ?? 0),
+                }}
+                votesBy={
+                  currentUserId && userAnswerData.votes[a.id]
+                    ? { [currentUserId]: userAnswerData.votes[a.id] }
+                    : undefined
+                }
+                actionPath={actionPath}
+              />
+              <div className="text-[11px] text-gray-400 dark:text-gray-500">
+                1〜3
+                のボタンで採点できます。選択済みのボタンを再度押すと取り消せます。
+              </div>
+              <div className="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
+                <span>👍1:{(a as any).votes?.level1 ?? 0}</span>
+                <span>😂2:{(a as any).votes?.level2 ?? 0}</span>
+                <span>🤣3:{(a as any).votes?.level3 ?? 0}</span>
+              </div>
             </div>
             <div>
               <h4 className="text-sm font-medium">コメント</h4>
@@ -1006,6 +1056,7 @@ export default function AnswersRoute() {
                   currentUserId={currentUserId}
                   userAnswerData={userAnswerData}
                   onFavoriteUpdate={markFavorite}
+                  actionPath="/answers"
                 />
               ))}
             </ul>
