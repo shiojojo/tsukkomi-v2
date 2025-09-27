@@ -1,8 +1,8 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, Link, Form, useFetcher } from 'react-router';
-import { useEffect, useState, useRef, memo } from 'react';
+import { useLoaderData, Link, Form } from 'react-router';
+import { useEffect, useState, useRef } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
-import NumericVoteButtons from '~/components/NumericVoteButtons';
+import AnswerActionCard from '~/components/AnswerActionCard';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
@@ -318,353 +318,6 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 }
 
-// --- Extracted Components (moved outside AnswersRoute to avoid re-definition each render) ---
-
-type FavoriteButtonProps = {
-  answerId: number;
-  initialFavorited?: boolean;
-  onServerFavorited?: (answerId: number, favorited: boolean) => void;
-};
-const FavoriteButton = memo(function FavoriteButton({
-  answerId,
-  initialFavorited,
-  onServerFavorited,
-}: FavoriteButtonProps) {
-  const fetcher = useFetcher();
-  const [currentUserIdLocal, setCurrentUserIdLocal] = useState<string | null>(
-    null
-  );
-  const [fav, setFav] = useState<boolean>(() => Boolean(initialFavorited));
-  const lastProcessedResponseRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (fetcher.state === 'submitting') {
-      lastProcessedResponseRef.current = null;
-    }
-  }, [fetcher.state]);
-
-  // Debug log for initialFavorited changes
-  useEffect(() => {
-    logger.log(
-      `[FavoriteButton ${answerId}] initialFavorited changed:`,
-      initialFavorited
-    );
-    setFav(Boolean(initialFavorited));
-  }, [answerId, initialFavorited]);
-
-  useEffect(() => {
-    try {
-      const uid =
-        localStorage.getItem('currentSubUserId') ??
-        localStorage.getItem('currentUserId');
-      setCurrentUserIdLocal(uid);
-    } catch {
-      setCurrentUserIdLocal(null);
-    }
-  }, [answerId]);
-
-  useEffect(() => {
-    if (!fetcher.data || fetcher.state !== 'idle') return;
-
-    const rawPayload =
-      typeof fetcher.data === 'string'
-        ? fetcher.data
-        : JSON.stringify(fetcher.data);
-
-    if (lastProcessedResponseRef.current === rawPayload) return;
-    lastProcessedResponseRef.current = rawPayload;
-
-    try {
-      const parsed =
-        typeof fetcher.data === 'string'
-          ? JSON.parse(fetcher.data)
-          : fetcher.data;
-      if (parsed && typeof parsed.favorited === 'boolean') {
-        const next = Boolean(parsed.favorited);
-        setFav(next);
-        onServerFavorited?.(answerId, next);
-        return;
-      }
-      if (parsed && parsed.ok === false) {
-        setFav(s => !s);
-      }
-    } catch (error) {
-      logger.error(
-        `[FavoriteButton ${answerId}] Failed to parse fetcher response`,
-        error
-      );
-    }
-  }, [fetcher.data, fetcher.state, answerId, onServerFavorited]);
-
-  const handleClick = () => {
-    if (!currentUserIdLocal) {
-      try {
-        window.location.href = '/login';
-      } catch {}
-      return;
-    }
-    setFav(s => !s);
-    const fd = new FormData();
-    fd.set('op', 'toggle');
-    fd.set('answerId', String(answerId));
-    fd.set('profileId', String(currentUserIdLocal));
-    fetcher.submit(fd, { method: 'post' });
-  };
-
-  return (
-    <button
-      type="button"
-      aria-pressed={fav}
-      onClick={handleClick}
-      className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400 dark:text-white'} hover:opacity-90`}
-      title={
-        !currentUserIdLocal
-          ? 'ログインしてお気に入り登録'
-          : fav
-            ? 'お気に入り解除'
-            : 'お気に入り'
-      }
-    >
-      {fav ? (
-        <svg
-          className="w-5 h-5"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden
-        >
-          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-        </svg>
-      ) : (
-        <svg
-          className="w-5 h-5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          aria-hidden
-        >
-          <path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24z" />
-        </svg>
-      )}
-    </button>
-  );
-});
-
-type AnswerCardProps = {
-  a: Answer;
-  score: number;
-  topic: Topic | null;
-  comments: Comment[];
-  getNameByProfileId: (pid?: string | null) => string | undefined;
-  currentUserName: string | null;
-  currentUserId: string | null;
-  userAnswerData: { votes: Record<number, number>; favorites: Set<number> };
-  onFavoriteUpdate?: (answerId: number, favorited: boolean) => void;
-  actionPath: string;
-};
-
-const AnswerCard = memo(function AnswerCard({
-  a,
-  score,
-  topic,
-  comments,
-  getNameByProfileId,
-  currentUserName,
-  currentUserId,
-  userAnswerData,
-  onFavoriteUpdate,
-  actionPath,
-}: AnswerCardProps) {
-  const [open, setOpen] = useState(false);
-  const commentInputRef = useRef<HTMLTextAreaElement>(null);
-  const commentFormRef = useRef<HTMLFormElement>(null);
-  const commentFetcher = useFetcher();
-
-  // フォーム送信成功後に入力欄をクリア
-  useEffect(() => {
-    if (commentFetcher.state === 'idle' && commentFetcher.data) {
-      // 送信成功後にフォームをリセット
-      if (commentFormRef.current) {
-        commentFormRef.current.reset();
-      }
-    }
-  }, [commentFetcher.state, commentFetcher.data]);
-  return (
-    <li className="p-4 border rounded-md bg-white/80 dark:bg-gray-950/80">
-      <div className="flex flex-col gap-4">
-        <div>
-          {topic ? (
-            topic.image ? (
-              <div className="block p-0 border rounded-md overflow-hidden">
-                <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                  <img
-                    src={topic.image}
-                    alt={topic.title}
-                    className="w-full h-auto max-h-40 object-contain"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">
-                {topic.title}
-              </div>
-            )
-          ) : (
-            <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">
-              お題なし（フリー回答）
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-3">
-          <p className="text-lg leading-snug break-words whitespace-pre-wrap">
-            {a.text}
-          </p>
-          {getNameByProfileId((a as any).profileId) && (
-            <div className="text-xs text-gray-500 dark:text-gray-300">
-              作者: {getNameByProfileId((a as any).profileId)}
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
-              Score:{' '}
-              <span className="text-gray-900 dark:text-gray-50">{score}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <FavoriteButton
-                answerId={a.id}
-                initialFavorited={userAnswerData.favorites.has(a.id)}
-                onServerFavorited={onFavoriteUpdate}
-              />
-              <button
-                type="button"
-                onClick={() => setOpen(prev => !prev)}
-                aria-expanded={open}
-                className="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
-              >
-                {open ? '閉じる' : 'コメント / 採点'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {open && (
-          <div className="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-4">
-            <div className="space-y-2">
-              <NumericVoteButtons
-                answerId={a.id}
-                initialVotes={{
-                  level1: Number((a as any).votes?.level1 ?? 0),
-                  level2: Number((a as any).votes?.level2 ?? 0),
-                  level3: Number((a as any).votes?.level3 ?? 0),
-                }}
-                votesBy={
-                  currentUserId && userAnswerData.votes[a.id]
-                    ? { [currentUserId]: userAnswerData.votes[a.id] }
-                    : undefined
-                }
-                actionPath={actionPath}
-              />
-              <div className="text-[11px] text-gray-400 dark:text-gray-500">
-                1〜3
-                のボタンで採点できます。選択済みのボタンを再度押すと取り消せます。
-              </div>
-              <div className="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
-                <span>👍1:{(a as any).votes?.level1 ?? 0}</span>
-                <span>😂2:{(a as any).votes?.level2 ?? 0}</span>
-                <span>🤣3:{(a as any).votes?.level3 ?? 0}</span>
-              </div>
-            </div>
-            <div>
-              <h4 className="text-sm font-medium">コメント</h4>
-              <ul className="mt-2 space-y-2 text-sm">
-                {comments.map(c => (
-                  <li key={c.id} className="text-gray-700 dark:text-gray-100">
-                    <div className="whitespace-pre-wrap">{c.text}</div>{' '}
-                    <span className="text-xs text-gray-400 dark:text-gray-400">
-                      — {getNameByProfileId((c as any).profileId) ?? '名無し'}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-3">
-                <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                  コメントとして: {currentUserName ?? '名無し'}
-                </div>
-                <commentFetcher.Form
-                  method="post"
-                  className="flex gap-2"
-                  ref={commentFormRef}
-                >
-                  <input type="hidden" name="answerId" value={String(a.id)} />
-                  <input
-                    type="hidden"
-                    name="profileId"
-                    value={currentUserId ?? ''}
-                  />
-                  <textarea
-                    name="text"
-                    ref={commentInputRef}
-                    className={`form-input flex-1 min-h-[44px] resize-y p-2 rounded-md ${commentFetcher.state === 'submitting' ? 'opacity-60' : ''}`}
-                    placeholder="コメントを追加"
-                    aria-label="コメント入力"
-                    rows={2}
-                    disabled={commentFetcher.state === 'submitting'}
-                    onKeyDown={e => {
-                      const isEnter = e.key === 'Enter';
-                      const isMeta = e.metaKey || e.ctrlKey;
-                      if (isEnter && isMeta) {
-                        e.preventDefault();
-                        if (commentFormRef.current) {
-                          const formData = new FormData(commentFormRef.current);
-                          commentFetcher.submit(formData, { method: 'post' });
-                        }
-                      }
-                    }}
-                  />
-                  <button
-                    className={`btn-inline ${commentFetcher.state === 'submitting' ? 'opacity-60 pointer-events-none' : ''} flex items-center gap-2`}
-                    aria-label="コメントを送信"
-                    disabled={commentFetcher.state === 'submitting'}
-                  >
-                    {commentFetcher.state === 'submitting' ? (
-                      <>
-                        <svg
-                          className="animate-spin h-4 w-4"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        送信中…
-                      </>
-                    ) : (
-                      '送信'
-                    )}
-                  </button>
-                </commentFetcher.Form>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </li>
-  );
-});
-
 export default function AnswersRoute() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
   const data = useLoaderData() as LoaderData;
@@ -735,16 +388,6 @@ export default function AnswersRoute() {
       setToDate(params.get('toDate') ?? '');
     } catch {}
   }, []);
-
-  // helper: compute a numeric score from votes object
-  const computeScore = (a: Answer) => {
-    const v = (a as any).votes || { level1: 0, level2: 0, level3: 0 };
-    const l1 = Number(v.level1 || 0);
-    const l2 = Number(v.level2 || 0);
-    const l3 = Number(v.level3 || 0);
-    // weighted score: 1*level1 + 2*level2 + 3*level3
-    return l1 * 1 + l2 * 2 + l3 * 3;
-  };
 
   // helpers to adjust minScore in UI (mobile-friendly increment/decrement)
   const incrementMinScore = () => {
@@ -819,7 +462,7 @@ export default function AnswersRoute() {
   const total = (data as any)?.total ?? answers.length;
   const pageCount = Math.max(1, Math.ceil(total / serverPageSize));
   const currentPage = Math.min(Math.max(1, serverPage), pageCount);
-  const paged = answers.map(a => ({ answer: a, score: computeScore(a) }));
+  const paged = answers;
 
   // Scroll to top of the answers container when page changes (client-side navigation)
   useEffect(() => {
@@ -1044,13 +687,14 @@ export default function AnswersRoute() {
           <div className="space-y-8 px-4">
             {/* Render answers in the exact order returned by the loader (preserve DB ordering) */}
             <ul className="space-y-4">
-              {paged.map(({ answer: a, score }) => (
-                <AnswerCard
-                  key={a.id}
-                  a={a}
-                  score={score}
-                  topic={a.topicId ? topicsById[String(a.topicId)] : null}
-                  comments={commentsByAnswer[String(a.id)] || []}
+              {paged.map(answer => (
+                <AnswerActionCard
+                  key={answer.id}
+                  answer={answer}
+                  topic={
+                    answer.topicId ? topicsById[String(answer.topicId)] : null
+                  }
+                  comments={commentsByAnswer[String(answer.id)] || []}
                   getNameByProfileId={getNameByProfileId}
                   currentUserName={currentUserName}
                   currentUserId={currentUserId}
