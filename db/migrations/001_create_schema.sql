@@ -78,11 +78,10 @@ CREATE INDEX IF NOT EXISTS favorites_answer_idx ON favorites (answer_id);
 CREATE INDEX IF NOT EXISTS favorites_profile_idx ON favorites (profile_id);
 
 -- vote counts view
-CREATE OR REPLACE VIEW answer_vote_counts AS
-SELECT
-  answer_id,
-  COUNT(*) FILTER (WHERE level = 1) AS level1,
-  COUNT(*) FILTER (WHERE level = 2) AS level2,
-  COUNT(*) FILTER (WHERE level = 3) AS level3
-FROM votes
-GROUP BY answer_id;
+create view public.answer_vote_counts with (security_invoker = on) as
+ SELECT answer_id,
+    count(*) FILTER (WHERE level = 1) AS level1,
+    count(*) FILTER (WHERE level = 2) AS level2,
+    count(*) FILTER (WHERE level = 3) AS level3
+   FROM votes
+  GROUP BY answer_id;
