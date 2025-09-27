@@ -1,4 +1,5 @@
 // Development in-memory mocks removed. This module now always uses Supabase via ensureConnection/supabase.
+import { createHash } from 'node:crypto';
 import { AnswerSchema } from '~/lib/schemas/answer';
 import { TopicSchema } from '~/lib/schemas/topic';
 import { CommentSchema } from '~/lib/schemas/comment';
@@ -20,12 +21,119 @@ const DEBUG_DB_TIMINGS = Boolean(process.env.DEBUG_DB_TIMINGS ?? (import.meta.en
 // Enable deprecation logging for migration debugging: set DEBUG_DB_DEPRECATION=1
 // Legacy author deprecation removed: profileId is now authoritative.
 
+const STORAGE_BUCKET =
+  process.env.STORAGE_BUCKET ??
+  (import.meta.env.STORAGE_BUCKET as string | undefined) ??
+  process.env.VITE_STORAGE_BUCKET ??
+  (import.meta.env.VITE_STORAGE_BUCKET as string | undefined) ??
+  'images';
+
+const STORAGE_FOLDER =
+  process.env.STORAGE_FOLDER ??
+  (import.meta.env.STORAGE_FOLDER as string | undefined) ??
+  process.env.VITE_STORAGE_FOLDER ??
+  (import.meta.env.VITE_STORAGE_FOLDER as string | undefined) ??
+  'line-sync';
+
 // Note: in-memory caching and edge-config have been removed to always query
 // the database directly for freshest results and to avoid cache wait delays.
 // keep a no-op invalidation function so existing mutation code can call it
 // without conditional edits. This intentionally does nothing now.
 function invalidateCache(_prefix: string) {
   // no-op: caching removed
+}
+
+function resolveStorageBucket() {
+  if (!STORAGE_BUCKET) {
+    throw new Error('Supabase storage bucket is not configured (STORAGE_BUCKET)');
+  }
+  return STORAGE_BUCKET;
+}
+
+function extFromContentType(contentType: string | null | undefined) {
+  if (!contentType) return null;
+  const normalized = contentType.split(';')[0]?.trim().toLowerCase();
+  switch (normalized) {
+    case 'image/jpeg':
+    case 'image/jpg':
+      return 'jpg';
+    case 'image/png':
+      return 'png';
+    case 'image/webp':
+      return 'webp';
+    case 'image/gif':
+      return 'gif';
+    default:
+      return null;
+  }
+}
+
+function extFromUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname;
+    const idx = pathname.lastIndexOf('.');
+    if (idx >= 0 && idx < pathname.length - 1) {
+      const extCandidate = pathname.slice(idx + 1).toLowerCase();
+      if (/^[a-z0-9]{2,5}$/.test(extCandidate)) {
+        return extCandidate.split('?')[0];
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function deriveImageExtension(sourceUrl: string, contentType: string | null | undefined) {
+  return extFromContentType(contentType) ?? extFromUrl(sourceUrl) ?? 'jpg';
+}
+
+function buildStoragePath(sourceUrl: string, extension: string) {
+  const hash = createHash('sha256').update(sourceUrl).digest('hex').slice(0, 32);
+  const folder = STORAGE_FOLDER.replace(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '');
+  const sanitizedExt = extension.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
+  return `${folder}/${hash}.${sanitizedExt}`;
+}
+
+async function uploadImageToSupabaseStorage(sourceUrl: string) {
+  if (!supabaseAdmin) {
+    throw new Error('Supabase admin client is required to upload images');
+  }
+
+  const bucket = resolveStorageBucket();
+  const response = await fetch(sourceUrl, {
+    // Follow redirects for Google Drive download URLs
+    redirect: 'follow',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image from ${sourceUrl} (${response.status})`);
+  }
+
+  const contentType = response.headers.get('content-type');
+  const extension = deriveImageExtension(sourceUrl, contentType);
+  const objectPath = buildStoragePath(sourceUrl, extension);
+  const buffer = Buffer.from(await response.arrayBuffer());
+
+  const upload = await supabaseAdmin.storage.from(bucket).upload(objectPath, buffer, {
+    contentType: contentType ?? 'application/octet-stream',
+    cacheControl: '31536000',
+    upsert: false,
+  });
+
+  if (upload.error) {
+    const message = String(upload.error.message ?? '').toLowerCase();
+    if (!message.includes('duplicate')) {
+      throw upload.error;
+    }
+  }
+
+  const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+
+  return {
+    path: objectPath,
+    publicUrl: publicUrlData.publicUrl,
+  };
 }
 
 /**
@@ -1265,6 +1373,7 @@ export type LineAnswerIngestResult = {
   totalReceived: number;
   createdProfiles: number;
   updatedProfiles: number;
+  uploadedImagePath?: string | null;
 };
 
 function normalizeLineAnswerText(text: string): string {
@@ -1277,7 +1386,7 @@ function normalizeLineAnswerText(text: string): string {
  * 概要: LINE (GAS) 側 cron から送信された回答バッチを topics/profiles/answers に取り込む集約処理。
  * Intent: 外部サービスからの一括同期を 1 箇所に閉じ、API ルートや他レイヤーからは関数呼び出しのみで完結させる。
  * Contract:
- *   - Input: LineAnswerIngestRequest (単一トピック + 回答配列)。topic.kind は現在 text のみ対応。
+ *   - Input: LineAnswerIngestRequest (単一トピック + 回答配列)。topic.kind は text | image。
  *   - Output: LineAnswerIngestResult (挿入件数 / スキップ件数 / トピック作成有無 等)。
  * Environment:
  *   - 常に Supabase を利用。書き込みには supabaseAdmin (service key) を優先し、無ければ public client。
@@ -1286,45 +1395,91 @@ function normalizeLineAnswerText(text: string): string {
  */
 export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineAnswerIngestResult> {
   const payload = LineAnswerIngestRequestSchema.parse(input);
-  if (payload.topic.kind !== 'text') {
-    throw new Error(`Unsupported topic kind: ${payload.topic.kind}`);
-  }
-
   await ensureConnection();
   const writeClient = supabaseAdmin ?? supabase;
   if (!writeClient) throw new Error('No Supabase client configured for writes');
-
-  const topicTitle = payload.topic.title.trim();
-  if (!topicTitle) {
-    throw new Error('Topic title must not be empty');
-  }
   const topicCreatedAt = payload.topic.createdAt ?? new Date().toISOString();
-
-  const { data: topicExisting, error: topicQueryErr } = await writeClient
-    .from('topics')
-    .select('id, title')
-    .eq('title', topicTitle)
-    .is('image', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (topicQueryErr && topicQueryErr.code !== 'PGRST116') throw topicQueryErr;
 
   let topicId: number | null = null;
   let createdTopic = false;
-  if (topicExisting && topicExisting.id != null) {
-    topicId = Number(topicExisting.id);
-  } else {
-    const { data: topicInserted, error: topicInsertErr } = await writeClient
+  let uploadedImagePath: string | null = null;
+
+  if (payload.topic.kind === 'image') {
+    const sourceImage = payload.topic.sourceImage;
+    if (!sourceImage) throw new Error('Image topic requires sourceImage');
+    const topicTitle = (payload.topic.title ?? '写真').trim() || '写真';
+
+    const { data: topicExisting, error: topicQueryErr } = await writeClient
       .from('topics')
-      .insert({ title: topicTitle, created_at: topicCreatedAt })
-      .select('id')
-      .single();
-    if (topicInsertErr) throw topicInsertErr;
-    topicId = Number(topicInserted.id);
-    createdTopic = true;
-    try { invalidateCache('topics:all'); } catch {}
+      .select('id, image, source_image')
+      .eq('source_image', sourceImage)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (topicQueryErr && topicQueryErr.code !== 'PGRST116') throw topicQueryErr;
+
+    if (topicExisting && topicExisting.id != null) {
+      topicId = Number(topicExisting.id);
+      // Upload image if missing or empty
+      if (!topicExisting.image) {
+        const uploadInfo = await uploadImageToSupabaseStorage(sourceImage);
+        uploadedImagePath = uploadInfo.path;
+        const { error: updateErr } = await writeClient
+          .from('topics')
+          .update({ image: uploadInfo.publicUrl, title: topicTitle })
+          .eq('id', topicExisting.id);
+        if (updateErr) throw updateErr;
+        try { invalidateCache('topics:all'); } catch {}
+      }
+    } else {
+      const uploadInfo = await uploadImageToSupabaseStorage(sourceImage);
+      uploadedImagePath = uploadInfo.path;
+      const { data: topicInserted, error: topicInsertErr } = await writeClient
+        .from('topics')
+        .insert({
+          title: topicTitle,
+          image: uploadInfo.publicUrl,
+          source_image: sourceImage,
+          created_at: topicCreatedAt,
+        })
+        .select('id')
+        .single();
+      if (topicInsertErr) throw topicInsertErr;
+      topicId = Number(topicInserted.id);
+      createdTopic = true;
+      try { invalidateCache('topics:all'); } catch {}
+    }
+  } else {
+    const topicTitle = payload.topic.title.trim();
+    if (!topicTitle) {
+      throw new Error('Topic title must not be empty');
+    }
+
+    const { data: topicExisting, error: topicQueryErr } = await writeClient
+      .from('topics')
+      .select('id, title')
+      .eq('title', topicTitle)
+      .is('image', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (topicQueryErr && topicQueryErr.code !== 'PGRST116') throw topicQueryErr;
+
+    if (topicExisting && topicExisting.id != null) {
+      topicId = Number(topicExisting.id);
+    } else {
+      const { data: topicInserted, error: topicInsertErr } = await writeClient
+        .from('topics')
+        .insert({ title: topicTitle, created_at: topicCreatedAt })
+        .select('id')
+        .single();
+      if (topicInsertErr) throw topicInsertErr;
+      topicId = Number(topicInserted.id);
+      createdTopic = true;
+      try { invalidateCache('topics:all'); } catch {}
+    }
   }
+
   if (topicId == null || Number.isNaN(topicId)) {
     throw new Error('Failed to resolve topic id during ingestion');
   }
@@ -1435,6 +1590,7 @@ export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise
     totalReceived: payload.answers.length,
     createdProfiles,
     updatedProfiles,
+    uploadedImagePath,
   };
 }
 

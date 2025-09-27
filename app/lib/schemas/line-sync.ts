@@ -15,13 +15,35 @@ export const LineSyncTimestampSchema = z
   })
   .transform(date => date.toISOString());
 
-/** Segment: topic metadata sent from LINE GAS cron */
-export const LineSyncTopicSchema = z.object({
-  kind: z.literal('text').default('text'),
-  title: z.string().min(1).max(300),
+const BaseTopicSchema = z.object({
   createdAt: LineSyncTimestampSchema.optional(),
   sourceLabel: z.string().max(300).optional(),
 });
+
+const TextTopicSchema = BaseTopicSchema.extend({
+  kind: z.literal('text').default('text'),
+  title: z.string().min(1).max(300),
+});
+
+const ImageTopicSchema = BaseTopicSchema.extend({
+  kind: z.literal('image'),
+  title: z.string().min(1).max(300).default('写真'),
+  sourceImage: z.string().url(),
+  altText: z.string().min(1).max(300).optional(),
+});
+
+/** Segment: topic metadata sent from LINE GAS cron */
+export const LineSyncTopicSchema = z
+  .union([TextTopicSchema, ImageTopicSchema])
+  .transform(topic => {
+    if (topic.kind === 'image') {
+      return topic;
+    }
+    return {
+      ...topic,
+      kind: 'text' as const,
+    };
+  });
 
 /** Single answer row coming from LINE GAS cron */
 export const LineSyncAnswerSchema = z.object({
