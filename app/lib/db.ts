@@ -1,5 +1,6 @@
 // Development in-memory mocks removed. This module now always uses Supabase via ensureConnection/supabase.
 import { createHash } from 'node:crypto';
+import sharp from 'sharp';
 import { AnswerSchema } from '~/lib/schemas/answer';
 import { TopicSchema } from '~/lib/schemas/topic';
 import { CommentSchema } from '~/lib/schemas/comment';
@@ -96,6 +97,66 @@ function buildStoragePath(sourceUrl: string, extension: string) {
   return `${folder}/${hash}.${sanitizedExt}`;
 }
 
+const THUMBNAIL_MAX_DIMENSION = 1024;
+const JPEG_QUALITY = 80;
+const WEBP_QUALITY = 75;
+
+type ProcessedImage = {
+  buffer: Buffer;
+  extension: string;
+  contentType: string;
+};
+
+async function createThumbnail(buffer: Buffer, extension: string, contentType: string | null | undefined): Promise<ProcessedImage | null> {
+  const normalizedExt = extension.toLowerCase();
+  const staticFormats = new Set(['jpg', 'jpeg', 'png', 'webp']);
+  if (!staticFormats.has(normalizedExt)) {
+    return null;
+  }
+
+  try {
+    const image = sharp(buffer, { failOn: 'none' }).rotate();
+    const pipeline = image.resize({
+      width: THUMBNAIL_MAX_DIMENSION,
+      height: THUMBNAIL_MAX_DIMENSION,
+      fit: 'inside',
+      withoutEnlargement: true,
+    });
+
+    if (normalizedExt === 'png') {
+      const data = await pipeline
+        .png({ compressionLevel: 9, palette: true })
+        .toBuffer();
+      return {
+        buffer: data,
+        extension: 'png',
+        contentType: 'image/png',
+      };
+    }
+
+    if (normalizedExt === 'webp') {
+      const data = await pipeline.webp({ quality: WEBP_QUALITY }).toBuffer();
+      return {
+        buffer: data,
+        extension: 'webp',
+        contentType: 'image/webp',
+      };
+    }
+
+    const data = await pipeline
+      .jpeg({ quality: JPEG_QUALITY, mozjpeg: true })
+      .toBuffer();
+    return {
+      buffer: data,
+      extension: 'jpg',
+      contentType: 'image/jpeg',
+    };
+  } catch (error) {
+    console.error('createThumbnail failed, falling back to original image', error);
+    return null;
+  }
+}
+
 async function uploadImageToSupabaseStorage(sourceUrl: string) {
   if (!supabaseAdmin) {
     throw new Error('Supabase admin client is required to upload images');
@@ -111,12 +172,34 @@ async function uploadImageToSupabaseStorage(sourceUrl: string) {
   }
 
   const contentType = response.headers.get('content-type');
-  const extension = deriveImageExtension(sourceUrl, contentType);
-  const objectPath = buildStoragePath(sourceUrl, extension);
+  const originalExtension = deriveImageExtension(sourceUrl, contentType).toLowerCase();
   const buffer = Buffer.from(await response.arrayBuffer());
 
-  const upload = await supabaseAdmin.storage.from(bucket).upload(objectPath, buffer, {
-    contentType: contentType ?? 'application/octet-stream',
+  const processed = await createThumbnail(buffer, originalExtension, contentType);
+  const finalBuffer = processed?.buffer ?? buffer;
+  const finalExtension = processed?.extension ?? originalExtension;
+  const finalContentType = processed?.contentType ?? (() => {
+    const normalizedType = contentType?.split(';')[0]?.trim().toLowerCase();
+    if (normalizedType) return normalizedType;
+    switch (finalExtension) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'webp':
+        return 'image/webp';
+      case 'gif':
+        return 'image/gif';
+      default:
+        return 'application/octet-stream';
+    }
+  })();
+
+  const objectPath = buildStoragePath(sourceUrl, finalExtension);
+
+  const upload = await supabaseAdmin.storage.from(bucket).upload(objectPath, finalBuffer, {
+    contentType: finalContentType,
     cacheControl: '31536000',
     upsert: false,
   });
