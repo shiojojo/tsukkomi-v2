@@ -16,8 +16,6 @@ import { FavoriteSchema } from '~/lib/schemas/favorite';
 
 // Running always in production-like mode: local development should run a Supabase instance and
 // set VITE_SUPABASE_KEY / SUPABASE_KEY accordingly.
-// Opt-in debug timings. Set DEBUG_DB_TIMINGS=1 in the environment to enable lightweight console timings
-const DEBUG_DB_TIMINGS = Boolean(process.env.DEBUG_DB_TIMINGS ?? (import.meta.env.DEBUG_DB_TIMINGS as any) ?? false);
 // Enable deprecation logging for migration debugging: set DEBUG_DB_DEPRECATION=1
 // Legacy author deprecation removed: profileId is now authoritative.
 
@@ -953,7 +951,6 @@ export async function addComment(input: { answerId: string | number; text: strin
  *  - prod: not implemented
  */
 export async function getTopics(): Promise<Topic[]> {
-  if (DEBUG_DB_TIMINGS) console.time('db:ensureConnection');
   try {
     await ensureConnection();
   } catch (e) {
@@ -963,15 +960,12 @@ export async function getTopics(): Promise<Topic[]> {
     console.error('getTopics: ensureConnection failed, returning empty list', e);
     return [];
   }
-  if (DEBUG_DB_TIMINGS) console.timeEnd('db:ensureConnection');
 
   try {
-    if (DEBUG_DB_TIMINGS) console.time('db:topicsQuery');
     const { data, error } = await supabase
       .from('topics')
       .select('id, title, created_at, image')
       .order('created_at', { ascending: false });
-    if (DEBUG_DB_TIMINGS) console.timeEnd('db:topicsQuery');
     if (error) throw error;
     return TopicSchema.array().parse(data ?? []);
   } catch (error) {
@@ -1037,13 +1031,11 @@ export async function getLatestTopic(): Promise<Topic | null> {
   // errors quickly; callers receive null only if no topic exists.
 
   try {
-    if (DEBUG_DB_TIMINGS) console.time('db:latestTopic:query');
     const { data, error } = await supabase
       .from('topics')
       .select('id, title, created_at, image')
       .order('created_at', { ascending: false })
       .limit(1);
-    if (DEBUG_DB_TIMINGS) console.timeEnd('db:latestTopic:query');
     if (error) throw error;
     const row = (data ?? [])[0] ?? null;
     return row ? TopicSchema.parse(row as any) : null;
