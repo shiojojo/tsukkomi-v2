@@ -378,13 +378,15 @@ function TopicOverviewCard({
             {topic.title}
           </h2>
           {topic.image ? (
-            <div className="overflow-hidden rounded-md border border-gray-200 dark:border-gray-800">
-              <img
-                src={topic.image}
-                alt={topic.title}
-                className="w-full h-auto max-h-64 object-cover"
-                loading="lazy"
-              />
+            <div className="block p-0 border rounded-md overflow-hidden">
+              <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                <img
+                  src={topic.image}
+                  alt={topic.title}
+                  className="w-full h-auto max-h-40 object-contain"
+                  loading="lazy"
+                />
+              </div>
             </div>
           ) : null}
           {createdAtLabel ? (
