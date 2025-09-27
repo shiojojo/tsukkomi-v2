@@ -394,3 +394,26 @@ export const PostInsertSchema = z.object({
 プロンプトに: 「上記コメントテンプレ準拠で関数意図 / Contract / Environment / Errors を先頭ブロックコメントに含めて」 と明示する。
 
 ---
+
+## 🛡️ セキュリティと運用
+
+### Supabase セキュリティプラクティス
+
+- Row Level Security (RLS) を全テーブルで有効化し、ユーザーごとのデータアクセスを制御。
+- APIキーの管理: 環境変数は `.env` にのみ格納し、コミット禁止（`.gitignore` に追加）。
+
+### ログと監視
+
+- `lib/logger.ts` の使用ガイド: エラーログの構造（レベル: error/warn/info, メッセージ, スタックトレース）。外部サービス連携（例: Vercel Analytics や Sentry）で監視。
+- レートリミッター (`lib/rateLimiter.ts`): APIリクエストのレート制限（例: ユーザーごと1分間に10リクエスト）。超過時は429エラーを返す。
+
+## 🔧 コード品質とツールの詳細
+
+### ESLint / Prettier の設定ルール
+
+- ESLint: `eslint-config-react-app` + カスタムルール（例: インポート順序強制）。
+- Prettier: デフォルト設定 + Tailwindクラスソート。
+
+### TypeScriptのstrictモード設定
+
+- `tsconfig.json` のキー項目: `"noImplicitAny": true, "strictNullChecks": true`。
