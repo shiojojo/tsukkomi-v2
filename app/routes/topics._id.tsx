@@ -13,25 +13,22 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const profileId = url.searchParams.get('profileId') ?? undefined;
 
-  const { getTopics, getAnswers } = await import('~/lib/db');
+  const { getTopics, getAnswersByTopic } = await import('~/lib/db');
   const topics = await getTopics();
   const topic = topics.find(t => Number((t as any).id) === id);
   if (!topic) {
     throw new Response('Not Found', { status: 404 });
   }
 
-  const answers = await getAnswers(profileId);
-  const filtered = answers.filter(
-    a => a.topicId != null && Number((a as any).topicId) === id
-  );
+  const answers = await getAnswersByTopic(id, profileId);
 
   // Enrich answers with displayName when possible to avoid exposing raw profile ids
   try {
     const { getProfilesByIds } = await import('~/lib/db');
-    const profileIds = filtered.map(a => (a as any).profileId).filter(Boolean);
+    const profileIds = answers.map(a => (a as any).profileId).filter(Boolean);
     if (profileIds.length) {
       const names = await getProfilesByIds(profileIds);
-      const enriched = filtered.map(a => ({
+      const enriched = answers.map(a => ({
         ...a,
         displayName: names[String((a as any).profileId)],
       }));
@@ -40,7 +37,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   } catch {
     // ignore enrichment errors
   }
-  return { topic, answers: filtered };
+  return { topic, answers };
 }
 
 export default function TopicDetailRoute() {

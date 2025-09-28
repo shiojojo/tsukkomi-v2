@@ -947,11 +947,15 @@ export async function getAnswersByTopic(topicId: string | number, profileId?: st
     return [];
   }
   const numericTopic = Number(topicId);
-  const { data: answerRows, error: answerErr } = await supabase
+  let query = supabase
     .from('answers')
-  .select('id, text, profile_id, topic_id, created_at')
+    .select('id, text, profile_id, topic_id, created_at')
     .eq('topic_id', numericTopic)
     .order('created_at', { ascending: false });
+  if (profileId) {
+    query = query.eq('profile_id', profileId);
+  }
+  const { data: answerRows, error: answerErr } = await query;
   if (answerErr) throw answerErr;
 
   const answers = (answerRows ?? []).map((a: any) => ({
