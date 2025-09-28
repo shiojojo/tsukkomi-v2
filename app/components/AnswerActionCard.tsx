@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import FavoriteButton from '~/components/FavoriteButton';
@@ -7,7 +7,7 @@ import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 
-export type AnswerActionCardProps = {
+export interface AnswerActionCardProps {
   answer: Answer;
   topic: Topic | null;
   comments: Comment[];
@@ -18,7 +18,7 @@ export type AnswerActionCardProps = {
   onFavoriteUpdate?: (answerId: number, favorited: boolean) => void;
   actionPath: string;
   profileIdForVotes?: string | null;
-};
+}
 
 const formatVoteLabel = (level: number) => {
   switch (level) {
@@ -71,32 +71,6 @@ export function AnswerActionCard({
     }
   }, [commentFetcher.state, commentFetcher.data, queryClient]);
 
-  const score = useMemo(() => {
-    const votes = (answer as any).votes || {
-      level1: 0,
-      level2: 0,
-      level3: 0,
-    };
-    return (
-      Number(votes.level1 || 0) * 1 +
-      Number(votes.level2 || 0) * 2 +
-      Number(votes.level3 || 0) * 3
-    );
-  }, [answer]);
-
-  const votesCounts = useMemo(() => {
-    const votes = (answer as any).votes || {
-      level1: 0,
-      level2: 0,
-      level3: 0,
-    };
-    return {
-      level1: Number(votes.level1 || 0),
-      level2: Number(votes.level2 || 0),
-      level3: Number(votes.level3 || 0),
-    };
-  }, [answer]);
-
   const profileForVote = profileIdForVotes ?? currentUserId ?? null;
   const votesBy = useMemo(() => {
     const embedded = ((answer as any).votesBy ?? {}) as Record<string, number>;
@@ -108,6 +82,61 @@ export function AnswerActionCard({
 
     return Object.keys(combined).length ? combined : undefined;
   }, [answer, profileForVote, userAnswerData.votes]);
+
+  const resolveProfileName = useCallback(
+    (pid?: string | null) => {
+      if (!pid) return undefined;
+      if (pid === profileForVote && currentUserName) {
+        return currentUserName;
+      }
+      return getNameByProfileId(pid);
+    },
+    [currentUserName, getNameByProfileId, profileForVote]
+  );
+
+  const { votesCounts, score } = useMemo(() => {
+    const fallbackCounts = (() => {
+      const votes = (answer as any).votes || {
+        level1: 0,
+        level2: 0,
+        level3: 0,
+      };
+      return {
+        level1: Number(votes.level1 || 0),
+        level2: Number(votes.level2 || 0),
+        level3: Number(votes.level3 || 0),
+      };
+    })();
+
+    if (!votesBy) {
+      const fallbackScore =
+        fallbackCounts.level1 * 1 +
+        fallbackCounts.level2 * 2 +
+        fallbackCounts.level3 * 3;
+      return { votesCounts: fallbackCounts, score: fallbackScore };
+    }
+
+    const aggregated = { level1: 0, level2: 0, level3: 0 };
+    for (const level of Object.values(votesBy)) {
+      if (level === 1) {
+        aggregated.level1 += 1;
+      } else if (level === 2) {
+        aggregated.level2 += 1;
+      } else if (level === 3) {
+        aggregated.level3 += 1;
+      }
+    }
+
+    const counts =
+      aggregated.level1 + aggregated.level2 + aggregated.level3 > 0
+        ? aggregated
+        : fallbackCounts;
+
+    const computedScore =
+      counts.level1 * 1 + counts.level2 * 2 + counts.level3 * 3;
+
+    return { votesCounts: counts, score: computedScore };
+  }, [answer, votesBy]);
 
   const voteEntries = useMemo(() => {
     if (!votesBy)
@@ -122,14 +151,14 @@ export function AnswerActionCard({
       .map(([profileId, score]) => ({
         profileId,
         score,
-        displayName: getNameByProfileId(profileId) ?? '名無し',
+        displayName: resolveProfileName(profileId) ?? '名無し',
         isCurrentUser: profileId === profileForVote,
       }))
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return a.displayName.localeCompare(b.displayName, 'ja');
       });
-  }, [getNameByProfileId, profileForVote, votesBy]);
+  }, [profileForVote, resolveProfileName, votesBy]);
 
   const initialFavorited = useMemo(() => {
     if (userAnswerData.favorites.has(answer.id)) return true;
@@ -173,9 +202,9 @@ export function AnswerActionCard({
                 Score:{' '}
                 <span className="text-gray-900 dark:text-gray-50">{score}</span>
               </div>
-              {getNameByProfileId((answer as any).profileId) && (
+              {resolveProfileName((answer as any).profileId) && (
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  作者: {getNameByProfileId((answer as any).profileId)}
+                  作者: {resolveProfileName((answer as any).profileId)}
                 </span>
               )}
             </div>
@@ -261,7 +290,7 @@ export function AnswerActionCard({
                     <div className="whitespace-pre-wrap">{comment.text}</div>{' '}
                     <span className="text-xs text-gray-400 dark:text-gray-400">
                       —{' '}
-                      {getNameByProfileId((comment as any).profileId) ??
+                      {resolveProfileName((comment as any).profileId) ??
                         '名無し'}
                     </span>
                   </li>

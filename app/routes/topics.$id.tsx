@@ -9,7 +9,6 @@ import { handleAnswerActions } from '~/lib/actionHandlers';
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
-import type { User } from '~/lib/schemas/user';
 import { consumeToken } from '~/lib/rateLimiter';
 import { logger } from '~/lib/logger';
 
@@ -100,19 +99,20 @@ export default function TopicDetailRoute() {
   const { topic, answers, commentsByAnswer, users, profileId } =
     useLoaderData() as LoaderData;
 
-  const usersById = useMemo(
-    () =>
-      Object.fromEntries(users.map(user => [String(user.id), user])) as Record<
-        string,
-        User
-      >,
-    [users]
-  );
+  const nameByProfileId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const user of users) {
+      map[String(user.id)] = user.name;
+      for (const sub of user.subUsers ?? []) {
+        map[String(sub.id)] = sub.name;
+      }
+    }
+    return map;
+  }, [users]);
 
   const getNameByProfileId = (pid?: string | null) => {
     if (!pid) return undefined;
-    const found = usersById[String(pid)];
-    return found ? found.name : undefined;
+    return nameByProfileId[String(pid)];
   };
 
   const { effectiveId: currentUserId, effectiveName: currentUserName } =

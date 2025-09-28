@@ -73,10 +73,16 @@ export default function FavoriteAnswersRoute() {
   const requiresProfileId = data.requiresProfileId;
   const profileIdFromLoader = data.profileId ?? null;
 
-  const usersById = useMemo(
-    () => Object.fromEntries(users.map(u => [String(u.id), u])),
-    [users]
-  );
+  const nameByProfileId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const user of users) {
+      map[String(user.id)] = user.name;
+      for (const sub of user.subUsers ?? []) {
+        map[String(sub.id)] = sub.name;
+      }
+    }
+    return map;
+  }, [users]);
 
   const { effectiveId: currentUserId, effectiveName: currentUserName } =
     useIdentity();
@@ -113,8 +119,7 @@ export default function FavoriteAnswersRoute() {
 
   const getNameByProfileId = (pid?: string | null) => {
     if (!pid) return undefined;
-    const found = usersById[String(pid)];
-    return found ? found.name : undefined;
+    return nameByProfileId[String(pid)];
   };
 
   const headerNode = (

@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form } from 'react-router';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import AnswerActionCard from '~/components/AnswerActionCard';
 import { Pagination } from '~/components/Pagination';
@@ -129,11 +129,19 @@ export default function AnswersRoute() {
   const commentsByAnswer: Record<string, Comment[]> =
     (data as any)?.commentsByAnswer ?? {};
   const users: User[] = (data as any)?.users ?? [];
-  const usersById = Object.fromEntries(users.map(u => [String(u.id), u]));
+  const nameByProfileId = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const user of users) {
+      map[String(user.id)] = user.name;
+      for (const sub of user.subUsers ?? []) {
+        map[String(sub.id)] = sub.name;
+      }
+    }
+    return map;
+  }, [users]);
   const getNameByProfileId = (pid?: string | null) => {
     if (!pid) return undefined;
-    const found = usersById[String(pid)];
-    return found ? found.name : undefined;
+    return nameByProfileId[String(pid)];
   };
 
   const { effectiveId: currentUserId, effectiveName: currentUserName } =
