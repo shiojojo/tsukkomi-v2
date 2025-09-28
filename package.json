@@ -6,7 +6,7 @@
     "build": "react-router build",
     "dev": "react-router dev",
     "start": "node ./scripts/start-server.mjs",
-    "test": "node ./scripts/test-schemas.cjs",
+    "test": "tsx scripts/run-tests.mjs",
     "typecheck": "react-router typegen && tsc"
   },
   "dependencies": {
@@ -37,6 +37,7 @@
     "@types/react-dom": "^19.1.2",
     "@vercel/react-router": "^1.2.3",
     "tailwindcss": "^4.1.4",
+    "tsx": "^4.20.6",
     "typescript": "^5.8.3",
     "vite": "^6.3.3",
     "vite-tsconfig-paths": "^5.1.4"
