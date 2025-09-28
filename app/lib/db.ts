@@ -247,39 +247,21 @@ export async function getAnswers(profileId?: string): Promise<Answer[]> {
     created_at: a.created_at ?? a.createdAt,
   }));
 
-  // collect ids and fetch aggregated counts in one query (use materialized view if present)
+  // collect ids and fetch aggregated counts using the view
   const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
   const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
   if (ids.length) {
-    // try counts view first
     const { data: countsData, error: countsErr } = await supabase
       .from('answer_vote_counts')
       .select('answer_id, level1, level2, level3')
       .in('answer_id', ids);
-
-    if (!countsErr && countsData && countsData.length) {
-      for (const c of countsData) {
-        countsMap[Number(c.answer_id)] = {
-          level1: Number(c.level1 ?? 0),
-          level2: Number(c.level2 ?? 0),
-          level3: Number(c.level3 ?? 0),
-        };
-      }
-    } else {
-      // fallback: aggregate from votes table in one query
-      const { data: agg, error: aggErr } = await supabase
-        .from('votes')
-        .select('answer_id, level', { head: false })
-        .in('answer_id', ids);
-      if (aggErr) throw aggErr;
-      for (const row of agg ?? []) {
-        const aid = Number(row.answer_id);
-        countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
-        const lv = Number(row.level);
-        if (lv === 1) countsMap[aid].level1 += 1;
-        else if (lv === 2) countsMap[aid].level2 += 1;
-        else if (lv === 3) countsMap[aid].level3 += 1;
-      }
+    if (countsErr) throw countsErr;
+    for (const c of countsData ?? []) {
+      countsMap[Number(c.answer_id)] = {
+        level1: Number(c.level1 ?? 0),
+        level2: Number(c.level2 ?? 0),
+        level3: Number(c.level3 ?? 0),
+      };
     }
   }
 
