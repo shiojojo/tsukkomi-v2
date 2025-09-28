@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import AnswerActionCard from '~/components/AnswerActionCard';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
+import { useIdentity } from '~/hooks/useIdentity';
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
@@ -270,24 +271,8 @@ export default function TopicDetailRoute() {
     return found ? found.name : undefined;
   };
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      setCurrentUserId(
-        localStorage.getItem('currentSubUserId') ??
-          localStorage.getItem('currentUserId')
-      );
-      setCurrentUserName(
-        localStorage.getItem('currentSubUserName') ??
-          localStorage.getItem('currentUserName')
-      );
-    } catch {
-      setCurrentUserId(null);
-      setCurrentUserName(null);
-    }
-  }, []);
+  const { effectiveId: currentUserId, effectiveName: currentUserName } =
+    useIdentity();
 
   const answerIds = useMemo(() => answers.map(answer => answer.id), [answers]);
   const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);

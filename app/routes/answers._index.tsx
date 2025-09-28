@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import AnswerActionCard from '~/components/AnswerActionCard';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
+import { useIdentity } from '~/hooks/useIdentity';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
@@ -329,28 +330,12 @@ export default function AnswersRoute() {
     return found ? found.name : undefined;
   };
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+  const { effectiveId: currentUserId, effectiveName: currentUserName } =
+    useIdentity();
 
   // Client-side user data sync for answers
   const answerIds = answers.map(a => a.id);
   const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);
-
-  useEffect(() => {
-    try {
-      setCurrentUserId(
-        localStorage.getItem('currentSubUserId') ??
-          localStorage.getItem('currentUserId')
-      );
-      setCurrentUserName(
-        localStorage.getItem('currentSubUserName') ??
-          localStorage.getItem('currentUserName')
-      );
-    } catch {
-      setCurrentUserId(null);
-      setCurrentUserName(null);
-    }
-  }, []);
 
   // Filter UI state (server-driven via GET form)
   const [query, setQuery] = useState('');

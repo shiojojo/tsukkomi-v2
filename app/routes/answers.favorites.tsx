@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import AnswerActionCard from '~/components/AnswerActionCard';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
+import { useIdentity } from '~/hooks/useIdentity';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
@@ -216,25 +217,9 @@ export default function FavoriteAnswersRoute() {
     [users]
   );
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+  const { effectiveId: currentUserId, effectiveName: currentUserName } =
+    useIdentity();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    try {
-      setCurrentUserId(
-        localStorage.getItem('currentSubUserId') ??
-          localStorage.getItem('currentUserId')
-      );
-      setCurrentUserName(
-        localStorage.getItem('currentSubUserName') ??
-          localStorage.getItem('currentUserName')
-      );
-    } catch {
-      setCurrentUserId(null);
-      setCurrentUserName(null);
-    }
-  }, []);
 
   useEffect(() => {
     if (!requiresProfileId) return;

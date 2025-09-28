@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { logger } from '~/lib/logger';
+import { useIdentity } from '~/hooks/useIdentity';
 
 export type FavoriteButtonProps = {
   answerId: number;
@@ -25,6 +26,7 @@ const FavoriteButton = memo(function FavoriteButton({
   loginRedirectPath = '/login',
 }: FavoriteButtonProps) {
   const fetcher = useFetcher();
+  const { effectiveId } = useIdentity();
   const [currentUserIdLocal, setCurrentUserIdLocal] = useState<string | null>(
     null
   );
@@ -46,15 +48,8 @@ const FavoriteButton = memo(function FavoriteButton({
   }, [answerId, initialFavorited]);
 
   useEffect(() => {
-    try {
-      const uid =
-        localStorage.getItem('currentSubUserId') ??
-        localStorage.getItem('currentUserId');
-      setCurrentUserIdLocal(uid);
-    } catch {
-      setCurrentUserIdLocal(null);
-    }
-  }, [answerId]);
+    setCurrentUserIdLocal(effectiveId);
+  }, [effectiveId]);
 
   useEffect(() => {
     if (!fetcher.data || fetcher.state !== 'idle') return;

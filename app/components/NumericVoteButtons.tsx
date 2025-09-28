@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useIdentity } from '~/hooks/useIdentity';
 
 export type NumericVoteButtonsProps = {
   answerId: number;
@@ -31,17 +32,7 @@ export function NumericVoteButtons({
   actionPath,
   loginRedirectPath = '/login',
 }: NumericVoteButtonsProps) {
-  const resolveUserId = () => {
-    try {
-      return (
-        localStorage.getItem('currentSubUserId') ??
-        localStorage.getItem('currentUserId') ??
-        null
-      );
-    } catch {
-      return null;
-    }
-  };
+  const { effectiveId } = useIdentity();
 
   const resolvedActionPath = useMemo(() => {
     if (actionPath) return actionPath;
@@ -51,7 +42,7 @@ export function NumericVoteButtons({
 
   const readStoredSelection = () => {
     if (typeof window === 'undefined') return null;
-    const uid = resolveUserId();
+    const uid = effectiveId;
     if (!uid) return null;
 
     if (votesBy && uid in votesBy) {
@@ -79,10 +70,10 @@ export function NumericVoteButtons({
   useEffect(() => {
     const next = readStoredSelection();
     setSelection(next);
-  }, [votesBy, answerId]);
+  }, [votesBy, answerId, effectiveId]);
 
   const persistSelection = (level: 1 | 2 | 3 | null) => {
-    const uid = resolveUserId();
+    const uid = effectiveId;
     if (!uid) return;
     const key = `vote:answer:${answerId}:user:${uid}`;
     try {
@@ -95,7 +86,7 @@ export function NumericVoteButtons({
   };
 
   const handleVote = (level: 1 | 2 | 3) => {
-    const uid = resolveUserId();
+    const uid = effectiveId;
     if (!uid) {
       try {
         window.location.href = loginRedirectPath;
