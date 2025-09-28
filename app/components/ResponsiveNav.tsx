@@ -11,7 +11,7 @@ export default function ResponsiveNav() {
   const items = [
     { to: '/', label: 'Home', icon: HomeIcon },
     { to: '/answers', label: '検索', icon: SearchIcon },
-    { to: '/answers/favorites', label: 'お気に入り', icon: HeartIcon },
+    { to: '/answers/favorites', label: 'お気に', icon: StarIcon },
     { to: '/topics', label: 'お題', icon: TopicIcon },
   ];
 
@@ -228,7 +228,7 @@ function TopicIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
-function HeartIcon(props: React.SVGProps<SVGSVGElement>) {
+function StarIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -238,7 +238,7 @@ function HeartIcon(props: React.SVGProps<SVGSVGElement>) {
       strokeLinejoin="round"
       {...props}
     >
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
     </svg>
   );
 }
