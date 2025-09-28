@@ -70,6 +70,12 @@ export function NumericVoteButtons({
   }, [initialVotes.level1, initialVotes.level2, initialVotes.level3]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setSelection(readStoredSelection());
+    }
+  }, [votesBy, effectiveId]);
+
+  useEffect(() => {
     if (fetcher.data && fetcher.data.answer && fetcher.data.answer.votes) {
       setCounts({
         level1: Number(fetcher.data.answer.votes.level1 ?? 0),
