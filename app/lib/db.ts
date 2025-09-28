@@ -218,14 +218,12 @@ async function uploadImageToSupabaseStorage(sourceUrl: string) {
 
 /**
  * getAnswers
- * Intent: /routes should call this to retrieve 大喜利の回答一覧.
- * Contract: returns Answer[] sorted by created_at desc.
- * Environment:
- *  - dev: returns a copied, sorted array from mockAnswers
- *  - prod: Not implemented in this scaffold; implement Supabase client in app/lib/supabase.ts and update this file.
- * Errors: zod parsing errors will throw; prod will throw an Error until supabase is wired.
+ * Intent: Retrieve a list of answers with vote counts.
+ * Contract: returns Answer[] sorted by created_at desc, including vote counts.
+ * Environment: Always uses Supabase.
+ * Errors: zod parsing errors will throw.
  */
-export async function getAnswers(profileId?: string): Promise<Answer[]> {
+export async function getAnswers(): Promise<Answer[]> {
   // always fetch fresh answers from DB
   try {
     await ensureConnection();
@@ -265,37 +263,49 @@ export async function getAnswers(profileId?: string): Promise<Answer[]> {
     }
   }
 
-  // If profileId is provided, get user's votes and favorites for sync
-  let userVotes: Record<number, number> = {};
-  let userFavorites: Set<number> = new Set();
-  
-  if (profileId && ids.length) {
-    // Get user's votes for these answers
-    const { data: voteData, error: voteErr } = await supabase
-      .from('votes')
-      .select('answer_id, level')
-      .eq('profile_id', profileId)
-      .in('answer_id', ids);
-    
-    if (!voteErr && voteData) {
-      for (const vote of voteData) {
-        userVotes[Number(vote.answer_id)] = vote.level;
-      }
-    }
-
-    // Get user's favorites for these answers
-    const userFavs = await getFavoritesForProfile(profileId, ids);
-    userFavorites = new Set(userFavs);
-  }
-
   const normalized = answers.map((a: any) => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-    votesBy: profileId && userVotes[a.id] ? { [profileId]: userVotes[a.id] } : {},
-    favorited: profileId ? userFavorites.has(a.id) : undefined,
   }));
 
   return AnswerSchema.array().parse(normalized as any);
+}
+
+/**
+ * getUserAnswerData
+ * Intent: Retrieve user's votes and favorites for specific answers.
+ * Contract: Returns { votes: Record<number, number>, favorites: Set<number> }
+ * Environment: Always uses Supabase.
+ * Errors: Throws on DB errors.
+ */
+export async function getUserAnswerData(profileId: string, answerIds: number[]): Promise<{ votes: Record<number, number>; favorites: Set<number> }> {
+  if (!profileId || !answerIds.length) {
+    return { votes: {}, favorites: new Set() };
+  }
+
+  await ensureConnection();
+
+  // Get user's votes for these answers
+  const { data: voteData, error: voteErr } = await supabase
+    .from('votes')
+    .select('answer_id, level')
+    .eq('profile_id', profileId)
+    .in('answer_id', answerIds);
+
+  if (voteErr) throw voteErr;
+
+  const userVotes: Record<number, number> = {};
+  if (voteData) {
+    for (const vote of voteData) {
+      userVotes[Number(vote.answer_id)] = vote.level;
+    }
+  }
+
+  // Get user's favorites for these answers
+  const userFavs = await getFavoritesForProfile(profileId, answerIds);
+  const userFavorites = new Set(userFavs);
+
+  return { votes: userVotes, favorites: userFavorites };
 }
 
 /**
