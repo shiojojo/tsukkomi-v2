@@ -85,3 +85,22 @@ create view public.answer_vote_counts with (security_invoker = on) as
     count(*) FILTER (WHERE level = 3) AS level3
    FROM votes
   GROUP BY answer_id;
+
+CREATE MATERIALIZED VIEW answer_search_view AS
+SELECT 
+  a.id,
+  a.text,
+  a.profile_id,
+  p.name AS author_name,
+  a.topic_id,
+  t.title AS topic_title,
+  a.created_at,
+  COALESCE(vc.level1, 0) AS level1,
+  COALESCE(vc.level2, 0) AS level2,
+  COALESCE(vc.level3, 0) AS level3,
+  (COALESCE(vc.level1, 0) * 1 + COALESCE(vc.level2, 0) * 2 + COALESCE(vc.level3, 0) * 3) AS score,
+  CASE WHEN EXISTS (SELECT 1 FROM comments c WHERE c.answer_id = a.id) THEN true ELSE false END AS has_comments
+FROM answers a
+LEFT JOIN profiles p ON a.profile_id = p.id
+LEFT JOIN topics t ON a.topic_id = t.id
+LEFT JOIN answer_vote_counts vc ON a.id = vc.answer_id;

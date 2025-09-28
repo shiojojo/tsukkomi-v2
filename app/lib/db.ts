@@ -524,8 +524,8 @@ export async function getProfileAnswerData(profileId: string, answerIds: Array<n
 
 /**
  * searchAnswers
- * Server-side paginated search to avoid loading all answers into memory.
- * Supports simple full-text (ilike) on text/author, topic filter, sorting and pagination.
+ * Server-side paginated search using a materialized view for efficient filtering and sorting.
+ * Supports filters on author, topic title, dates, score, and comments.
  * Returns { answers, total } where total is the total matching count.
  */
 export async function searchAnswers(opts: {
@@ -537,274 +537,64 @@ export async function searchAnswers(opts: {
   sortBy?: 'newest' | 'oldest' | 'scoreDesc';
   minScore?: number | undefined;
   hasComments?: boolean;
-  fromDate?: string | undefined; // inclusive (YYYY-MM-DD or ISO)
-  toDate?: string | undefined;   // inclusive (YYYY-MM-DD or ISO)
-  profileId?: string; // for vote and favorite sync
+  fromDate?: string | undefined;
+  toDate?: string | undefined;
 }): Promise<{ answers: Answer[]; total: number }> {
   const { q, author, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments, fromDate, toDate } = opts;
   await ensureConnection();
-  // When minScore or hasComments filters are active, DB-side pagination cannot be trusted
-  // because we must filter on derived data (vote score / comment existence). Strategy:
-  //   1. Fetch ALL matching base answers (bounded by a hard cap) without pagination
-  //   2. Fetch vote counts + (optional) comment presence for those ids
-  //   3. Apply filters + sort in memory
-  //   4. Slice for pagination
-  // For large datasets a server-side materialized view should be introduced; acceptable trade-off now.
-
-  const derivedFiltering = Boolean(minScore != null || hasComments);
-  const HARD_CAP = 5000; // safeguard to avoid unbounded memory usage
 
   let baseQuery = supabase
-    .from('answers')
-    .select('id, text, profile_id, topic_id, created_at', { count: 'exact' });
+    .from('answer_search_view')
+    .select('*', { count: 'exact' });
+
   if (topicId != null) baseQuery = baseQuery.eq('topic_id', Number(topicId));
-  // allow explicit author-only search via `author` param by resolving profile ids
-  // NOTE: profiles are stored separately now (profile_id on answers). We map author
-  // (profile.name) -> profile_id and filter by profile_id. If no matching profile is
-  // found we can immediately return an empty result set to avoid extra DB work.
+
   if (author) {
-    // profile names are authoritative; match exact stored name to find profile_id(s)
     const nameToMatch = String(author).trim();
-    const { data: matchingProfiles, error: profErr } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('name', nameToMatch);
-    if (profErr) throw profErr;
-  // profile ids may be UUID strings; keep them as strings to avoid Number->NaN
-  const profileIds = (matchingProfiles ?? []).map((p: any) => String(p.id)).filter(Boolean);
-    if (profileIds.length === 0) {
-      return { answers: [], total: 0 };
-    }
-    baseQuery = baseQuery.in('profile_id', profileIds);
+    baseQuery = baseQuery.ilike('author_name', `%${nameToMatch}%`);
   }
-  // allow explicit author-only search via `author` param; for `q` we interpret it as
-  // お題タイトル (topic title) search per UI label: resolve matching topics and
-  // filter answers by topic_id. If no matching topic exists return empty result.
+
   if (q) {
     const nameToMatch = String(q).trim();
-    const { data: matchingTopics, error: topicErr } = await supabase
-      .from('topics')
-      .select('id')
-      .ilike('title', `%${nameToMatch}%`);
-    if (topicErr) throw topicErr;
-    const topicIds = (matchingTopics ?? []).map((t: any) => t.id).filter(Boolean);
-    if (topicIds.length === 0) {
-      return { answers: [], total: 0 };
-    }
-    baseQuery = baseQuery.in('topic_id', topicIds);
+    baseQuery = baseQuery.ilike('topic_title', `%${nameToMatch}%`);
   }
+
   if (fromDate) {
-    // direct gte for fromDate
     baseQuery = baseQuery.gte('created_at', fromDate.includes('T') ? fromDate : `${fromDate}T00:00:00.000Z`);
   }
+
   if (toDate) {
-    // inclusive: if date-only, advance one day and use lt
     if (!toDate.includes('T')) {
       const d = new Date(toDate + 'T00:00:00.000Z');
-      const next = new Date(d.getTime() + 24*60*60*1000); // +1 day
+      const next = new Date(d.getTime() + 24 * 60 * 60 * 1000);
       baseQuery = baseQuery.lt('created_at', next.toISOString());
     } else {
       baseQuery = baseQuery.lte('created_at', toDate);
     }
   }
-  // always order by created_at initially for deterministic results
-  if (sortBy === 'oldest') baseQuery = baseQuery.order('created_at', { ascending: true });
+
+  if (minScore != null) baseQuery = baseQuery.gte('score', minScore);
+
+  if (hasComments) baseQuery = baseQuery.eq('has_comments', true);
+
+  if (sortBy === 'scoreDesc') baseQuery = baseQuery.order('score', { ascending: false });
+  else if (sortBy === 'oldest') baseQuery = baseQuery.order('created_at', { ascending: true });
   else baseQuery = baseQuery.order('created_at', { ascending: false });
 
-  let rows: any[] | null = null;
-  let count: number | null = null;
-  if (derivedFiltering) {
-    // Incremental, batched scan to avoid loading a very large set at once.
-    // Strategy: fetch small batches (batchSize configurable), evaluate derived
-    // filters for those ids (vote counts / comment presence), accumulate matches
-    // until we have enough rows to serve the requested page or we hit maxScan.
-    const batchSize = Math.min(Math.max(pageSize * 5, 50), 500); // 5x pageSize, clamped
-    const maxScan = Math.min(HARD_CAP, 2000); // cap scanned rows (lower than HARD_CAP)
-    let offset = 0;
-    let scanned = 0;
-    const matched: any[] = [];
+  const offset = (page - 1) * pageSize;
+  const { data, error, count: c } = await baseQuery.range(offset, offset + pageSize - 1);
+  if (error) throw error;
 
-    while (matched.length < pageSize * page && scanned < maxScan) {
-      const end = offset + batchSize - 1;
-      const { data: batchData, error: batchErr } = await baseQuery.range(offset, end);
-      if (batchErr) throw batchErr;
-      const batchRows = batchData ?? [];
-      if (!batchRows.length) break; // no more rows available
-
-      const ids = batchRows.map((r: any) => Number(r.id)).filter(Boolean);
-      // fetch counts for this batch
-      const countsMapBatch: Record<number, { level1: number; level2: number; level3: number }> = {};
-      if (ids.length) {
-        const { data: countsData, error: countsErr } = await supabase
-          .from('answer_vote_counts')
-          .select('answer_id, level1, level2, level3')
-          .in('answer_id', ids);
-        if (countsErr) throw countsErr;
-        for (const c of countsData ?? []) {
-          countsMapBatch[Number(c.answer_id)] = {
-            level1: Number(c.level1 ?? 0),
-            level2: Number(c.level2 ?? 0),
-            level3: Number(c.level3 ?? 0),
-          };
-        }
-      }
-
-      // optional: fetch comment presence for this batch if needed
-      let commentSetBatch: Set<number> | null = null;
-      if (hasComments && ids.length) {
-        const { data: commentIds, error: commentsErr } = await supabase
-          .from('comments')
-          .select('answer_id')
-          .in('answer_id', ids);
-        if (commentsErr) throw commentsErr;
-        commentSetBatch = new Set((commentIds ?? []).map((r: any) => Number(r.answer_id)));
-      }
-
-      // evaluate batchRows against derived filters and push matching normalized rows
-      for (const a of batchRows) {
-        const id = typeof a.id === 'string' ? Number(a.id) : a.id;
-        const counts = countsMapBatch[id] ?? { level1: 0, level2: 0, level3: 0 };
-        const score = (counts.level1 || 0) * 1 + (counts.level2 || 0) * 2 + (counts.level3 || 0) * 3;
-        if (typeof minScore === 'number' && !Number.isNaN(minScore) && score < (minScore as number)) continue;
-        if (hasComments && commentSetBatch && !commentSetBatch.has(id)) continue;
-        // keep original PostgREST field names (profile_id / topic_id) so later
-        // normalization/mapping logic can read them consistently and not lose
-        // the topic reference when derived filtering is active.
-        matched.push({
-          id,
-          text: a.text,
-          profile_id: a.profile_id ?? undefined,
-          topic_id: a.topic_id ?? undefined,
-          created_at: (a as any).created_at ?? (a as any).createdAt,
-          votes: countsMapBatch[id] ?? { level1: 0, level2: 0, level3: 0 },
-          votesBy: {},
-        });
-      }
-
-      scanned += batchRows.length;
-      offset += batchRows.length;
-      // if batch was smaller than requested batchSize, no more data left
-      if (batchRows.length < batchSize) break;
-    }
-
-    // matched now contains the rows that satisfied derived filters in scanned window
-    const totalFiltered = matched.length;
-    const start = (page - 1) * pageSize;
-    const slice = matched.slice(start, start + pageSize);
-    rows = slice;
-    count = totalFiltered;
-  } else {
-    // normal fast path with DB pagination
-    const offset = (page - 1) * pageSize;
-    const { data, error, count: c } = await baseQuery.range(offset, offset + pageSize - 1);
-    if (error) throw error;
-    rows = data ?? [];
-    count = c ?? rows.length;
-  }
-
-  let answers = (rows ?? []).map((a: any) => ({
-    id: typeof a.id === 'string' ? Number(a.id) : a.id,
+  const answers = (data ?? []).map((a: any) => ({
+    id: a.id,
     text: a.text,
-  profileId: a.profile_id ?? undefined,
-    topicId: a.topic_id ?? undefined,
-    created_at: a.created_at ?? a.createdAt,
-    votes: { level1: 0, level2: 0, level3: 0 },
-    votesBy: {},
+    profileId: a.profile_id,
+    topicId: a.topic_id,
+    created_at: a.created_at,
+    votes: { level1: a.level1, level2: a.level2, level3: a.level3 },
   }));
 
-  // fetch vote counts for all loaded answers
-  const ids = answers.map(r => Number(r.id)).filter(Boolean);
-  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
-  if (ids.length) {
-    const { data: countsData, error: countsErr } = await supabase
-      .from('answer_vote_counts')
-      .select('answer_id, level1, level2, level3')
-      .in('answer_id', ids);
-    if (countsErr) throw countsErr;
-    for (const c of countsData ?? []) {
-      countsMap[Number(c.answer_id)] = {
-        level1: Number(c.level1 ?? 0),
-        level2: Number(c.level2 ?? 0),
-        level3: Number(c.level3 ?? 0),
-      };
-    }
-  }
-
-  // optional: comment presence filtering (we only need the set of answer ids that have comments)
-  let commentSet: Set<number> | null = null;
-  if (hasComments && ids.length) {
-    const { data: commentIds, error: commentsErr } = await supabase
-      .from('comments')
-      .select('answer_id')
-      .in('answer_id', ids);
-    if (commentsErr) throw commentsErr;
-    commentSet = new Set((commentIds ?? []).map((r: any) => Number(r.answer_id)));
-  }
-
-  // Get user-specific data if profileId provided
-  let userVotes: Record<number, number> = {};
-  let userFavorites: Set<number> = new Set();
-  
-  if (opts.profileId && ids.length) {
-    // Get user's votes for these answers
-    const { data: voteData, error: voteErr } = await supabase
-      .from('votes')
-      .select('answer_id, level')
-      .eq('profile_id', opts.profileId)
-      .in('answer_id', ids);
-    
-    if (!voteErr && voteData) {
-      for (const vote of voteData) {
-        userVotes[Number(vote.answer_id)] = vote.level;
-      }
-    }
-
-    // Get user's favorites for these answers
-    const userFavs = await getFavoritesForProfile(opts.profileId, ids);
-    userFavorites = new Set(userFavs);
-  }
-
-  // attach counts and user-specific data
-  answers = answers.map(a => ({
-    ...a,
-    votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-    votesBy: opts.profileId && userVotes[a.id] ? { [opts.profileId]: userVotes[a.id] } : {},
-    favorited: opts.profileId ? userFavorites.has(a.id) : undefined,
-  }));
-
-  if (derivedFiltering) {
-    // compute score
-    type WithScore = typeof answers[number] & { __score: number };
-    let augmented: WithScore[] = answers.map(a => {
-      const v = a.votes;
-      const score = (v.level1 || 0) * 1 + (v.level2 || 0) * 2 + (v.level3 || 0) * 3;
-      return { ...a, __score: score };
-    });
-    if (minScore != null) augmented = augmented.filter(a => a.__score >= (minScore as number));
-    if (hasComments && commentSet) augmented = augmented.filter(a => commentSet!.has(a.id));
-    // sort (scoreDesc overrides created_at ordering)
-    if (sortBy === 'scoreDesc') augmented.sort((a, b) => b.__score - a.__score || new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    else if (sortBy === 'oldest') augmented.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    else augmented.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
-    const totalFiltered = augmented.length;
-    const start = (page - 1) * pageSize;
-    const slice = augmented.slice(start, start + pageSize).map(a => ({ ...a }));
-    return { answers: AnswerSchema.array().parse(slice as any), total: totalFiltered };
-  }
-
-  // scoreDesc sorting without derived filters (we only loaded one page; need counts for those only)
-  if (sortBy === 'scoreDesc') {
-    answers.sort((a, b) => {
-      const av = a.votes; const bv = b.votes;
-      const as = (av.level1||0) + (av.level2||0)*2 + (av.level3||0)*3;
-      const bs = (bv.level1||0) + (bv.level2||0)*2 + (bv.level3||0)*3;
-      if (bs !== as) return bs - as;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    });
-  }
-
-  return { answers: AnswerSchema.array().parse(answers as any), total: Number(count ?? answers.length) };
+  return { answers: AnswerSchema.array().parse(answers), total: c ?? 0 };
 }
 
 /**

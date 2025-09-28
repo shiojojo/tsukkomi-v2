@@ -43,8 +43,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const fromDate = params.get('fromDate') || undefined;
   const toDate = params.get('toDate') || undefined;
 
-  const { getTopics, searchAnswers, getCommentsForAnswers, getUsers } =
-    await import('~/lib/db');
+  const {
+    getTopics,
+    searchAnswers,
+    getCommentsForAnswers,
+    getUsers,
+    getUserAnswerData,
+  } = await import('~/lib/db');
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
   // Limit users fetched for the answers listing to avoid scanning the entire profiles table
@@ -61,34 +66,40 @@ export async function loader({ request }: LoaderFunctionArgs) {
     fromDate,
     toDate,
     author,
-    profileId: profileIdQuery,
   });
   const answerIds = answers.map(a => a.id);
   const commentsByAnswer = await getCommentsForAnswers(answerIds);
+
+  // Get user-specific data if profileId provided
+  let userAnswerData: {
+    votes: Record<number, number>;
+    favorites: Set<number>;
+  } = { votes: {}, favorites: new Set<number>() };
+  if (profileIdQuery) {
+    userAnswerData = await getUserAnswerData(profileIdQuery, answerIds);
+  }
+
+  // Merge user data into answers
+  const answersWithUserData = answers.map(a => ({
+    ...a,
+    votesBy: userAnswerData.votes[a.id]
+      ? { [profileIdQuery!]: userAnswerData.votes[a.id] }
+      : {},
+    favorited: userAnswerData.favorites.has(a.id),
+  }));
+
   // favorite counts for answers (DB-backed)
   try {
-    const { getFavoriteCounts, getFavoritesForProfile } = await import(
-      '~/lib/db'
-    );
+    const { getFavoriteCounts } = await import('~/lib/db');
     const favCounts = await getFavoriteCounts(answerIds);
     // attach counts onto answers (non-destructive)
-    for (const a of answers) {
+    for (const a of answersWithUserData) {
       (a as any).favCount = favCounts[Number(a.id)] ?? 0;
-    }
-    // if request includes a profile id via query (not typical), attempt to fetch which are favorited
-    if (profileIdQuery) {
-      try {
-        const favs = await getFavoritesForProfile(profileIdQuery, answerIds);
-        const favSet = new Set((favs || []).map(v => Number(v)));
-        for (const a of answers) {
-          (a as any).favorited = favSet.has(Number(a.id));
-        }
-      } catch {}
     }
   } catch (err) {}
 
   return {
-    answers,
+    answers: answersWithUserData,
     topicsById,
     commentsByAnswer,
     total,
