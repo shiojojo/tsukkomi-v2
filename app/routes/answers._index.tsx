@@ -80,13 +80,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
   }
 
   // Merge user data into answers
-  const answersWithUserData = answers.map(a => ({
-    ...a,
-    votesBy: userAnswerData.votes[a.id]
-      ? { [profileIdQuery!]: userAnswerData.votes[a.id] }
-      : {},
-    favorited: userAnswerData.favorites.has(a.id),
-  }));
+  const answersWithUserData = answers.map(a => {
+    const embeddedVotes = ((a as any).votesBy ?? {}) as Record<string, number>;
+    const mergedVotesBy = { ...embeddedVotes };
+    if (profileIdQuery && userAnswerData.votes[a.id]) {
+      mergedVotesBy[profileIdQuery] = userAnswerData.votes[a.id];
+    }
+
+    return {
+      ...a,
+      votesBy: mergedVotesBy,
+      favorited: userAnswerData.favorites.has(a.id),
+    };
+  });
 
   // favorite counts for answers (DB-backed)
   try {

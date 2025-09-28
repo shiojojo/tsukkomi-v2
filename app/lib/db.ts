@@ -1,6 +1,7 @@
 // Development in-memory mocks removed. This module now always uses Supabase via ensureConnection/supabase.
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { AnswerSchema } from '~/lib/schemas/answer';
 import { TopicSchema } from '~/lib/schemas/topic';
 import { CommentSchema } from '~/lib/schemas/comment';
@@ -262,9 +263,12 @@ export async function getAnswers(): Promise<Answer[]> {
     }
   }
 
+  const votesByMap = await getVotesByForAnswers(ids);
+
   const normalized = answers.map((a: any) => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+    votesBy: votesByMap[a.id] ?? {},
   }));
 
   return AnswerSchema.array().parse(normalized as any);
@@ -461,16 +465,16 @@ export async function getFavoriteAnswersForProfile(profileId: string): Promise<A
     }
   }
 
-  const profileData = await getProfileAnswerData(profileId, ids);
+  const [profileData, votesByMap] = await Promise.all([
+    getProfileAnswerData(profileId, ids),
+    getVotesByForAnswers(ids),
+  ]);
 
   const normalized = answers
     .map((a) => ({
       ...a,
       votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-      votesBy:
-        profileData.votes[a.id] != null
-          ? { [profileId]: profileData.votes[a.id] }
-          : {},
+      votesBy: votesByMap[a.id] ?? {},
       favorited: true,
     }))
     .sort((a, b) => {
@@ -515,6 +519,39 @@ export async function getProfileAnswerData(profileId: string, answerIds: Array<n
     votes,
     favorites: new Set(favorites)
   };
+}
+
+async function getVotesByForAnswers(
+  answerIds: Array<number | string>,
+  client: SupabaseClient | null = supabase
+): Promise<Record<number, Record<string, number>>> {
+  const numericIds = Array.from(
+    new Set(
+      (answerIds ?? [])
+        .map((id) => Number(id))
+        .filter((id): id is number => Number.isFinite(id))
+    )
+  );
+  if (!numericIds.length || !client) return {};
+
+  const { data, error } = await client
+    .from('votes')
+    .select('answer_id, profile_id, level')
+    .in('answer_id', numericIds);
+  if (error) throw error;
+
+  const map: Record<number, Record<string, number>> = {};
+  for (const row of data ?? []) {
+    const answerId = Number(row.answer_id);
+    const profileId = row.profile_id;
+    const level = Number(row.level);
+    if (!profileId || !Number.isFinite(answerId) || ![1, 2, 3].includes(level)) {
+      continue;
+    }
+    map[answerId] = map[answerId] ?? {};
+    map[answerId][String(profileId)] = level;
+  }
+  return map;
 }
 
 
@@ -595,7 +632,17 @@ export async function searchAnswers(opts: {
     votes: { level1: a.level1, level2: a.level2, level3: a.level3 },
   }));
 
-  return { answers: AnswerSchema.array().parse(answers), total: c ?? 0 };
+  const ids = answers.map((a) => Number(a.id)).filter(Number.isFinite);
+  const votesByMap = ids.length
+    ? await getVotesByForAnswers(ids, supabaseAdmin ?? supabase)
+    : {};
+
+  const normalized = answers.map((a) => ({
+    ...a,
+    votesBy: votesByMap[Number(a.id)] ?? {},
+  }));
+
+  return { answers: AnswerSchema.array().parse(normalized), total: c ?? 0 };
 }
 
 /**
@@ -999,33 +1046,19 @@ export async function getAnswersByTopic(topicId: string | number, profileId?: st
     }
   }
 
-  // If profileId is provided, get user's votes and favorites for sync
-  let userVotes: Record<number, number> = {};
+  // If profileId is provided, get user's favorites for sync
   let userFavorites: Set<number> = new Set();
-  
   if (profileId && ids.length) {
-    // Get user's votes for these answers
-    const { data: voteData, error: voteErr } = await supabase
-      .from('votes')
-      .select('answer_id, level')
-      .eq('profile_id', profileId)
-      .in('answer_id', ids);
-    
-    if (!voteErr && voteData) {
-      for (const vote of voteData) {
-        userVotes[Number(vote.answer_id)] = vote.level;
-      }
-    }
-
-    // Get user's favorites for these answers
     const userFavs = await getFavoritesForProfile(profileId, ids);
     userFavorites = new Set(userFavs);
   }
 
+  const votesByMap = await getVotesByForAnswers(ids);
+
   const normalized = answers.map((a: any) => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-    votesBy: profileId && userVotes[a.id] ? { [profileId]: userVotes[a.id] } : {},
+    votesBy: votesByMap[a.id] ?? {},
     favorited: profileId ? userFavorites.has(a.id) : undefined,
   }));
 
@@ -1044,9 +1077,19 @@ export async function getAnswersByTopic(topicId: string | number, profileId?: st
  *  - prod: Supabase query with .lt('created_at', cursor) when cursor provided
  * Errors: Supabase error そのまま throw。
  */
-export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20, profileId }: { topicId: string | number; cursor: string | null; pageSize?: number; profileId?: string }): Promise<{ answers: Answer[]; nextCursor: string | null }> {
+export async function getAnswersPageByTopic({
+  topicId,
+  cursor,
+  pageSize = 20,
+  profileId,
+}: {
+  topicId: string | number;
+  cursor: string | null;
+  pageSize?: number;
+  profileId?: string;
+}): Promise<{ answers: Answer[]; nextCursor: string | null }> {
   if (pageSize <= 0) return { answers: [], nextCursor: null };
-  
+
   try {
     await ensureConnection();
   } catch (e) {
@@ -1055,37 +1098,36 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20, pr
     console.error('getAnswersPageByTopic: ensureConnection failed, returning empty page', e);
     return { answers: [], nextCursor: null };
   }
+
   const numericTopic = Number(topicId);
   let query = supabase
     .from('answers')
-  .select('id, text, profile_id, topic_id, created_at')
+    .select('id, text, profile_id, topic_id, created_at')
     .eq('topic_id', numericTopic)
     .order('created_at', { ascending: false })
     .limit(pageSize);
   if (cursor) query = query.lt('created_at', cursor);
+
   const { data, error } = await query;
   if (error) throw error;
+
   const rows = (data ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
-  text: a.text,
-  profileId: a.profile_id ?? undefined,
+    text: a.text,
+    profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at ?? a.createdAt,
   }));
 
-  // Get vote counts and user-specific data for these answers
   const ids = rows.map((r: any) => Number(r.id)).filter(Boolean);
   const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
-  let userVotes: Record<number, number> = {};
-  let userFavorites: Set<number> = new Set();
 
   if (ids.length) {
-    // Get vote counts
     const { data: countsData, error: countsErr } = await supabase
       .from('answer_vote_counts')
       .select('answer_id, level1, level2, level3')
       .in('answer_id', ids);
-    
+
     if (!countsErr && countsData && countsData.length) {
       for (const c of countsData) {
         countsMap[Number(c.answer_id)] = {
@@ -1095,7 +1137,6 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20, pr
         };
       }
     } else {
-      // Fallback: aggregate from votes table
       const { data: agg, error: aggErr } = await supabase
         .from('votes')
         .select('answer_id, level', { head: false })
@@ -1110,32 +1151,20 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20, pr
         else if (lv === 3) countsMap[aid].level3 += 1;
       }
     }
-
-    // If profileId is provided, get user's votes and favorites for sync
-    if (profileId) {
-      // Get user's votes for these answers
-      const { data: voteData, error: voteErr } = await supabase
-        .from('votes')
-        .select('answer_id, level')
-        .eq('profile_id', profileId)
-        .in('answer_id', ids);
-      
-      if (!voteErr && voteData) {
-        for (const vote of voteData) {
-          userVotes[Number(vote.answer_id)] = vote.level;
-        }
-      }
-
-      // Get user's favorites for these answers
-      const userFavs = await getFavoritesForProfile(profileId, ids);
-      userFavorites = new Set(userFavs);
-    }
   }
+
+  let userFavorites: Set<number> = new Set();
+  if (profileId && ids.length) {
+    const favs = await getFavoritesForProfile(profileId, ids);
+    userFavorites = new Set(favs);
+  }
+
+  const votesByMap = ids.length ? await getVotesByForAnswers(ids) : {};
 
   const normalizedRows = rows.map((a: any) => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-    votesBy: profileId && userVotes[a.id] ? { [profileId]: userVotes[a.id] } : {},
+    votesBy: votesByMap[a.id] ?? {},
     favorited: profileId ? userFavorites.has(a.id) : undefined,
   }));
 
@@ -1153,38 +1182,43 @@ export async function getAnswersPageByTopic({ topicId, cursor, pageSize = 20, pr
 export async function voteAnswer({
   answerId,
   level,
-  userId, // profileId
+  userId,
 }: {
-  answerId: number;
-  level: 0 | 1 | 2 | 3; // 0 = remove existing vote
-  userId?: string | null;
+  answerId: number | string;
+  level: 0 | 1 | 2 | 3;
+  userId: string;
 }): Promise<Answer> {
-  
-  // production: require userId
-  if (!userId) throw new Error('voteAnswer: profileId required');
+  const numericAnswerId = Number(answerId);
+  if (!Number.isFinite(numericAnswerId)) {
+    throw new Error('voteAnswer: answerId must be a finite number');
+  }
+  if (![0, 1, 2, 3].includes(level)) {
+    throw new Error('voteAnswer: level must be 0 | 1 | 2 | 3');
+  }
+  if (!userId) {
+    throw new Error('voteAnswer: userId is required');
+  }
 
-  // Upsert the user's vote for the answer
   await ensureConnection();
-  // Use server/admin client for write operations in production.
   const writeClient = supabaseAdmin ?? supabase;
-  if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
+  if (!writeClient) throw new Error('No Supabase client available for writes');
 
-  // If level = 0, remove existing vote row; else upsert.
   const upsertPromise = (async () => {
     if (level === 0) {
       const { error } = await writeClient
         .from('votes')
         .delete()
-  .eq('answer_id', answerId)
-	.eq('profile_id', userId);
+        .eq('answer_id', numericAnswerId)
+        .eq('profile_id', userId);
       if (error) throw error;
-      return { data: null } as any;
+      return { data: null } as const;
     }
+
     return writeClient
       .from('votes')
       .upsert(
-  { answer_id: answerId, profile_id: userId, level },
-  { onConflict: 'answer_id,profile_id' }
+        { answer_id: numericAnswerId, profile_id: userId, level },
+        { onConflict: 'answer_id,profile_id' }
       )
       .select('*')
       .single();
@@ -1192,75 +1226,82 @@ export async function voteAnswer({
 
   const answerPromise = supabase
     .from('answers')
-  .select('id, text, profile_id, topic_id, created_at')
-    .eq('id', answerId)
+    .select('id, text, profile_id, topic_id, created_at')
+    .eq('id', numericAnswerId)
     .single();
 
-  // Try materialized view first (faster if present). If it errors, we'll fall back to aggregate query.
   const countsPromise = supabase
     .from('answer_vote_counts')
     .select('level1, level2, level3')
-    .eq('answer_id', answerId)
+    .eq('answer_id', numericAnswerId)
     .single();
 
-  const [upsertRes, answerRes, countsRes] = await Promise.all([upsertPromise, answerPromise, countsPromise]);
+  const [upsertRes, answerRes, countsRes] = await Promise.all([
+    upsertPromise,
+    answerPromise,
+    countsPromise,
+  ]);
 
   const upsertError = (upsertRes as any).error;
   if (upsertError) throw upsertError;
 
   const answerRow = (answerRes as any).data;
-  const counts = (countsRes as any).data;
+  if (!answerRow) {
+    throw new Error(`voteAnswer: answer ${numericAnswerId} not found`);
+  }
 
-  // If counts view missing or empty, compute from votes table (single aggregate query)
+  let counts = (countsRes as any).data as
+    | { level1: number; level2: number; level3: number }
+    | null;
+
   if (!counts) {
-    // Fetch raw vote rows for the answer and aggregate client-side to avoid
-    // relying on DB-level GROUP BY via PostgREST which may return 'count' only
     const { data: agg, error: aggErr } = await supabase
       .from('votes')
       .select('level', { head: false })
-      .eq('answer_id', answerId);
+      .eq('answer_id', numericAnswerId);
     if (aggErr) throw aggErr;
-    const mapped: any = { level1: 0, level2: 0, level3: 0 };
+    const mapped = { level1: 0, level2: 0, level3: 0 };
     for (const row of agg ?? []) {
       const lv = Number(row.level);
       if (lv === 1) mapped.level1 += 1;
       else if (lv === 2) mapped.level2 += 1;
       else if (lv === 3) mapped.level3 += 1;
     }
-    Object.assign((counts as any) ?? {}, mapped);
+    counts = mapped;
   }
 
   const votesObj = {
-  level1: counts?.level1 ?? 0,
-  level2: counts?.level2 ?? 0,
-  level3: counts?.level3 ?? 0,
+    level1: counts?.level1 ?? 0,
+    level2: counts?.level2 ?? 0,
+    level3: counts?.level3 ?? 0,
   };
-  
-  // Get all current votes for this answer to provide accurate votesBy
+
   const { data: allVotes, error: allVotesErr } = await supabase
     .from('votes')
     .select('profile_id, level')
-    .eq('answer_id', answerId);
-  
+    .eq('answer_id', numericAnswerId);
   if (allVotesErr) throw allVotesErr;
-  
+
   const votesByObj: Record<string, number> = {};
-  for (const vote of (allVotes ?? [])) {
-    votesByObj[vote.profile_id] = vote.level;
+  for (const vote of allVotes ?? []) {
+    if (!vote.profile_id) continue;
+    votesByObj[String(vote.profile_id)] = Number(vote.level);
   }
 
   const result = {
     id: Number(answerRow.id),
-  text: answerRow.text,
-  profileId: answerRow.profile_id ?? undefined,
+    text: answerRow.text,
+    profileId: answerRow.profile_id ?? undefined,
     topicId: answerRow.topic_id ?? undefined,
     created_at: answerRow.created_at,
     votes: votesObj,
     votesBy: votesByObj,
   } as const;
 
-  // invalidate cached answers so clients see updated vote counts
-  try { invalidateCache('answers:all'); } catch {}
+  try {
+    invalidateCache('answers:all');
+  } catch {}
+
   return AnswerSchema.parse(result as any);
 }
 

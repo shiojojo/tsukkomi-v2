@@ -20,6 +20,19 @@ export type AnswerActionCardProps = {
   profileIdForVotes?: string | null;
 };
 
+const formatVoteLabel = (level: number) => {
+  switch (level) {
+    case 1:
+      return '👍 1点';
+    case 2:
+      return '😂 2点';
+    case 3:
+      return '🤣 3点';
+    default:
+      return `${level}点`;
+  }
+};
+
 /**
  * 概要: お題情報付きの回答カード。お気に入り・採点・コメント送信を 1 カードに集約して表示する。
  * Intent: /answers, /answers/favorites, /topics/:id など複数スクリーンで UI を統一し再利用する。
@@ -86,14 +99,37 @@ export function AnswerActionCard({
 
   const profileForVote = profileIdForVotes ?? currentUserId ?? null;
   const votesBy = useMemo(() => {
+    const embedded = ((answer as any).votesBy ?? {}) as Record<string, number>;
+    const combined = { ...embedded };
+
     if (profileForVote && userAnswerData.votes[answer.id]) {
-      return { [profileForVote]: userAnswerData.votes[answer.id] };
+      combined[profileForVote] = userAnswerData.votes[answer.id];
     }
-    const embedded = (answer as any).votesBy as
-      | Record<string, number>
-      | undefined;
-    return embedded && Object.keys(embedded).length ? embedded : undefined;
+
+    return Object.keys(combined).length ? combined : undefined;
   }, [answer, profileForVote, userAnswerData.votes]);
+
+  const voteEntries = useMemo(() => {
+    if (!votesBy)
+      return [] as Array<{
+        profileId: string;
+        score: number;
+        displayName: string;
+        isCurrentUser: boolean;
+      }>;
+
+    return Object.entries(votesBy)
+      .map(([profileId, score]) => ({
+        profileId,
+        score,
+        displayName: getNameByProfileId(profileId) ?? '名無し',
+        isCurrentUser: profileId === profileForVote,
+      }))
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.displayName.localeCompare(b.displayName, 'ja');
+      });
+  }, [getNameByProfileId, profileForVote, votesBy]);
 
   const initialFavorited = useMemo(() => {
     if (userAnswerData.favorites.has(answer.id)) return true;
@@ -184,6 +220,34 @@ export function AnswerActionCard({
                 <span>😂2:{votesCounts.level2}</span>
                 <span>🤣3:{votesCounts.level3}</span>
               </div>
+            </div>
+
+            <div>
+              <h4 className="text-sm font-medium">ユーザーごとの採点</h4>
+              {voteEntries.length > 0 ? (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {voteEntries.map(entry => (
+                    <li
+                      key={entry.profileId}
+                      className="flex items-center justify-between rounded-md px-2 py-1 bg-gray-50 dark:bg-gray-900/80"
+                    >
+                      <span
+                        className={`truncate ${entry.isCurrentUser ? 'font-semibold text-blue-600 dark:text-blue-400' : 'text-gray-700 dark:text-gray-100'}`}
+                      >
+                        {entry.displayName}
+                        {entry.isCurrentUser ? '（あなた）' : ''}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatVoteLabel(entry.score)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">
+                  まだ採点はありません。
+                </p>
+              )}
             </div>
 
             <div>
