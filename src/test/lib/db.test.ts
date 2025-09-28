@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getAnswers, addFavorite, getTopics, getVotesForProfile } from '~/lib/db';
+import { getAnswers, addFavorite, getTopics, getVotesForProfile, addComment, getCommentsForAnswers, getUsers } from '~/lib/db';
 
 // Mock Supabase
 vi.mock('~/lib/supabase', () => ({
@@ -133,6 +133,62 @@ describe('db functions', () => {
       // Verify that eq was called with correct profile_id
       expect(mockFrom).toHaveBeenCalledWith('votes');
       // Note: Deep mock verification would require more setup, but this ensures filtering logic
+    });
+  });
+
+  describe('addComment', () => {
+    it('should add comment successfully', async () => {
+      const mockData = { id: 1, answer_id: 1, text: 'comment', profile_id: null, created_at: '2023-01-01' };
+      const { supabaseAdmin } = await import('~/lib/supabase');
+      vi.mocked(supabaseAdmin!.from).mockReturnValueOnce({
+        insert: vi.fn().mockReturnValueOnce({
+          select: vi.fn().mockReturnValueOnce({
+            single: vi.fn().mockResolvedValueOnce({
+              data: mockData,
+              error: null,
+            }),
+          }),
+        }),
+      } as any);
+
+      const result = await addComment({ answerId: 1, text: 'comment' });
+      expect(result.text).toBe('comment');
+    });
+  });
+
+  describe('getCommentsForAnswers', () => {
+    it('should return comments for answers', async () => {
+      const mockData = [{ id: 1, answer_id: 1, text: 'comment', profile_id: null, created_at: '2023-01-01' }];
+      const { supabase } = await import('~/lib/supabase');
+      vi.mocked(supabase.from).mockReturnValueOnce({
+        select: vi.fn().mockReturnValueOnce({
+          in: vi.fn().mockReturnValueOnce({
+            order: vi.fn().mockResolvedValueOnce({
+              data: mockData,
+              error: null,
+            }),
+          }),
+        }),
+      } as any);
+
+      const result = await getCommentsForAnswers([1]);
+      expect(result['1']).toHaveLength(1);
+    });
+  });
+
+  describe('getUsers', () => {
+    it('should return users', async () => {
+      const mockData = [{ id: '1', parent_id: null, name: 'user', line_id: null, created_at: '2023-01-01' }];
+      const { supabase } = await import('~/lib/supabase');
+      vi.mocked(supabase.from).mockReturnValueOnce({
+        select: vi.fn().mockReturnValueOnce({
+          data: mockData,
+          error: null,
+        }),
+      } as any);
+
+      const result = await getUsers();
+      expect(result).toHaveLength(1);
     });
   });
 });
