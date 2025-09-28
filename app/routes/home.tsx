@@ -1,7 +1,8 @@
 import type { Route } from './+types/home';
 import type { LoaderFunctionArgs } from 'react-router';
-import { useLoaderData, Link } from 'react-router';
+import { useLoaderData } from 'react-router';
 import { useCurrentUserId } from '~/hooks/useAnswerUserData';
+import { TopicCard } from '~/components/TopicCard';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 
@@ -34,29 +35,7 @@ export default function Home() {
         {current ? (
           <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-lg p-6">
             <div>
-              <Link
-                to={
-                  currentUserId
-                    ? `/topics/${current.id}?profileId=${currentUserId}`
-                    : `/topics/${current.id}`
-                }
-                className="block p-0 border rounded-md overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                aria-label={`お題 ${current.title} の回答を見る`}
-              >
-                {current.image ? (
-                  <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                    <img
-                      src={current.image}
-                      alt={current.title}
-                      className="w-full h-auto max-h-60 object-contain"
-                    />
-                  </div>
-                ) : (
-                  <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <h2 className="text-lg font-medium">{current.title}</h2>
-                  </div>
-                )}
-              </Link>
+              <TopicCard topic={current} profileId={currentUserId} />
             </div>
           </section>
         ) : (

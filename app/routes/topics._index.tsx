@@ -1,10 +1,11 @@
 import type { LoaderFunctionArgs } from 'react-router';
-import { useLoaderData, Link, Form } from 'react-router';
+import { useLoaderData, Form } from 'react-router';
 import { useEffect, useRef, useState } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import { Pagination } from '~/components/Pagination';
 import { DateRangeFilter } from '~/components/DateRangeFilter';
 import { SearchInput } from '~/components/SearchInput';
+import { TopicCard } from '~/components/TopicCard';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 
@@ -105,28 +106,7 @@ export default function TopicsRoute() {
         <ul className="space-y-3">
           {pagedTopics.map(t => (
             <li key={t.id}>
-              <Link
-                to={`/topics/${t.id}`}
-                className="block p-0 border rounded-md overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 min-w-0"
-                aria-label={`お題 ${t.title} の回答を見る`}
-              >
-                {t.image ? (
-                  <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center overflow-hidden">
-                    <img
-                      src={t.image}
-                      alt={t.title}
-                      className="w-full max-w-full h-auto max-h-60 object-contain"
-                      style={{ display: 'block' }}
-                    />
-                  </div>
-                ) : (
-                  <div className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 min-w-0">
-                    <h2 className="text-lg font-medium break-words">
-                      {t.title}
-                    </h2>
-                  </div>
-                )}
-              </Link>
+              <TopicCard topic={t} />
             </li>
           ))}
         </ul>
