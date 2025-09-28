@@ -3,8 +3,12 @@
 -- Rationale: simplify FK / RLS, allow main or sub identity selection for answers/comments/votes.
 
 -- Extensions
-CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- Drop if already installed in public schema
+DROP EXTENSION IF EXISTS pg_trgm CASCADE;
+DROP EXTENSION IF EXISTS pgcrypto CASCADE;
+-- Install in extensions schema
+CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA extensions;
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- profiles: parent_id NULL = main profile. child rows reference a main profile.
 CREATE TABLE IF NOT EXISTS profiles (
