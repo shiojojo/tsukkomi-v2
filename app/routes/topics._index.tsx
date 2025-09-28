@@ -1,7 +1,10 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form } from 'react-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
+import { Pagination } from '~/components/Pagination';
+import { DateRangeFilter } from '~/components/DateRangeFilter';
+import { SearchInput } from '~/components/SearchInput';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 
@@ -35,6 +38,9 @@ export default function TopicsRoute() {
   const qParam: string = (data as any)?.q ?? '';
   const fromDateParam: string = (data as any)?.fromDate ?? '';
   const toDateParam: string = (data as any)?.toDate ?? '';
+  const [q, setQ] = useState(qParam);
+  const [fromDate, setFromDate] = useState(fromDateParam);
+  const [toDate, setToDate] = useState(toDateParam);
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const pagedTopics = topics;
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -62,31 +68,18 @@ export default function TopicsRoute() {
             <h1 className="text-2xl font-semibold mb-4">お題一覧</h1>
             <div className="mb-0">
               <Form method="get" className="space-y-2">
-                <input
-                  name="q"
-                  defaultValue={qParam}
-                  type="search"
+                <SearchInput
+                  value={q}
+                  onChange={setQ}
                   placeholder="検索: お題タイトル"
-                  className="form-input w-full"
-                  aria-label="お題を検索"
                 />
 
                 <div className="mt-2 flex flex-wrap gap-2 items-center">
-                  <input
-                    name="fromDate"
-                    defaultValue={fromDateParam}
-                    type="date"
-                    className="form-input w-28 sm:w-36 min-w-0"
-                    aria-label="開始日"
-                    placeholder="開始日"
-                  />
-                  <input
-                    name="toDate"
-                    defaultValue={toDateParam}
-                    type="date"
-                    className="form-input w-28 sm:w-36 min-w-0"
-                    aria-label="終了日"
-                    placeholder="終了日"
+                  <DateRangeFilter
+                    fromDate={fromDate}
+                    toDate={toDate}
+                    onFromDateChange={setFromDate}
+                    onToDateChange={setToDate}
                   />
                   <button
                     type="submit"
@@ -138,98 +131,13 @@ export default function TopicsRoute() {
           ))}
         </ul>
 
-        {/* Mobile pagination controls */}
-        <div className="flex items-center justify-between mt-4 md:hidden">
-          <Link
-            to={`?q=${encodeURIComponent(qParam)}&fromDate=${encodeURIComponent(fromDateParam)}&toDate=${encodeURIComponent(toDateParam)}&page=${Math.max(1, currentPage - 1)}&pageSize=${pageSize}`}
-            aria-label="前のページ"
-            className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
-          >
-            前へ
-          </Link>
-
-          <div className="text-sm">{`ページ ${currentPage} / ${pageCount}`}</div>
-
-          <Link
-            to={`?q=${encodeURIComponent(qParam)}&fromDate=${encodeURIComponent(fromDateParam)}&toDate=${encodeURIComponent(toDateParam)}&page=${Math.min(pageCount, currentPage + 1)}&pageSize=${pageSize}`}
-            aria-label="次のページ"
-            className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
-          >
-            次へ
-          </Link>
-        </div>
-
-        {/* Desktop pagination controls (visible on md+) */}
-        <div className="hidden md:flex items-center justify-center mt-4 gap-2">
-          {(() => {
-            const windowSize = 3;
-            const start = Math.max(1, currentPage - windowSize);
-            const end = Math.min(pageCount, currentPage + windowSize);
-
-            return (
-              <nav
-                aria-label="ページネーション"
-                className="flex items-center gap-2"
-              >
-                <Link
-                  to={`?q=${encodeURIComponent(qParam)}&fromDate=${encodeURIComponent(fromDateParam)}&toDate=${encodeURIComponent(toDateParam)}&page=${Math.max(1, currentPage - 1)}&pageSize=${pageSize}`}
-                  aria-label="前のページ"
-                  className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
-                >
-                  前へ
-                </Link>
-
-                <div className="flex items-center gap-1">
-                  {start > 1 && (
-                    <>
-                      <Link
-                        to={`?q=${encodeURIComponent(qParam)}&fromDate=${encodeURIComponent(fromDateParam)}&toDate=${encodeURIComponent(toDateParam)}&page=1&pageSize=${pageSize}`}
-                        className="px-2 py-1 rounded-md border bg-white"
-                      >
-                        1
-                      </Link>
-                      {start > 2 && <span className="px-2">…</span>}
-                    </>
-                  )}
-
-                  {Array.from(
-                    { length: end - start + 1 },
-                    (_, i) => start + i
-                  ).map(p => (
-                    <Link
-                      key={p}
-                      to={`?q=${encodeURIComponent(qParam)}&fromDate=${encodeURIComponent(fromDateParam)}&toDate=${encodeURIComponent(toDateParam)}&page=${p}&pageSize=${pageSize}`}
-                      aria-current={p === currentPage ? 'page' : undefined}
-                      className={`px-3 py-2 rounded-md border ${p === currentPage ? 'bg-blue-600 text-white' : 'bg-white'}`}
-                    >
-                      {p}
-                    </Link>
-                  ))}
-
-                  {end < pageCount && (
-                    <>
-                      {end < pageCount - 1 && <span className="px-2">…</span>}
-                      <Link
-                        to={`?q=${encodeURIComponent(qParam)}&fromDate=${encodeURIComponent(fromDateParam)}&toDate=${encodeURIComponent(toDateParam)}&page=${pageCount}&pageSize=${pageSize}`}
-                        className="px-2 py-1 rounded-md border bg-white"
-                      >
-                        {pageCount}
-                      </Link>
-                    </>
-                  )}
-                </div>
-
-                <Link
-                  to={`?q=${encodeURIComponent(qParam)}&fromDate=${encodeURIComponent(fromDateParam)}&toDate=${encodeURIComponent(toDateParam)}&page=${Math.min(pageCount, currentPage + 1)}&pageSize=${pageSize}`}
-                  aria-label="次のページ"
-                  className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
-                >
-                  次へ
-                </Link>
-              </nav>
-            );
-          })()}
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          pageCount={pageCount}
+          buildHref={p =>
+            `?q=${encodeURIComponent(q)}&fromDate=${encodeURIComponent(fromDate)}&toDate=${encodeURIComponent(toDate)}&page=${p}&pageSize=${pageSize}`
+          }
+        />
       </div>
     </StickyHeaderLayout>
   );

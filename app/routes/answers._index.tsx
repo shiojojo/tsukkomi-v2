@@ -3,6 +3,9 @@ import { useLoaderData, Link, Form } from 'react-router';
 import { useEffect, useState, useRef } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import AnswerActionCard from '~/components/AnswerActionCard';
+import { Pagination } from '~/components/Pagination';
+import { DateRangeFilter } from '~/components/DateRangeFilter';
+import { SearchInput } from '~/components/SearchInput';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
@@ -541,14 +544,10 @@ export default function AnswersRoute() {
                       <label className="text-xs text-gray-500 dark:text-white mb-1 block">
                         お題タイトル
                       </label>
-                      <input
-                        name="q"
-                        type="search"
-                        placeholder="飲み"
+                      <SearchInput
                         value={query}
-                        onChange={e => setQuery(e.target.value)}
-                        className="form-input w-full"
-                        aria-label="お題タイトル検索"
+                        onChange={setQuery}
+                        placeholder="飲み"
                       />
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -595,34 +594,16 @@ export default function AnswersRoute() {
                       </label>
                     </div>
 
-                    <div className="w-full flex items-center gap-4">
-                      <div className="flex-1 flex flex-col">
-                        <label className="text-xs text-gray-500 dark:text-white mb-1">
-                          開始日
-                        </label>
-                        <input
-                          name="fromDate"
-                          type="date"
-                          value={fromDate}
-                          onChange={e => setFromDate(e.target.value)}
-                          className="form-input w-full"
-                          aria-label="開始日"
-                        />
-                      </div>
-
-                      <div className="flex-1 flex flex-col">
-                        <label className="text-xs text-gray-500 dark:text-white mb-1">
-                          終了日
-                        </label>
-                        <input
-                          name="toDate"
-                          type="date"
-                          value={toDate}
-                          onChange={e => setToDate(e.target.value)}
-                          className="form-input w-full"
-                          aria-label="終了日"
-                        />
-                      </div>
+                    <div className="w-full">
+                      <label className="text-xs text-gray-500 dark:text-white mb-1 block">
+                        作成日
+                      </label>
+                      <DateRangeFilter
+                        fromDate={fromDate}
+                        toDate={toDate}
+                        onFromDateChange={setFromDate}
+                        onToDateChange={setToDate}
+                      />
                     </div>
                   </div>
                 )}
@@ -678,114 +659,12 @@ export default function AnswersRoute() {
         )}
       </div>
 
-      {/* Mobile pagination controls (link-based) */}
-      <div className="flex items-center justify-between mt-4 md:hidden px-4">
-        <Link
-          to={buildHref(Math.max(1, currentPage - 1))}
-          aria-label="前のページ"
-          className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
-        >
-          前へ
-        </Link>
-
-        <div className="text-sm">{`ページ ${currentPage} / ${pageCount}`}</div>
-
-        <Link
-          to={buildHref(Math.min(pageCount, currentPage + 1))}
-          aria-label="次のページ"
-          className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
-        >
-          次へ
-        </Link>
-      </div>
-      {/* Desktop pagination controls (visible on md+). Mirrors mobile but shows numeric page links. */}
-      <div className="hidden md:flex items-center justify-center mt-4 px-4 gap-2">
-        {/** build href preserving current filters */}
-        {(() => {
-          const buildHref = (p: number) => {
-            const parts: string[] = [];
-            if (query) parts.push(`q=${encodeURIComponent(query)}`);
-            if (authorQuery)
-              parts.push(`authorName=${encodeURIComponent(authorQuery)}`);
-            parts.push(`sortBy=${encodeURIComponent(String(sortBy))}`);
-            parts.push(`page=${p}`);
-            if (minScore)
-              parts.push(`minScore=${encodeURIComponent(String(minScore))}`);
-            if (hasComments) parts.push('hasComments=1');
-            if (fromDate)
-              parts.push(`fromDate=${encodeURIComponent(fromDate)}`);
-            if (toDate) parts.push(`toDate=${encodeURIComponent(toDate)}`);
-            return `?${parts.join('&')}`;
-          };
-
-          const windowSize = 3; // pages to show on each side of current
-          const start = Math.max(1, currentPage - windowSize);
-          const end = Math.min(pageCount, currentPage + windowSize);
-
-          return (
-            <nav
-              aria-label="ページネーション"
-              className="flex items-center gap-2"
-            >
-              <Link
-                to={buildHref(Math.max(1, currentPage - 1))}
-                aria-label="前のページ"
-                className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
-              >
-                前へ
-              </Link>
-
-              <div className="flex items-center gap-1">
-                {start > 1 && (
-                  <>
-                    <Link
-                      to={buildHref(1)}
-                      className="px-2 py-1 rounded-md border bg-white"
-                    >
-                      1
-                    </Link>
-                    {start > 2 && <span className="px-2">…</span>}
-                  </>
-                )}
-
-                {Array.from(
-                  { length: end - start + 1 },
-                  (_, i) => start + i
-                ).map(p => (
-                  <Link
-                    key={p}
-                    to={buildHref(p)}
-                    aria-current={p === currentPage ? 'page' : undefined}
-                    className={`px-3 py-2 rounded-md border ${p === currentPage ? 'bg-blue-600 text-white' : 'bg-white'}`}
-                  >
-                    {p}
-                  </Link>
-                ))}
-
-                {end < pageCount && (
-                  <>
-                    {end < pageCount - 1 && <span className="px-2">…</span>}
-                    <Link
-                      to={buildHref(pageCount)}
-                      className="px-2 py-1 rounded-md border bg-white"
-                    >
-                      {pageCount}
-                    </Link>
-                  </>
-                )}
-              </div>
-
-              <Link
-                to={buildHref(Math.min(pageCount, currentPage + 1))}
-                aria-label="次のページ"
-                className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
-              >
-                次へ
-              </Link>
-            </nav>
-          );
-        })()}
-      </div>
+      <Pagination
+        currentPage={currentPage}
+        pageCount={pageCount}
+        buildHref={buildHref}
+        className="px-4"
+      />
     </StickyHeaderLayout>
   );
 }
