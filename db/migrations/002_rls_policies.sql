@@ -142,3 +142,5 @@ CREATE POLICY favorites_delete_identity ON favorites FOR DELETE USING (
   profile_id = auth.uid()::uuid OR
   profile_id IN (SELECT id FROM profiles WHERE parent_id = auth.uid()::uuid)
 );
+
+REVOKE SELECT ON public.answer_search_view FROM anon;

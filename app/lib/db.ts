@@ -542,8 +542,11 @@ export async function searchAnswers(opts: {
 }): Promise<{ answers: Answer[]; total: number }> {
   const { q, author, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments, fromDate, toDate } = opts;
   await ensureConnection();
+  if (!supabaseAdmin) {
+    throw new Error('Admin client required for search operations');
+  }
 
-  let baseQuery = supabase
+  let baseQuery = supabaseAdmin
     .from('answer_search_view')
     .select('*', { count: 'exact' });
 
