@@ -6,6 +6,7 @@ import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import AnswerActionCard from '~/components/AnswerActionCard';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
+import { handleAnswerActions } from '~/lib/actionHandlers';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
@@ -58,149 +59,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
   };
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  const form = await request.formData();
-  const op = form.get('op') ? String(form.get('op')) : undefined;
-
-  // rate limiting keyed by profile or IP
-  try {
-    const profileIdCandidate = form.get('profileId')
-      ? String(form.get('profileId'))
-      : form.get('userId')
-        ? String(form.get('userId'))
-        : undefined;
-    let rateKey = 'anon';
-    if (profileIdCandidate) rateKey = `p:${profileIdCandidate}`;
-    else {
-      try {
-        const hdr =
-          request.headers.get('x-forwarded-for') ||
-          request.headers.get('x-real-ip');
-        if (hdr) rateKey = `ip:${String(hdr).split(',')[0].trim()}`;
-      } catch {}
-    }
-    if (!consumeToken(rateKey, 1)) {
-      return new Response(
-        JSON.stringify({ ok: false, error: 'Too Many Requests' }),
-        {
-          status: 429,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
-    }
-  } catch {}
-
-  if (op === 'toggle') {
-    const answerId = form.get('answerId');
-    const profileId = form.get('profileId')
-      ? String(form.get('profileId'))
-      : undefined;
-    try {
-      const key = `toggle:${String(profileId)}:${String(answerId)}`;
-      const now = Date.now();
-      const prev = _recentPostGuard.get(key) ?? 0;
-      if (now - prev < 800) {
-        return new Response(JSON.stringify({ ok: true, deduped: true }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      _recentPostGuard.set(key, now);
-    } catch {}
-    if (!answerId || !profileId)
-      return new Response('Invalid', { status: 400 });
-    const { toggleFavorite } = await import('~/lib/db');
-    try {
-      const res = await toggleFavorite({
-        answerId: Number(answerId),
-        profileId,
-      });
-      return new Response(JSON.stringify(res), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error: any) {
-      logger.error('toggleFavorite failed', error);
-      return new Response(
-        JSON.stringify({ ok: false, error: String(error?.message ?? error) }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-  }
-
-  if (op === 'status') {
-    const answerId = form.get('answerId');
-    const profileId = form.get('profileId')
-      ? String(form.get('profileId'))
-      : undefined;
-    if (!answerId || !profileId)
-      return new Response('Invalid', { status: 400 });
-    const { getFavoritesForProfile } = await import('~/lib/db');
-    try {
-      const list = await getFavoritesForProfile(profileId, [Number(answerId)]);
-      const favorited = (list || []).map(Number).includes(Number(answerId));
-      return new Response(JSON.stringify({ favorited }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    } catch (error: any) {
-      return new Response(
-        JSON.stringify({ ok: false, error: String(error?.message ?? error) }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-  }
-
-  const levelRaw = form.get('level');
-  if (levelRaw != null) {
-    const answerId = Number(form.get('answerId'));
-    const userId = form.get('userId') ? String(form.get('userId')) : undefined;
-    const levelParsed = Number(levelRaw);
-    const level = levelParsed === 0 ? 0 : (levelParsed as 1 | 2 | 3);
-    if (!answerId || !userId || level == null) {
-      return new Response('Invalid vote', { status: 400 });
-    }
-    const { voteAnswer } = await import('~/lib/db');
-    const updated = await voteAnswer({
-      answerId,
-      level,
-      userId,
-    });
-    return new Response(JSON.stringify({ answer: updated }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  const answerId = form.get('answerId');
-  const text = String(form.get('text') || '');
-  const profileId = form.get('profileId')
-    ? String(form.get('profileId'))
-    : undefined;
-  if (!answerId || !text) {
-    return new Response('Invalid', { status: 400 });
-  }
-  if (!profileId) {
-    return new Response('Missing profileId', { status: 400 });
-  }
-  const { addComment } = await import('~/lib/db');
-  try {
-    await addComment({
-      answerId: String(answerId),
-      text,
-      profileId,
-    });
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  } catch (error: any) {
-    logger.error('addComment failed', error);
-    return new Response(
-      JSON.stringify({ ok: false, error: String(error?.message ?? error) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+export async function action(args: ActionFunctionArgs) {
+  return handleAnswerActions(args);
 }
 
 export default function FavoriteAnswersRoute() {
@@ -338,15 +198,6 @@ export default function FavoriteAnswersRoute() {
                   if (!favorited) {
                     setVisibleAnswers(prev => prev.filter(a => a.id !== id));
                   }
-                }}
-                onCommentAdded={(answerId, comment) => {
-                  setCurrentCommentsByAnswer(prev => ({
-                    ...prev,
-                    [String(answerId)]: [
-                      ...(prev[String(answerId)] ?? []),
-                      comment,
-                    ],
-                  }));
                 }}
                 actionPath="/answers/favorites"
                 profileIdForVotes={profileIdFromLoader ?? currentUserId}
