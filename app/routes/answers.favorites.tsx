@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Form, useNavigate } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import AnswerActionCard from '~/components/AnswerActionCard';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
@@ -220,6 +221,7 @@ export default function FavoriteAnswersRoute() {
   const { effectiveId: currentUserId, effectiveName: currentUserName } =
     useIdentity();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!requiresProfileId) return;
@@ -231,16 +233,23 @@ export default function FavoriteAnswersRoute() {
     } catch {}
   }, [requiresProfileId, currentUserId, navigate]);
 
-  const answerIds = answers.map(a => a.id);
-  const { data: userAnswerData, markFavorite } = useAnswerUserData(
-    answerIds,
-    Boolean(currentUserId)
-  );
   const [visibleAnswers, setVisibleAnswers] = useState<Answer[]>(answers);
+  const [currentCommentsByAnswer, setCurrentCommentsByAnswer] =
+    useState<Record<string, Comment[]>>(commentsByAnswer);
 
   useEffect(() => {
     setVisibleAnswers(answers);
   }, [answers]);
+
+  useEffect(() => {
+    setCurrentCommentsByAnswer(commentsByAnswer);
+  }, [commentsByAnswer]);
+
+  const answerIds = visibleAnswers.map((a: Answer) => a.id);
+  const { data: userAnswerData, markFavorite } = useAnswerUserData(
+    answerIds,
+    Boolean(currentUserId)
+  );
 
   const getNameByProfileId = (pid?: string | null) => {
     if (!pid) return undefined;
@@ -312,14 +321,14 @@ export default function FavoriteAnswersRoute() {
           </div>
         ) : (
           <ul className="space-y-4">
-            {visibleAnswers.map(answer => (
+            {visibleAnswers.map((answer: Answer) => (
               <AnswerActionCard
                 key={answer.id}
                 answer={answer}
                 topic={
                   topicsById[String((answer as any).topicId ?? '')] ?? null
                 }
-                comments={commentsByAnswer[String(answer.id)] ?? []}
+                comments={currentCommentsByAnswer[String(answer.id)] ?? []}
                 currentUserId={currentUserId}
                 currentUserName={currentUserName}
                 getNameByProfileId={getNameByProfileId}
@@ -329,6 +338,15 @@ export default function FavoriteAnswersRoute() {
                   if (!favorited) {
                     setVisibleAnswers(prev => prev.filter(a => a.id !== id));
                   }
+                }}
+                onCommentAdded={(answerId, comment) => {
+                  setCurrentCommentsByAnswer(prev => ({
+                    ...prev,
+                    [String(answerId)]: [
+                      ...(prev[String(answerId)] ?? []),
+                      comment,
+                    ],
+                  }));
                 }}
                 actionPath="/answers/favorites"
                 profileIdForVotes={profileIdFromLoader ?? currentUserId}

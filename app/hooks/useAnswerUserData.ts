@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { logger } from '~/lib/logger';
 
 export interface AnswerUserData {
@@ -33,16 +34,14 @@ export function useCurrentUserId(): string | null {
 
 interface UseAnswerUserDataState {
   data: AnswerUserData;
-  isLoading: boolean;
-  error: Error | null;
   userId: string | null;
   refetch: () => Promise<void>;
   markFavorite: (answerId: number, favorited: boolean) => void;
 }
 
 /**
- * Fetches and maintains per-user answer data. Ensures network requests execute only when
- * the normalized answer id list changes or an explicit refetch is requested.
+ * Fetches and maintains per-user answer data using TanStack Query.
+ * Ensures network requests execute only when the normalized answer id list changes.
  */
 export function useAnswerUserData(
   answerIds: number[],
@@ -58,100 +57,61 @@ export function useAnswerUserData(
     return { ids: unique, key: unique.join(',') } as const;
   }, [answerIds]);
 
-  const [data, setData] = useState<AnswerUserData>(() => createEmptyUserData());
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<Error | null>(null);
-  const lastFetchedKeyRef = useRef<string | null>(null);
-  const normalizedIdsRef = useRef<number[]>(normalized.ids);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    normalizedIdsRef.current = normalized.ids;
-  }, [normalized.key]);
-
-  const fetchUserData = useCallback(
-    async (force = false) => {
-      if (!enabled) {
-        logger.debug('[useAnswerUserData] fetch skipped: disabled');
-        return;
+  const query = useQuery({
+    queryKey: ['user-data', userId, normalized.key],
+    queryFn: async () => {
+      if (!userId || !normalized.key) {
+        return { votes: {}, favorites: [] };
       }
-      if (!userId) {
-        logger.debug('[useAnswerUserData] fetch skipped: missing userId');
-        setData(createEmptyUserData());
-        return;
+      const params = new URLSearchParams();
+      params.set('profileId', userId);
+      for (const id of normalized.ids) {
+        params.append('answerIds', id.toString());
       }
-      const idsKey = normalized.key;
-      const cacheKey = idsKey ? `${userId}:${idsKey}` : userId;
-      if (!force && lastFetchedKeyRef.current === cacheKey) {
-        logger.debug('[useAnswerUserData] fetch skipped: cache hit', cacheKey);
-        return;
+      logger.debug('[useAnswerUserData] fetching', params.toString());
+      const response = await fetch(`/api/user-data?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch user data (status ${response.status})`);
       }
-      if (!idsKey) {
-        lastFetchedKeyRef.current = cacheKey;
-        setData(createEmptyUserData());
-        return;
-      }
-
-      lastFetchedKeyRef.current = cacheKey;
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const params = new URLSearchParams();
-        params.set('profileId', userId);
-        for (const id of normalizedIdsRef.current) {
-          params.append('answerIds', id.toString());
-        }
-
-        logger.debug('[useAnswerUserData] fetching', params.toString());
-        const response = await fetch(`/api/user-data?${params.toString()}`);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch user data (status ${response.status})`);
-        }
-
-        const payload = await response.json();
-        setData({
-          votes: payload?.votes ?? {},
-          favorites: new Set<number>((payload?.favorites ?? []).map((v: number) => Number(v))),
-        });
-        logger.debug('[useAnswerUserData] data received', payload);
-      } catch (err) {
-        const errorObj = err instanceof Error ? err : new Error(String(err));
-        setError(errorObj);
-  // allow future attempts by clearing cache key if fetch failed
-  lastFetchedKeyRef.current = null;
-        logger.error('[useAnswerUserData] fetch failed', errorObj);
-      } finally {
-        setIsLoading(false);
-      }
+      const payload = await response.json();
+      return {
+        votes: payload?.votes ?? {},
+        favorites: (payload?.favorites ?? []).map((v: number) => Number(v)),
+      };
     },
-    [enabled, normalized.key, userId]
-  );
+    enabled: enabled && !!userId && !!normalized.key,
+    initialData: { votes: {}, favorites: [] },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  useEffect(() => {
-    void fetchUserData(false);
-  }, [fetchUserData]);
-
-  const refetch = useCallback(async () => {
-    lastFetchedKeyRef.current = null;
-    await fetchUserData(true);
-  }, [fetchUserData]);
+  const data = useMemo(() => ({
+    votes: query.data?.votes ?? {},
+    favorites: new Set<number>(query.data?.favorites ?? []),
+  }), [query.data]);
 
   const markFavorite = useCallback((answerId: number, favorited: boolean) => {
-    setData(prev => {
-      const nextFavorites = new Set<number>(prev.favorites);
-      if (favorited) nextFavorites.add(answerId);
-      else nextFavorites.delete(answerId);
-      return {
-        votes: prev.votes,
-        favorites: nextFavorites,
-      };
+    // Optimistic update
+    queryClient.setQueryData(['user-data', userId, normalized.key], (old: any) => {
+      if (!old) return old;
+      const nextFavorites = [...old.favorites];
+      if (favorited) {
+        if (!nextFavorites.includes(answerId)) nextFavorites.push(answerId);
+      } else {
+        const idx = nextFavorites.indexOf(answerId);
+        if (idx >= 0) nextFavorites.splice(idx, 1);
+      }
+      return { ...old, favorites: nextFavorites };
     });
-  }, []);
+  }, [queryClient, userId, normalized.key]);
+
+  const refetch = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
 
   return {
     data,
-    isLoading,
-    error,
     userId,
     refetch,
     markFavorite,

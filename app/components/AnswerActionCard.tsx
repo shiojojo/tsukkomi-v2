@@ -17,6 +17,7 @@ export type AnswerActionCardProps = {
   onFavoriteUpdate?: (answerId: number, favorited: boolean) => void;
   actionPath: string;
   profileIdForVotes?: string | null;
+  onCommentAdded?: (answerId: number, comment: Comment) => void;
 };
 
 /**
@@ -42,6 +43,7 @@ export function AnswerActionCard({
   onFavoriteUpdate,
   actionPath,
   profileIdForVotes,
+  onCommentAdded,
 }: AnswerActionCardProps) {
   const [open, setOpen] = useState(false);
   const commentFetcher = useFetcher();
@@ -51,8 +53,16 @@ export function AnswerActionCard({
   useEffect(() => {
     if (commentFetcher.state === 'idle' && commentFetcher.data) {
       commentFormRef.current?.reset();
+      // Also notify parent to update local state
+      if (
+        commentFetcher.data &&
+        typeof commentFetcher.data === 'object' &&
+        'id' in commentFetcher.data
+      ) {
+        onCommentAdded?.(answer.id, commentFetcher.data as Comment);
+      }
     }
-  }, [commentFetcher.state, commentFetcher.data]);
+  }, [commentFetcher.state, commentFetcher.data, answer.id, onCommentAdded]);
 
   const score = useMemo(() => {
     const votes = (answer as any).votes || {

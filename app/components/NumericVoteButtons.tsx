@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useFetcher } from 'react-router';
 import { useIdentity } from '~/hooks/useIdentity';
 
 export type NumericVoteButtonsProps = {
@@ -33,6 +34,7 @@ export function NumericVoteButtons({
   loginRedirectPath = '/login',
 }: NumericVoteButtonsProps) {
   const { effectiveId } = useIdentity();
+  const fetcher = useFetcher();
 
   const resolvedActionPath = useMemo(() => {
     if (actionPath) return actionPath;
@@ -68,9 +70,14 @@ export function NumericVoteButtons({
   }, [initialVotes.level1, initialVotes.level2, initialVotes.level3]);
 
   useEffect(() => {
-    const next = readStoredSelection();
-    setSelection(next);
-  }, [votesBy, answerId, effectiveId]);
+    if (fetcher.data && fetcher.data.answer && fetcher.data.answer.votes) {
+      setCounts({
+        level1: Number(fetcher.data.answer.votes.level1 ?? 0),
+        level2: Number(fetcher.data.answer.votes.level2 ?? 0),
+        level3: Number(fetcher.data.answer.votes.level3 ?? 0),
+      });
+    }
+  }, [fetcher.data]);
 
   const persistSelection = (level: 1 | 2 | 3 | null) => {
     const uid = effectiveId;
@@ -113,37 +120,11 @@ export function NumericVoteButtons({
     setSelection(isToggleOff ? null : level);
     persistSelection(isToggleOff ? null : level);
 
-    (async () => {
-      try {
-        const form = new FormData();
-        form.append('answerId', String(answerId));
-        form.append('level', String(isToggleOff ? 0 : level));
-        form.append('userId', String(uid));
-
-        const res = await fetch(resolvedActionPath, {
-          method: 'POST',
-          body: form,
-          headers: { Accept: 'application/json' },
-        });
-
-        if (!res.ok) {
-          const text = await res.text().catch(() => '');
-          console.error('vote submit failed', res.status, text);
-          return;
-        }
-
-        const json = await res.json().catch(() => null);
-        if (json && json.answer && json.answer.votes) {
-          setCounts({
-            level1: Number(json.answer.votes.level1 ?? 0),
-            level2: Number(json.answer.votes.level2 ?? 0),
-            level3: Number(json.answer.votes.level3 ?? 0),
-          });
-        }
-      } catch (error) {
-        console.error('vote submit error', error);
-      }
-    })();
+    const form = new FormData();
+    form.append('answerId', String(answerId));
+    form.append('level', String(isToggleOff ? 0 : level));
+    form.append('userId', String(uid));
+    fetcher.submit(form, { method: 'post', action: resolvedActionPath });
   };
 
   const btnBase = `${CONTROL_BTN_BASE} gap-2 px-3`;
