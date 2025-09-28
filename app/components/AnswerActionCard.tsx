@@ -131,31 +131,37 @@ export function AnswerActionCard({
           <p className="text-lg leading-snug break-words whitespace-pre-wrap">
             {answer.text}
           </p>
-          {getNameByProfileId((answer as any).profileId) && (
-            <div className="text-xs text-gray-500 dark:text-gray-300">
-              作者: {getNameByProfileId((answer as any).profileId)}
+          <div className="flex flex-col gap-2">
+            <div className="flex justify-between items-center">
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
+                Score:{' '}
+                <span className="text-gray-900 dark:text-gray-50">{score}</span>
+              </div>
+              {getNameByProfileId((answer as any).profileId) && (
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  作者: {getNameByProfileId((answer as any).profileId)}
+                </span>
+              )}
             </div>
-          )}
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
-              Score:{' '}
-              <span className="text-gray-900 dark:text-gray-50">{score}</span>{' '}
-              コメント{comments.length}
-            </div>
-            <div className="flex items-center gap-2">
-              <FavoriteButton
-                answerId={answer.id}
-                initialFavorited={initialFavorited}
-                onServerFavorited={onFavoriteUpdate}
-              />
-              <button
-                type="button"
-                onClick={() => setOpen(prev => !prev)}
-                aria-expanded={open}
-                className="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
-              >
-                {open ? '閉じる' : 'コメント / 採点'}
-              </button>
+            <div className="flex justify-between items-center">
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
+                コメント{comments.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <FavoriteButton
+                  answerId={answer.id}
+                  initialFavorited={initialFavorited}
+                  onServerFavorited={onFavoriteUpdate}
+                />
+                <button
+                  type="button"
+                  onClick={() => setOpen(prev => !prev)}
+                  aria-expanded={open}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
+                >
+                  {open ? '閉じる' : 'コメント / 採点'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
