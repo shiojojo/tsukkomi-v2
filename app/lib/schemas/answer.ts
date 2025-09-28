@@ -2,19 +2,12 @@ import { z } from 'zod';
 
 /**
  * Answer schema: 大喜利の回答を表現する最小スキーマ
- *
- * Note (migration): Historically this schema allowed `author` / `authorId`.
- * New canonical identity field is `profileId`. To preserve backward compatibility
- * we accept `authorId` and map it to `profileId` in a transform. This behavior is
- * temporary and marked for deprecation — remove `author`/`authorId` handling once
- * all callers and stored rows have migrated to `profile_id`.
  */
 export const AnswerSchema = z
   .object({
     id: z.number(),
     text: z.string().min(1).max(1000),
-  // profileId is now the canonical identity for answers
-  profileId: z.string().optional(),
+    profileId: z.string().optional(),
     topicId: z.union([z.string(), z.number()]).optional(),
     created_at: z.string(),
     votes: z
@@ -28,6 +21,5 @@ export const AnswerSchema = z
     votesBy: z.record(z.number().int()).optional().default({}),
     favorited: z.boolean().optional(), // whether the current user has favorited this answer
   })
-  .transform(a => ({ ...a }));
 
 export type Answer = z.infer<typeof AnswerSchema>;

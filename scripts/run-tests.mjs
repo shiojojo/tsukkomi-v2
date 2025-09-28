@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { AnswerSchema } from '../app/lib/schemas/answer.js';
-import { CommentSchema } from '../app/lib/schemas/comment.js';
+import { AnswerSchema } from '../app/lib/schemas/answer.ts';
+import { CommentSchema } from '../app/lib/schemas/comment.ts';
 
 function expect(cond, msg) {
   if (!cond) {
@@ -11,31 +11,31 @@ function expect(cond, msg) {
 }
 
 async function run() {
-  // Answer: when authorId present and profileId absent, transform should populate profileId
+  // Answer: basic validation
   const a = {
     id: 1,
     text: 'x',
-    authorId: 'uuid-123',
+    profileId: 'uuid-123',
     created_at: new Date().toISOString(),
   };
   const parsedA = AnswerSchema.parse(a);
   expect(
     parsedA.profileId === 'uuid-123',
-    'AnswerSchema should map authorId -> profileId'
+    'AnswerSchema should accept profileId'
   );
 
-  // Comment: same mapping
+  // Comment: basic validation
   const c = {
     id: 1,
     answerId: 1,
     text: 'c',
-    authorId: 'uuid-xyz',
+    profileId: 'uuid-xyz',
     created_at: new Date().toISOString(),
   };
   const parsedC = CommentSchema.parse(c);
   expect(
     parsedC.profileId === 'uuid-xyz',
-    'CommentSchema should map authorId -> profileId'
+    'CommentSchema should accept profileId'
   );
 
   console.log('All schema compatibility tests passed');

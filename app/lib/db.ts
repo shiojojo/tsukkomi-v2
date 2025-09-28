@@ -17,7 +17,6 @@ import { FavoriteSchema } from '~/lib/schemas/favorite';
 // Running always in production-like mode: local development should run a Supabase instance and
 // set VITE_SUPABASE_KEY / SUPABASE_KEY accordingly.
 // Enable deprecation logging for migration debugging: set DEBUG_DB_DEPRECATION=1
-// Legacy author deprecation removed: profileId is now authoritative.
 
 const STORAGE_BUCKET =
   process.env.STORAGE_BUCKET ??
@@ -520,7 +519,6 @@ export async function getProfileAnswerData(profileId: string, answerIds: Array<n
 
 
 // Helper to record deprecation usage during tests or debug runs
-// warnIfLegacyAuthorUsed removed as legacy fields are deleted
 
 /**
  * searchAnswers
