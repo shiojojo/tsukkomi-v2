@@ -139,7 +139,8 @@ export function AnswerActionCard({
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
               Score:{' '}
-              <span className="text-gray-900 dark:text-gray-50">{score}</span>
+              <span className="text-gray-900 dark:text-gray-50">{score}</span>{' '}
+              コメント{comments.length}
             </div>
             <div className="flex items-center gap-2">
               <FavoriteButton
