@@ -1,7 +1,6 @@
 import type { Route } from './+types/home';
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
-import { useCurrentUserId } from '~/hooks/useAnswerUserData';
 import { TopicCard } from '~/components/TopicCard';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
@@ -23,7 +22,6 @@ export default function Home() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
   const data = useLoaderData() as LoaderData;
   const latest: Topic | null = data?.latest ?? null;
-  const currentUserId = useCurrentUserId();
 
   const current: Topic | null = latest;
 
@@ -35,7 +33,7 @@ export default function Home() {
         {current ? (
           <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-lg p-6">
             <div>
-              <TopicCard topic={current} profileId={currentUserId} />
+              <TopicCard topic={current} />
             </div>
           </section>
         ) : (
