@@ -251,9 +251,18 @@ export default function AnswersRoute() {
   // Scroll to top of the answers container when page changes (client-side navigation)
   useEffect(() => {
     try {
-      if (!answersContainerRef.current) return;
-      // jump to top immediately
-      answersContainerRef.current.scrollTo({ top: 0 });
+      const el = answersContainerRef.current;
+      if (el) {
+        // Keep existing inner scroll behavior for iOS Safari / non-Chrome browsers
+        el.scrollTop = 0;
+        try {
+          el.scrollTo?.({ top: 0, behavior: 'auto' } as any);
+        } catch {}
+      }
+
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
     } catch {}
   }, [currentPage]);
 

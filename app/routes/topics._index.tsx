@@ -58,6 +58,10 @@ export default function TopicsRoute() {
           el.scrollTo?.({ top: 0, behavior: 'auto' } as any);
         } catch {}
       }
+
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
     } catch {}
   }, [currentPage]);
 
