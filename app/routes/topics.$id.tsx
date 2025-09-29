@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
-import AnswerActionCard from '~/components/AnswerActionCard';
+import { AnswersList } from '~/components/AnswersList';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
 import { handleAnswerActions } from '~/lib/actionHandlers';
@@ -140,29 +140,19 @@ export default function TopicDetailRoute() {
       }
     >
       <TopicOverviewCard topic={topic} answerCount={answers.length} />
-      {answers.length === 0 ? (
-        <p className="px-4 text-sm text-gray-600 dark:text-gray-300">
-          まだ回答が投稿されていません。
-        </p>
-      ) : (
-        <ul className="px-4 pb-16 space-y-4">
-          {answers.map(answer => (
-            <AnswerActionCard
-              key={answer.id}
-              answer={answer}
-              topic={topic}
-              comments={commentsByAnswer[String(answer.id)] ?? []}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
-              getNameByProfileId={getNameByProfileId}
-              userAnswerData={userAnswerData}
-              onFavoriteUpdate={markFavorite}
-              actionPath={`/topics/${topic.id}`}
-              profileIdForVotes={profileId ?? currentUserId}
-            />
-          ))}
-        </ul>
-      )}
+      <AnswersList
+        answers={answers}
+        topic={topic}
+        commentsByAnswer={commentsByAnswer}
+        getNameByProfileId={getNameByProfileId}
+        currentUserName={currentUserName}
+        currentUserId={currentUserId}
+        userAnswerData={userAnswerData}
+        onFavoriteUpdate={markFavorite}
+        actionPath={`/topics/${topic.id}`}
+        profileIdForVotes={profileId ?? currentUserId}
+        emptyMessage="まだ回答が投稿されていません。"
+      />
     </StickyHeaderLayout>
   );
 }

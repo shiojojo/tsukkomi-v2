@@ -3,7 +3,7 @@ import { useLoaderData, Form, useNavigate } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
-import AnswerActionCard from '~/components/AnswerActionCard';
+import { AnswersList } from '~/components/AnswersList';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
 import { handleAnswerActions } from '~/lib/actionHandlers';
@@ -185,30 +185,24 @@ export default function FavoriteAnswersRoute() {
             すべてのお気に入りが解除されました。新しいお気に入りを追加するとここに表示されます。
           </div>
         ) : (
-          <ul className="space-y-4">
-            {visibleAnswers.map((answer: Answer) => (
-              <AnswerActionCard
-                key={answer.id}
-                answer={answer}
-                topic={
-                  topicsById[String((answer as any).topicId ?? '')] ?? null
-                }
-                comments={currentCommentsByAnswer[String(answer.id)] ?? []}
-                currentUserId={currentUserId}
-                currentUserName={currentUserName}
-                getNameByProfileId={getNameByProfileId}
-                userAnswerData={userAnswerData}
-                onFavoriteUpdate={(id, favorited) => {
-                  markFavorite(id, favorited);
-                  if (!favorited) {
-                    setVisibleAnswers(prev => prev.filter(a => a.id !== id));
-                  }
-                }}
-                actionPath="/answers/favorites"
-                profileIdForVotes={profileIdFromLoader ?? currentUserId}
-              />
-            ))}
-          </ul>
+          <AnswersList
+            answers={visibleAnswers}
+            topicsById={topicsById}
+            commentsByAnswer={currentCommentsByAnswer}
+            getNameByProfileId={getNameByProfileId}
+            currentUserName={currentUserName}
+            currentUserId={currentUserId}
+            userAnswerData={userAnswerData}
+            onFavoriteUpdate={(id: number, favorited: boolean) => {
+              markFavorite(id, favorited);
+              if (!favorited) {
+                setVisibleAnswers(prev => prev.filter(a => a.id !== id));
+              }
+            }}
+            actionPath="/answers/favorites"
+            profileIdForVotes={profileIdFromLoader ?? currentUserId}
+            emptyMessage="すべてのお気に入りが解除されました。新しいお気に入りを追加するとここに表示されます。"
+          />
         )}
       </div>
     </StickyHeaderLayout>

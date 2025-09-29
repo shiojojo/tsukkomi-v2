@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form } from 'react-router';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
-import AnswerActionCard from '~/components/AnswerActionCard';
+import { AnswersList } from '~/components/AnswersList';
 import { Pagination } from '~/components/Pagination';
 import { DateRangeFilter } from '~/components/DateRangeFilter';
 import { SearchInput } from '~/components/SearchInput';
@@ -448,42 +448,21 @@ export default function AnswersRoute() {
       }
       contentRef={answersContainerRef}
     >
-      {/* Scrollable answers container. The scroll container is provided by StickyHeaderLayout */}
-      <div className="px-0 py-4 space-y-4 w-full">
-        {paged.length === 0 ? (
-          <p className="text-gray-600 dark:text-white px-4">
-            表示される回答がありません。
-          </p>
-        ) : (
-          <div className="space-y-8 px-4">
-            {/* Render answers in the exact order returned by the loader (preserve DB ordering) */}
-            <ul className="space-y-4">
-              {paged.map(answer => (
-                <AnswerActionCard
-                  key={answer.id}
-                  answer={answer}
-                  topic={
-                    answer.topicId ? topicsById[String(answer.topicId)] : null
-                  }
-                  comments={commentsByAnswer[String(answer.id)] || []}
-                  getNameByProfileId={getNameByProfileId}
-                  currentUserName={currentUserName}
-                  currentUserId={currentUserId}
-                  userAnswerData={userAnswerData}
-                  onFavoriteUpdate={markFavorite}
-                  actionPath="/answers"
-                />
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      <Pagination
-        currentPage={currentPage}
-        pageCount={pageCount}
-        buildHref={buildHref}
-        className="px-4"
+      <AnswersList
+        answers={paged}
+        topicsById={topicsById}
+        commentsByAnswer={commentsByAnswer}
+        getNameByProfileId={getNameByProfileId}
+        currentUserName={currentUserName}
+        currentUserId={currentUserId}
+        userAnswerData={userAnswerData}
+        onFavoriteUpdate={markFavorite}
+        actionPath="/answers"
+        pagination={{
+          currentPage,
+          pageCount,
+          buildHref,
+        }}
       />
     </StickyHeaderLayout>
   );
