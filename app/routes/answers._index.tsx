@@ -323,15 +323,6 @@ export default function AnswersRoute() {
                         ))}
                       </select>
                     </div>
-                    {authorQuery && (
-                      <button
-                        type="button"
-                        className="text-sm text-red-500"
-                        onClick={() => setAuthorQuery('')}
-                      >
-                        クリア
-                      </button>
-                    )}
                   </div>
 
                   <div className="flex-shrink-0">
