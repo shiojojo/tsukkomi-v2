@@ -6,8 +6,8 @@
     "build": "react-router build",
     "dev": "react-router dev --port 5173 --host",
     "start": "node ./scripts/start-server.mjs",
-    "test": "tsx scripts/run-tests.mjs",
-    "test:unit": "vitest",
+    "test": "vitest run",
+    "test:unit": "vitest run",
     "test:e2e": "playwright test",
     "typecheck": "react-router typegen && tsc"
   },
