@@ -33,6 +33,7 @@ service-account*.json
 # Build caches
 /dist/
 /.cache/
+/.vite/
 
 # Scripts that may contain secrets or service URLs
 
