@@ -5,6 +5,7 @@ import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import { AnswersList } from '~/components/AnswersList';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
+import { useNameByProfileId } from '~/hooks/useNameByProfileId';
 import { handleAnswerActions } from '~/lib/actionHandlers';
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
@@ -99,21 +100,7 @@ export default function TopicDetailRoute() {
   const { topic, answers, commentsByAnswer, users, profileId } =
     useLoaderData() as LoaderData;
 
-  const nameByProfileId = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const user of users) {
-      map[String(user.id)] = user.name;
-      for (const sub of user.subUsers ?? []) {
-        map[String(sub.id)] = sub.name;
-      }
-    }
-    return map;
-  }, [users]);
-
-  const getNameByProfileId = (pid?: string | null) => {
-    if (!pid) return undefined;
-    return nameByProfileId[String(pid)];
-  };
+  const { nameByProfileId, getNameByProfileId } = useNameByProfileId(users);
 
   const { effectiveId: currentUserId, effectiveName: currentUserName } =
     useIdentity();
