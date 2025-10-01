@@ -34,6 +34,8 @@ app/
 		schemas/            ← zod スキーマ（I/O 変換 & 型出力）
 	hooks/                ← 再利用カスタムフック
 	styles/               ← Tailwind / グローバル CSS
+tests/                  ← 統合テスト
+e2e/                    ← E2Eテスト
 ```
 
 禁止: `routes/` 直下にロジック（DB 直接 / fetch）を書くこと。必ず `lib/db.ts` 経由。
