@@ -5,6 +5,7 @@ import StickyHeaderLayout from '~/components/StickyHeaderLayout';
 import { Pagination } from '~/components/Pagination';
 import { DateRangeFilter } from '~/components/DateRangeFilter';
 import { SearchInput } from '~/components/SearchInput';
+import { FilterForm } from '~/components/FilterForm';
 import { TopicCard } from '~/components/TopicCard';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
@@ -72,34 +73,18 @@ export default function TopicsRoute() {
           <div className="p-4">
             <h1 className="text-2xl font-semibold mb-4">お題一覧</h1>
             <div className="mb-0">
-              <Form method="get" className="space-y-2">
-                <SearchInput
-                  value={q}
-                  onChange={setQ}
-                  placeholder="検索: お題タイトル"
-                />
-
-                <div className="mt-2 flex flex-wrap gap-2 items-center">
-                  <DateRangeFilter
-                    fromDate={fromDate}
-                    toDate={toDate}
-                    onFromDateChange={setFromDate}
-                    onToDateChange={setToDate}
-                  />
-                  <button
-                    type="submit"
-                    className="text-sm px-2 py-1 border rounded-md"
-                  >
-                    絞込
-                  </button>
-                  <a
-                    href="/topics"
-                    className="text-sm text-gray-600 hover:underline ml-2"
-                  >
-                    クリア
-                  </a>
-                </div>
-              </Form>
+              <FilterForm
+                type="topics"
+                query={q}
+                setQuery={setQ}
+                fromDate={fromDate}
+                setFromDate={setFromDate}
+                toDate={toDate}
+                setToDate={setToDate}
+                submitLabel="絞込"
+                clearLabel="クリア"
+                onClear={() => (window.location.href = '/topics')}
+              />
             </div>
           </div>
         </div>
