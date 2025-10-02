@@ -81,9 +81,8 @@ export default function TopicsRoute() {
                 setFromDate={setFromDate}
                 toDate={toDate}
                 setToDate={setToDate}
-                submitLabel="絞込"
-                clearLabel="クリア"
                 onClear={() => (window.location.href = '/topics')}
+                onSubmit={() => {}}
               />
             </div>
           </div>

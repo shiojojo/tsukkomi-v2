@@ -12,6 +12,7 @@ interface BaseFilterProps {
   toDate: string;
   setToDate: (value: string) => void;
   onClear?: () => void;
+  onSubmit?: (e: React.FormEvent) => void;
 }
 
 interface AnswersFilterProps extends BaseFilterProps {
@@ -45,6 +46,7 @@ export function FilterForm(props: FilterFormProps) {
     toDate,
     setToDate,
     onClear,
+    onSubmit,
   } = props;
 
   const incrementMinScore = () => {
@@ -83,7 +85,7 @@ export function FilterForm(props: FilterFormProps) {
 
   if (type === 'topics') {
     return (
-      <Form method="get" className="space-y-2">
+      <Form method="get" className="space-y-2" onSubmit={onSubmit}>
         <SearchInput value={query} onChange={setQuery} />
 
         <div className="mt-2 flex flex-wrap gap-2 items-center">
@@ -118,6 +120,7 @@ export function FilterForm(props: FilterFormProps) {
     <Form
       method="get"
       className="flex flex-wrap gap-2 items-start md:items-center"
+      onSubmit={onSubmit}
     >
       {/* Group: author, sortBy, advanced toggle — keep single-line on small screens */}
       <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">

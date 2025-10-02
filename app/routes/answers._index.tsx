@@ -305,6 +305,15 @@ export default function AnswersRoute() {
                 showAdvancedFilters={showAdvancedFilters}
                 toggleAdvancedFilters={toggleAdvancedFilters}
                 onClear={resetFilters}
+                onSubmit={e => {
+                  setShowAdvancedFilters(false);
+                  try {
+                    localStorage.setItem('answers:showAdvancedFilters', '0');
+                    const url = new URL(window.location.href);
+                    url.searchParams.delete('showAdvancedFilters');
+                    history.replaceState(null, '', url.toString());
+                  } catch {}
+                }}
               />
               {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
             </div>
