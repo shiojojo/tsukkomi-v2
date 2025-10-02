@@ -57,8 +57,6 @@ describe('FilterForm', () => {
       setFromDate: vi.fn(),
       toDate: '',
       setToDate: vi.fn(),
-      submitLabel: '絞込',
-      clearLabel: 'クリア',
       onClear: vi.fn(),
     };
 
@@ -67,7 +65,7 @@ describe('FilterForm', () => {
 
       expect(screen.getByTestId('search-input')).toBeInTheDocument();
       expect(screen.getByTestId('date-range-filter')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: '絞込' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '検索' })).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: 'クリア' })
       ).toBeInTheDocument();
@@ -125,8 +123,6 @@ describe('FilterForm', () => {
       setHasComments: vi.fn(),
       showAdvancedFilters: false,
       toggleAdvancedFilters: vi.fn(),
-      submitLabel: '検索',
-      clearLabel: 'リセット',
       onClear: vi.fn(),
     };
 
@@ -140,7 +136,7 @@ describe('FilterForm', () => {
       ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '検索' })).toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'リセット' })
+        screen.getByRole('button', { name: 'クリア' })
       ).toBeInTheDocument();
     });
 
@@ -184,7 +180,7 @@ describe('FilterForm', () => {
     it('calls onClear when reset button is clicked', () => {
       render(<FilterForm {...defaultProps} />);
 
-      const button = screen.getByRole('button', { name: 'リセット' });
+      const button = screen.getByRole('button', { name: 'クリア' });
       fireEvent.click(button);
 
       expect(defaultProps.onClear).toHaveBeenCalled();

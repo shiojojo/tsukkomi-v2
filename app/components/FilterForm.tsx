@@ -11,8 +11,6 @@ interface BaseFilterProps {
   setFromDate: (value: string) => void;
   toDate: string;
   setToDate: (value: string) => void;
-  submitLabel?: string;
-  clearLabel?: string;
   onClear?: () => void;
 }
 
@@ -46,8 +44,6 @@ export function FilterForm(props: FilterFormProps) {
     setFromDate,
     toDate,
     setToDate,
-    submitLabel = '検索',
-    clearLabel = 'リセット',
     onClear,
   } = props;
 
@@ -82,7 +78,7 @@ export function FilterForm(props: FilterFormProps) {
             onToDateChange={setToDate}
           />
           <button type="submit" className="text-sm px-2 py-1 border rounded-md">
-            {submitLabel}
+            検索
           </button>
           {onClear && (
             <button
@@ -90,7 +86,7 @@ export function FilterForm(props: FilterFormProps) {
               onClick={onClear}
               className="text-sm px-2 py-1 border rounded-md text-gray-600 dark:text-white"
             >
-              {clearLabel}
+              クリア
             </button>
           )}
         </div>
@@ -237,7 +233,7 @@ export function FilterForm(props: FilterFormProps) {
 
       <div className="flex items-center gap-2">
         <button type="submit" className="btn-inline">
-          {submitLabel}
+          検索
         </button>
         {onClear && (
           <button
@@ -245,7 +241,7 @@ export function FilterForm(props: FilterFormProps) {
             onClick={onClear}
             className="text-sm px-2 py-1 border rounded-md text-gray-600 dark:text-white"
           >
-            {clearLabel}
+            クリア
           </button>
         )}
       </div>
