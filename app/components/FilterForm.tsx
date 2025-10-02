@@ -61,6 +61,23 @@ export function FilterForm(props: FilterFormProps) {
     }
   };
 
+  const SubmitAndClearButtons = () => (
+    <>
+      <button type="submit" className="text-xs px-2 py-1 border rounded-md">
+        検索
+      </button>
+      {onClear && (
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-xs px-2 py-1 border rounded-md text-gray-600 dark:text-white"
+        >
+          クリア
+        </button>
+      )}
+    </>
+  );
+
   if (type === 'topics') {
     return (
       <Form method="get" className="space-y-2">
@@ -73,18 +90,7 @@ export function FilterForm(props: FilterFormProps) {
             onFromDateChange={setFromDate}
             onToDateChange={setToDate}
           />
-          <button type="submit" className="text-xs px-2 py-1 border rounded-md">
-            検索
-          </button>
-          {onClear && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="text-xs px-2 py-1 border rounded-md text-gray-600 dark:text-white"
-            >
-              クリア
-            </button>
-          )}
+          <SubmitAndClearButtons />
         </div>
       </Form>
     );
@@ -219,18 +225,7 @@ export function FilterForm(props: FilterFormProps) {
       )}
 
       <div className="flex items-center gap-2">
-        <button type="submit" className="btn-inline text-xs">
-          検索
-        </button>
-        {onClear && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="text-xs px-2 py-1 border rounded-md text-gray-600 dark:text-white"
-          >
-            クリア
-          </button>
-        )}
+        <SubmitAndClearButtons />
       </div>
     </Form>
   );
