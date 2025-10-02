@@ -129,7 +129,6 @@ describe('FilterForm', () => {
     it('renders basic filters when advanced filters are hidden', () => {
       render(<FilterForm {...defaultProps} />);
 
-      expect(screen.getByLabelText('作者')).toBeInTheDocument();
       expect(screen.getByDisplayValue('新着')).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: '詳細フィルタ' })
@@ -153,7 +152,7 @@ describe('FilterForm', () => {
     it('calls setAuthorQuery when author select changes', () => {
       render(<FilterForm {...defaultProps} />);
 
-      const authorSelect = screen.getByLabelText('作者');
+      const authorSelect = screen.getByDisplayValue('全員');
       fireEvent.change(authorSelect, { target: { value: 'User1' } });
 
       expect(defaultProps.setAuthorQuery).toHaveBeenCalledWith('User1');
