@@ -35,7 +35,7 @@ export function DateRangeFilter({
           name="fromDate"
           value={fromDate}
           type="date"
-          className="form-input w-full"
+          className="form-input w-full text-sm"
           aria-label="開始日"
           onChange={
             onFromDateChange ? e => onFromDateChange(e.target.value) : undefined
@@ -51,7 +51,7 @@ export function DateRangeFilter({
           name="toDate"
           value={toDate}
           type="date"
-          className="form-input w-full"
+          className="form-input w-full text-sm"
           aria-label="終了日"
           onChange={
             onToDateChange ? e => onToDateChange(e.target.value) : undefined

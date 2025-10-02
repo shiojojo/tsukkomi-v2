@@ -25,7 +25,7 @@ export function SearchInput({
   value,
   defaultValue,
   onChange,
-  placeholder = '検索',
+  placeholder = 'お題タイトルで検索',
   className = '',
 }: SearchInputProps) {
   return (
@@ -36,7 +36,7 @@ export function SearchInput({
       value={value}
       defaultValue={defaultValue}
       onChange={onChange ? e => onChange(e.target.value) : undefined}
-      className={`form-input w-full ${className}`}
+      className={`form-input w-full text-sm ${className}`}
       aria-label={placeholder}
     />
   );

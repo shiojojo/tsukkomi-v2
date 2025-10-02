@@ -64,11 +64,7 @@ export function FilterForm(props: FilterFormProps) {
   if (type === 'topics') {
     return (
       <Form method="get" className="space-y-2">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="検索: お題タイトル"
-        />
+        <SearchInput value={query} onChange={setQuery} />
 
         <div className="mt-2 flex flex-wrap gap-2 items-center">
           <DateRangeFilter
@@ -77,14 +73,14 @@ export function FilterForm(props: FilterFormProps) {
             onFromDateChange={setFromDate}
             onToDateChange={setToDate}
           />
-          <button type="submit" className="text-sm px-2 py-1 border rounded-md">
+          <button type="submit" className="text-xs px-2 py-1 border rounded-md">
             検索
           </button>
           {onClear && (
             <button
               type="button"
               onClick={onClear}
-              className="text-sm px-2 py-1 border rounded-md text-gray-600 dark:text-white"
+              className="text-xs px-2 py-1 border rounded-md text-gray-600 dark:text-white"
             >
               クリア
             </button>
@@ -118,20 +114,14 @@ export function FilterForm(props: FilterFormProps) {
       <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
         <div className="flex items-center gap-2 flex-shrink-0">
           <div>
-            <label
-              className="text-xs text-gray-500 dark:text-white mb-1 block"
-              htmlFor="authorName"
-            >
-              作者
-            </label>
             <select
               id="authorName"
               name="authorName"
               value={authorQuery}
               onChange={e => setAuthorQuery(e.target.value)}
-              className="form-select w-28 md:w-44"
+              className="form-select w-full text-sm"
             >
-              <option value="">全て</option>
+              <option value="">全員</option>
               {users.map(u => (
                 <option key={u.id} value={u.name}>
                   {u.name}
@@ -146,7 +136,7 @@ export function FilterForm(props: FilterFormProps) {
             name="sortBy"
             value={sortBy}
             onChange={e => setSortBy(e.target.value as any)}
-            className="form-select w-20 md:w-32"
+            className="form-select w-full text-sm"
           >
             <option value="newest">新着</option>
             <option value="oldest">古い順</option>
@@ -157,7 +147,7 @@ export function FilterForm(props: FilterFormProps) {
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             type="button"
-            className="text-sm px-2 py-1 border rounded-md"
+            className="text-xs px-2 py-1 border rounded-md"
             onClick={toggleAdvancedFilters}
           >
             {showAdvancedFilters ? '詳細を閉じる' : '詳細フィルタ'}
@@ -168,12 +158,9 @@ export function FilterForm(props: FilterFormProps) {
       {showAdvancedFilters && (
         <div className="flex flex-col gap-3 w-full mt-2">
           <div className="w-full">
-            <label className="text-xs text-gray-500 dark:text-white mb-1 block">
-              お題タイトル
-            </label>
-            <SearchInput value={query} onChange={setQuery} placeholder="飲み" />
+            <SearchInput value={query} onChange={setQuery} />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-nowrap items-center gap-2">
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -188,12 +175,12 @@ export function FilterForm(props: FilterFormProps) {
                 inputMode="numeric"
                 pattern="[0-9]*"
                 min={0}
-                placeholder="min score"
+                placeholder=""
                 value={minScore}
                 onChange={e =>
                   setMinScore(e.target.value.replace(/[^0-9]/g, ''))
                 }
-                className="form-input w-20 text-center"
+                className="form-input w-12 text-sm text-center"
               />
               <button
                 type="button"
@@ -213,14 +200,11 @@ export function FilterForm(props: FilterFormProps) {
                 value="1"
                 className="w-4 h-4"
               />
-              <span className="text-sm">has comments</span>
+              <span className="text-xs">has comments</span>
             </label>
           </div>
 
           <div className="w-full">
-            <label className="text-xs text-gray-500 dark:text-white mb-1 block">
-              作成日
-            </label>
             <DateRangeFilter
               fromDate={fromDate}
               toDate={toDate}
@@ -232,14 +216,14 @@ export function FilterForm(props: FilterFormProps) {
       )}
 
       <div className="flex items-center gap-2">
-        <button type="submit" className="btn-inline">
+        <button type="submit" className="btn-inline text-xs">
           検索
         </button>
         {onClear && (
           <button
             type="button"
             onClick={onClear}
-            className="text-sm px-2 py-1 border rounded-md text-gray-600 dark:text-white"
+            className="text-xs px-2 py-1 border rounded-md text-gray-600 dark:text-white"
           >
             クリア
           </button>
