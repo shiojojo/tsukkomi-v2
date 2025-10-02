@@ -63,7 +63,10 @@ export function FilterForm(props: FilterFormProps) {
 
   const SubmitAndClearButtons = () => (
     <>
-      <button type="submit" className="text-xs px-2 py-1 border rounded-md">
+      <button
+        type="submit"
+        className="text-xs px-2 py-1 border rounded-md bg-blue-600 text-white"
+      >
         検索
       </button>
       {onClear && (
@@ -168,7 +171,7 @@ export function FilterForm(props: FilterFormProps) {
           </div>
           <div className="flex flex-nowrap items-center gap-2">
             <div className="flex items-center gap-2">
-              <label className="text-xs">最小スコア:</label>
+              <label className="text-xs">最小スコア: </label>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
