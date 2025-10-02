@@ -161,34 +161,37 @@ export function FilterForm(props: FilterFormProps) {
             <SearchInput value={query} onChange={setQuery} />
           </div>
           <div className="flex flex-nowrap items-center gap-2">
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={decrementMinScore}
-                className="px-2 py-1 border rounded"
-              >
-                -
-              </button>
-              <input
-                name="minScore"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                min={0}
-                placeholder=""
-                value={minScore}
-                onChange={e =>
-                  setMinScore(e.target.value.replace(/[^0-9]/g, ''))
-                }
-                className="form-input w-12 text-sm text-center"
-              />
-              <button
-                type="button"
-                onClick={incrementMinScore}
-                className="px-2 py-1 border rounded"
-              >
-                +
-              </button>
+            <div className="flex items-center gap-2">
+              <label className="text-xs">最小スコア:</label>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={decrementMinScore}
+                  className="px-2 py-1 border rounded"
+                >
+                  -
+                </button>
+                <input
+                  name="minScore"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  min={0}
+                  placeholder=""
+                  value={minScore}
+                  onChange={e =>
+                    setMinScore(e.target.value.replace(/[^0-9]/g, ''))
+                  }
+                  className="form-input w-12 text-sm text-center"
+                />
+                <button
+                  type="button"
+                  onClick={incrementMinScore}
+                  className="px-2 py-1 border rounded"
+                >
+                  +
+                </button>
+              </div>
             </div>
 
             <label className="flex items-center gap-2 text-sm">
