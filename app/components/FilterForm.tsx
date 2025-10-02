@@ -64,7 +64,7 @@ export function FilterForm(props: FilterFormProps) {
   };
 
   const SubmitAndClearButtons = () => (
-    <>
+    <div className="flex items-center gap-2">
       <button
         type="submit"
         className="text-xs px-2 py-1 border rounded-md bg-blue-600 text-white"
@@ -80,7 +80,7 @@ export function FilterForm(props: FilterFormProps) {
           クリア
         </button>
       )}
-    </>
+    </div>
   );
 
   if (type === 'topics') {
@@ -230,9 +230,7 @@ export function FilterForm(props: FilterFormProps) {
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <SubmitAndClearButtons />
-      </div>
+      <SubmitAndClearButtons />
     </Form>
   );
 }
