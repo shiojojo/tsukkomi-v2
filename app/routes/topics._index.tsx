@@ -6,6 +6,7 @@ import { Pagination } from '~/components/Pagination';
 import { DateRangeFilter } from '~/components/DateRangeFilter';
 import { SearchInput } from '~/components/SearchInput';
 import { FilterForm } from '~/components/FilterForm';
+import { useFilters, type TopicsFilters } from '~/hooks/useFilters';
 import { TopicCard } from '~/components/TopicCard';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
@@ -40,9 +41,25 @@ export default function TopicsRoute() {
   const qParam: string = (data as any)?.q ?? '';
   const fromDateParam: string = (data as any)?.fromDate ?? '';
   const toDateParam: string = (data as any)?.toDate ?? '';
-  const [q, setQ] = useState(qParam);
-  const [fromDate, setFromDate] = useState(fromDateParam);
-  const [toDate, setToDate] = useState(toDateParam);
+
+  const initialFilters: TopicsFilters = {
+    q: qParam,
+    fromDate: fromDateParam,
+    toDate: toDateParam,
+  };
+
+  const urlKeys: Record<keyof TopicsFilters, string> = {
+    q: 'q',
+    fromDate: 'fromDate',
+    toDate: 'toDate',
+  };
+
+  const { filters, updateFilter, resetFilters } = useFilters(
+    initialFilters,
+    urlKeys,
+    false
+  );
+
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
   const pagedTopics = topics;
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -75,13 +92,13 @@ export default function TopicsRoute() {
             <div className="mb-0">
               <FilterForm
                 type="topics"
-                query={q}
-                setQuery={setQ}
-                fromDate={fromDate}
-                setFromDate={setFromDate}
-                toDate={toDate}
-                setToDate={setToDate}
-                onClear={() => (window.location.href = '/topics')}
+                query={filters.q}
+                setQuery={value => updateFilter('q', value)}
+                fromDate={filters.fromDate}
+                setFromDate={value => updateFilter('fromDate', value)}
+                toDate={filters.toDate}
+                setToDate={value => updateFilter('toDate', value)}
+                onClear={resetFilters}
                 onSubmit={() => {}}
               />
             </div>
@@ -103,7 +120,7 @@ export default function TopicsRoute() {
           currentPage={currentPage}
           pageCount={pageCount}
           buildHref={p =>
-            `?q=${encodeURIComponent(q)}&fromDate=${encodeURIComponent(fromDate)}&toDate=${encodeURIComponent(toDate)}&page=${p}&pageSize=${pageSize}`
+            `?q=${encodeURIComponent(filters.q)}&fromDate=${encodeURIComponent(filters.fromDate)}&toDate=${encodeURIComponent(filters.toDate)}&page=${p}&pageSize=${pageSize}`
           }
         />
       </div>

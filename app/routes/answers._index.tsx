@@ -9,6 +9,7 @@ import { SearchInput } from '~/components/SearchInput';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useNameByProfileId } from '~/hooks/useNameByProfileId';
+import { useFilters, type AnswersFilters } from '~/hooks/useFilters';
 import { FilterForm } from '~/components/FilterForm';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
@@ -141,58 +142,52 @@ export default function AnswersRoute() {
   const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);
 
   // Filter UI state (server-driven via GET form)
-  const [query, setQuery] = useState('');
-  const [authorQuery, setAuthorQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'scoreDesc'>(
-    'newest'
+  const initialFilters: AnswersFilters = {
+    q: '',
+    author: '',
+    sortBy: 'newest',
+    minScore: '',
+    hasComments: false,
+    fromDate: '',
+    toDate: '',
+  };
+
+  const urlKeys: Record<keyof AnswersFilters, string> = {
+    q: 'q',
+    author: 'authorName',
+    sortBy: 'sortBy',
+    minScore: 'minScore',
+    hasComments: 'hasComments',
+    fromDate: 'fromDate',
+    toDate: 'toDate',
+  };
+
+  const { filters, updateFilter, resetFilters } = useFilters(
+    initialFilters,
+    urlKeys,
+    false
   );
-  const [minScore, setMinScore] = useState<string>('');
-  const [hasComments, setHasComments] = useState<boolean>(false);
-  const [fromDate, setFromDate] = useState<string>('');
-  const [toDate, setToDate] = useState<string>('');
+
   const [showAdvancedFilters, setShowAdvancedFilters] =
     useState<boolean>(false);
 
   // ref to the scrollable answers container so we can scroll to top on page change
   const answersContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // initialize from current URL so form inputs reflect current server filters
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      setQuery(params.get('q') ?? '');
-      setAuthorQuery(params.get('authorName') ?? '');
-      setSortBy((params.get('sortBy') as any) ?? 'newest');
-      setMinScore(params.get('minScore') ?? '');
-      setHasComments(
-        params.get('hasComments') === '1' ||
-          params.get('hasComments') === 'true'
-      );
-      setFromDate(params.get('fromDate') ?? '');
-      setToDate(params.get('toDate') ?? '');
-    } catch {}
-  }, []);
-
   // helpers to adjust minScore in UI (mobile-friendly increment/decrement)
   const incrementMinScore = () => {
-    const n = Number(minScore || 0);
-    setMinScore(String(n + 1));
+    const n = Number(filters.minScore || 0);
+    updateFilter('minScore', String(n + 1));
   };
   const decrementMinScore = () => {
-    const n = Math.max(0, Number(minScore || 0) - 1);
-    setMinScore(String(n));
+    const n = Math.max(0, Number(filters.minScore || 0) - 1);
+    updateFilter('minScore', String(n));
   };
 
   // reset all filters to defaults and reload the route (clears query params)
-  const resetFilters = () => {
+  const resetFiltersWithReload = () => {
+    resetFilters();
     try {
-      setQuery('');
-      setAuthorQuery('');
-      setSortBy('newest');
-      setMinScore('');
-      setHasComments(false);
-      setFromDate('');
-      setToDate('');
       // reload without query params so loader receives defaults
       window.location.href = window.location.pathname;
     } catch {}
@@ -258,16 +253,18 @@ export default function AnswersRoute() {
   // helper to build href preserving current filters (used by mobile & desktop)
   const buildHref = (p: number) => {
     const parts: string[] = [];
-    if (query) parts.push(`q=${encodeURIComponent(query)}`);
-    if (authorQuery)
-      parts.push(`authorName=${encodeURIComponent(authorQuery)}`);
-    parts.push(`sortBy=${encodeURIComponent(String(sortBy))}`);
+    if (filters.q) parts.push(`q=${encodeURIComponent(filters.q)}`);
+    if (filters.author)
+      parts.push(`authorName=${encodeURIComponent(filters.author)}`);
+    parts.push(`sortBy=${encodeURIComponent(String(filters.sortBy))}`);
     parts.push(`page=${p}`);
-    if (minScore)
-      parts.push(`minScore=${encodeURIComponent(String(minScore))}`);
-    if (hasComments) parts.push('hasComments=1');
-    if (fromDate) parts.push(`fromDate=${encodeURIComponent(fromDate)}`);
-    if (toDate) parts.push(`toDate=${encodeURIComponent(toDate)}`);
+    if (filters.minScore)
+      parts.push(`minScore=${encodeURIComponent(String(filters.minScore))}`);
+    if (filters.hasComments) parts.push('hasComments=1');
+    if (filters.fromDate)
+      parts.push(`fromDate=${encodeURIComponent(filters.fromDate)}`);
+    if (filters.toDate)
+      parts.push(`toDate=${encodeURIComponent(filters.toDate)}`);
     return `?${parts.join('&')}`;
   };
 
@@ -288,32 +285,23 @@ export default function AnswersRoute() {
               <FilterForm
                 type="answers"
                 users={users}
-                query={query}
-                setQuery={setQuery}
-                fromDate={fromDate}
-                setFromDate={setFromDate}
-                toDate={toDate}
-                setToDate={setToDate}
-                authorQuery={authorQuery}
-                setAuthorQuery={setAuthorQuery}
-                sortBy={sortBy}
-                setSortBy={setSortBy}
-                minScore={minScore}
-                setMinScore={setMinScore}
-                hasComments={hasComments}
-                setHasComments={setHasComments}
+                query={filters.q}
+                setQuery={value => updateFilter('q', value)}
+                fromDate={filters.fromDate}
+                setFromDate={value => updateFilter('fromDate', value)}
+                toDate={filters.toDate}
+                setToDate={value => updateFilter('toDate', value)}
+                authorQuery={filters.author}
+                setAuthorQuery={value => updateFilter('author', value)}
+                sortBy={filters.sortBy}
+                setSortBy={value => updateFilter('sortBy', value)}
+                minScore={filters.minScore}
+                setMinScore={value => updateFilter('minScore', value)}
+                hasComments={filters.hasComments}
+                setHasComments={value => updateFilter('hasComments', value)}
                 showAdvancedFilters={showAdvancedFilters}
                 toggleAdvancedFilters={toggleAdvancedFilters}
                 onClear={resetFilters}
-                onSubmit={e => {
-                  setShowAdvancedFilters(false);
-                  try {
-                    localStorage.setItem('answers:showAdvancedFilters', '0');
-                    const url = new URL(window.location.href);
-                    url.searchParams.delete('showAdvancedFilters');
-                    history.replaceState(null, '', url.toString());
-                  } catch {}
-                }}
               />
               {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
             </div>
