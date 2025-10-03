@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { useIdentity } from '~/hooks/useIdentity';
+import { useOptimisticAction } from '~/hooks/useOptimisticAction';
 
 export type NumericVoteButtonsProps = {
   answerId: number;
@@ -34,13 +35,11 @@ export function NumericVoteButtons({
   loginRedirectPath = '/login',
 }: NumericVoteButtonsProps) {
   const { effectiveId } = useIdentity();
-  const fetcher = useFetcher();
-
-  const resolvedActionPath = useMemo(() => {
-    if (actionPath) return actionPath;
-    if (typeof window !== 'undefined') return window.location.pathname;
-    return '/';
-  }, [actionPath]);
+  const { fetcher, performAction } = useOptimisticAction(
+    actionPath ||
+      (typeof window !== 'undefined' ? window.location.pathname : '/'),
+    loginRedirectPath
+  );
 
   const readStoredSelection = () => {
     if (typeof window === 'undefined') return null;
@@ -100,13 +99,6 @@ export function NumericVoteButtons({
 
   const handleVote = (level: 1 | 2 | 3) => {
     const uid = effectiveId;
-    if (!uid) {
-      try {
-        window.location.href = loginRedirectPath;
-      } catch {}
-      return;
-    }
-
     const prev = selection;
     const isToggleOff = prev === level;
 
@@ -126,11 +118,7 @@ export function NumericVoteButtons({
     setSelection(isToggleOff ? null : level);
     persistSelection(isToggleOff ? null : level);
 
-    const form = new FormData();
-    form.append('answerId', String(answerId));
-    form.append('level', String(isToggleOff ? 0 : level));
-    form.append('userId', String(uid));
-    fetcher.submit(form, { method: 'post', action: resolvedActionPath });
+    performAction({ answerId, level: isToggleOff ? 0 : level, userId: uid });
   };
 
   const btnBase = `${CONTROL_BTN_BASE} gap-2 px-3`;

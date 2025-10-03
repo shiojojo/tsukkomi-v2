@@ -2,12 +2,14 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { logger } from '~/lib/logger';
 import { useIdentity } from '~/hooks/useIdentity';
+import { useOptimisticAction } from '~/hooks/useOptimisticAction';
 
 export type FavoriteButtonProps = {
   answerId: number;
   initialFavorited?: boolean;
   onServerFavorited?: (answerId: number, favorited: boolean) => void;
   loginRedirectPath?: string;
+  actionPath?: string;
 };
 
 /**
@@ -15,7 +17,7 @@ export type FavoriteButtonProps = {
  * Intent: routes から共通ロジックを切り出し、/answers や /topics など複数画面で一貫した挙動を提供する。
  * Contract:
  *   - Props.initialFavorited で初期状態を指定。サーバー応答 (favorited:boolean) が来た場合 onServerFavorited を通知。
- *   - localStorage から currentSubUserId / currentUserId を読み取り、未ログイン時は loginRedirectPath へ遷移。
+ *   - useIdentity から effectiveId を取得し、未ログイン時は loginRedirectPath へ遷移。
  * Environment: ブラウザ限定。fetcher を利用するため routes 側で action を実装していることが前提。
  * Errors: fetcher.error は握りつぶしつつコンソールにログ。致命的エラーは UI を既存状態にロールバック。
  */
@@ -24,12 +26,14 @@ const FavoriteButton = memo(function FavoriteButton({
   initialFavorited,
   onServerFavorited,
   loginRedirectPath = '/login',
+  actionPath,
 }: FavoriteButtonProps) {
-  const fetcher = useFetcher();
-  const { effectiveId } = useIdentity();
-  const [currentUserIdLocal, setCurrentUserIdLocal] = useState<string | null>(
-    null
+  const { fetcher, performAction } = useOptimisticAction(
+    actionPath ||
+      (typeof window !== 'undefined' ? window.location.pathname : '/'),
+    loginRedirectPath
   );
+  const { effectiveId } = useIdentity();
   const [fav, setFav] = useState<boolean>(() => Boolean(initialFavorited));
   const lastProcessedResponseRef = useRef<string | null>(null);
 
@@ -46,10 +50,6 @@ const FavoriteButton = memo(function FavoriteButton({
     );
     setFav(Boolean(initialFavorited));
   }, [answerId, initialFavorited]);
-
-  useEffect(() => {
-    setCurrentUserIdLocal(effectiveId);
-  }, [effectiveId]);
 
   useEffect(() => {
     if (!fetcher.data || fetcher.state !== 'idle') return;
@@ -85,18 +85,8 @@ const FavoriteButton = memo(function FavoriteButton({
   }, [fetcher.data, fetcher.state, answerId, onServerFavorited]);
 
   const handleClick = () => {
-    if (!currentUserIdLocal) {
-      try {
-        window.location.href = loginRedirectPath;
-      } catch {}
-      return;
-    }
     setFav(s => !s);
-    const fd = new FormData();
-    fd.set('op', 'toggle');
-    fd.set('answerId', String(answerId));
-    fd.set('profileId', String(currentUserIdLocal));
-    fetcher.submit(fd, { method: 'post' });
+    performAction({ op: 'toggle', answerId, profileId: effectiveId });
   };
 
   return (
@@ -106,7 +96,7 @@ const FavoriteButton = memo(function FavoriteButton({
       onClick={handleClick}
       className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400 dark:text-white'} hover:opacity-90`}
       title={
-        !currentUserIdLocal
+        !effectiveId
           ? 'ログインしてお気に入り登録'
           : fav
             ? 'お気に入り解除'
