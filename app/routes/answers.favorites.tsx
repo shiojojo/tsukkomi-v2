@@ -129,11 +129,6 @@ export default function FavoriteAnswersRoute() {
       <div className="p-4">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold">お気に入り</h1>
-          <Form method="get" action="/answers" className="hidden md:block">
-            <button className="text-sm text-blue-600 hover:underline">
-              回答一覧へ
-            </button>
-          </Form>
         </div>
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-300">
           保存した回答をまとめて採点・コメントできます。
@@ -177,11 +172,6 @@ export default function FavoriteAnswersRoute() {
   return (
     <StickyHeaderLayout header={headerNode}>
       <div className="px-4 pb-20">
-        <h2 className="text-lg font-semibold mb-4">お気に入りの回答</h2>
-        <p className="text-sm text-gray-600 mb-6">
-          保存した回答に対して、採点とコメントができます。採点は 1〜3 の 3
-          段階です。
-        </p>
         {visibleAnswers.length === 0 ? (
           <div className="py-10 text-sm text-gray-500">
             すべてのお気に入りが解除されました。新しいお気に入りを追加するとここに表示されます。

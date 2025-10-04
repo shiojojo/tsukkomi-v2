@@ -115,12 +115,6 @@ export default function TopicDetailRoute() {
             <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
               お題詳細
             </h1>
-            <Link
-              to="/topics"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              お題一覧へ
-            </Link>
           </div>
         </div>
       }
