@@ -1,30 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { logger } from '~/lib/logger';
+import { useIdentity } from './useIdentity';
 
 export interface AnswerUserData {
   votes: Record<number, number>;
   favorites: Set<number>;
-}
-
-/**
- * Hook to get current user ID from localStorage
- */
-export function useCurrentUserId(): string | null {
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      const uid =
-        localStorage.getItem('currentSubUserId') ??
-        localStorage.getItem('currentUserId');
-      setUserId(uid);
-    } catch {
-      setUserId(null);
-    }
-  }, []);
-
-  return userId;
 }
 
 interface UseAnswerUserDataState {
@@ -42,7 +23,8 @@ export function useAnswerUserData(
   answerIds: number[],
   enabled: boolean = true
 ): UseAnswerUserDataState {
-  const userId = useCurrentUserId();
+  const { effectiveId } = useIdentity();
+  const userId = effectiveId;
   const normalized = useMemo(() => {
     if (!answerIds || answerIds.length === 0) {
       return { ids: [] as number[], key: '' } as const;
