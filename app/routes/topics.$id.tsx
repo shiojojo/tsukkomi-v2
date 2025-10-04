@@ -10,8 +10,7 @@ import { handleAnswerActions } from '~/lib/actionHandlers';
 import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
-import { consumeToken } from '~/lib/rateLimiter';
-import { logger } from '~/lib/logger';
+import { HEADER_BASE } from '~/styles/headerStyles';
 
 const _recentPostGuard = new Map<string, number>();
 
@@ -111,7 +110,7 @@ export default function TopicDetailRoute() {
   return (
     <StickyHeaderLayout
       header={
-        <div className="z-30 bg-white/90 dark:bg-gray-950/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
+        <div className={HEADER_BASE}>
           <div className="p-4 flex items-center justify-between">
             <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
               お題詳細

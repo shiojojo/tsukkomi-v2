@@ -1,5 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import StickyHeaderLayout from '~/components/StickyHeaderLayout';
+import { HEADER_BASE } from '~/styles/headerStyles';
 
 interface ListPageLayoutProps {
   headerTitle: string;
@@ -29,15 +30,13 @@ export function ListPageLayout({
   contentRef,
 }: ListPageLayoutProps) {
   const header = (
-    <div className="z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-      <div className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold">{headerTitle}</h1>
-          </div>
+    <div className={`${HEADER_BASE}`}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-lg font-semibold">{headerTitle}</h1>
         </div>
-        {filters}
       </div>
+      {filters}
     </div>
   );
 

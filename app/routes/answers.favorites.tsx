@@ -14,6 +14,7 @@ import type { User } from '~/lib/schemas/user';
 import { logger } from '~/lib/logger';
 import { consumeToken } from '~/lib/rateLimiter';
 import { SMALL_BUTTON_INACTIVE } from '~/styles/buttonStyles';
+import { HEADER_BASE } from '~/styles/headerStyles';
 
 const _recentPostGuard = new Map<string, number>();
 
@@ -124,10 +125,10 @@ export default function FavoriteAnswersRoute() {
   };
 
   const headerNode = (
-    <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
+    <div className={HEADER_BASE}>
       <div className="p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">お気に入り</h1>
+          <h1 className="text-lg font-semibold">お気に入り</h1>
           <Form method="get" action="/answers" className="hidden md:block">
             <button className="text-sm text-blue-600 hover:underline">
               回答一覧へ
