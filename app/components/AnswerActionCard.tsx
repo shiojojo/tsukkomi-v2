@@ -6,7 +6,7 @@ import NumericVoteButtons from '~/components/NumericVoteButtons';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
-import { SECONDARY_BUTTON } from '~/styles/buttonStyles';
+import { Button } from '~/components/Button';
 
 export interface AnswerActionCardProps {
   answer: Answer;
@@ -219,14 +219,14 @@ export function AnswerActionCard({
                   initialFavorited={initialFavorited}
                   onServerFavorited={onFavoriteUpdate}
                 />
-                <button
+                <Button
+                  variant="secondary"
                   type="button"
                   onClick={() => setOpen(prev => !prev)}
                   aria-expanded={open}
-                  className={SECONDARY_BUTTON}
                 >
                   {open ? '閉じる' : 'コメント / 採点'}
-                </button>
+                </Button>
               </div>
             </div>
           </div>

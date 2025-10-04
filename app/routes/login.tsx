@@ -3,11 +3,7 @@ import { useLoaderData, useFetcher } from 'react-router';
 import { useEffect, useState } from 'react';
 import * as identityStorage from '~/lib/identityStorage';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
-import {
-  SMALL_BUTTON_ACTIVE,
-  SMALL_BUTTON_INACTIVE,
-  TERTIARY_BUTTON,
-} from '~/styles/buttonStyles';
+import { Button } from '~/components/Button';
 
 /**
  * 概要: /login (開発用) - メインユーザー選択 & サブユーザー作成 / 切替 を一画面で提供。
@@ -159,22 +155,24 @@ export default function LoginRoute() {
                 {currentUserId === u.id && !currentSubUserId ? (
                   <span className="text-green-600 text-xs">選択中</span>
                 ) : (
-                  <button
+                  <Button
+                    variant="small"
+                    active={true}
                     onClick={() => selectMain(u)}
-                    className={SMALL_BUTTON_ACTIVE}
                   >
                     {currentUserId === u.id ? '再選択' : '選択'}
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
+                  variant="small"
+                  active={false}
                   type="button"
                   onClick={() =>
                     setSelectedMainId(s => (s === u.id ? null : u.id))
                   }
-                  className={SMALL_BUTTON_INACTIVE}
                 >
                   {selectedMainId === u.id ? '閉じる' : '詳細'}
-                </button>
+                </Button>
               </div>
 
               {selectedMainId === u.id && (
@@ -194,12 +192,12 @@ export default function LoginRoute() {
                                 使用中
                               </span>
                             ) : (
-                              <button
+                              <Button
+                                variant="tertiary"
                                 onClick={() => selectSub(s, u)}
-                                className={TERTIARY_BUTTON}
                               >
                                 切替
-                              </button>
+                              </Button>
                             )}
                           </li>
                         ))}
@@ -223,13 +221,14 @@ export default function LoginRoute() {
                         required
                         maxLength={100}
                       />
-                      <button
+                      <Button
+                        variant="small"
+                        active={true}
                         type="submit"
-                        className={SMALL_BUTTON_ACTIVE}
                         disabled={createFetcher.state !== 'idle'}
                       >
                         追加
-                      </button>
+                      </Button>
                     </createFetcher.Form>
                     {createFetcher.state !== 'idle' && (
                       <div className="text-[10px] text-gray-500 mt-1">

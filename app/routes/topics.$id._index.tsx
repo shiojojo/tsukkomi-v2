@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
-import { SECONDARY_BUTTON, LOAD_MORE_BUTTON } from '~/styles/buttonStyles';
+import { Button } from '~/components/Button';
 
 /**
  * 概要: トピック詳細ページ（/topics/:id）。初期ロードを最小化し TTFB / LCP を改善。
@@ -77,14 +77,14 @@ function AnswerCard({ answer }: { answer: Answer }) {
           {answer.text}
         </p>
         <div className="flex items-center justify-between mt-2">
-          <button
+          <Button
+            variant="secondary"
             type="button"
             onClick={() => setOpen(o => !o)}
-            className={SECONDARY_BUTTON}
             aria-expanded={open}
           >
             {open ? '閉じる' : '詳細'}
-          </button>
+          </Button>
         </div>
         {open && (
           <div className="mt-2 text-sm">
@@ -217,15 +217,15 @@ export default function TopicRoute() {
             }}
           >
             <div className="w-full max-w-xs flex justify-center">
-              <button
+              <Button
                 ref={loadMoreRef}
+                variant="loadMore"
                 onClick={loadMore}
                 disabled={isFetchingNextPage}
-                className={LOAD_MORE_BUTTON}
                 aria-label="もっと見る"
               >
                 {isFetchingNextPage ? '読み込み中…' : 'もっと見る'}
-              </button>
+              </Button>
             </div>
           </div>
         )}

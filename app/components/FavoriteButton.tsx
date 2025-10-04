@@ -3,11 +3,7 @@ import { useFetcher } from 'react-router';
 import { logger } from '~/lib/logger';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useOptimisticAction } from '~/hooks/useOptimisticAction';
-import {
-  ICON_BUTTON_BASE,
-  ICON_BUTTON_ACTIVE,
-  ICON_BUTTON_INACTIVE,
-} from '~/styles/buttonStyles';
+import { Button } from '~/components/Button';
 
 export type FavoriteButtonProps = {
   answerId: number;
@@ -95,11 +91,12 @@ const FavoriteButton = memo(function FavoriteButton({
   };
 
   return (
-    <button
+    <Button
+      variant="icon"
+      active={fav}
       type="button"
       aria-pressed={fav}
       onClick={handleClick}
-      className={`${ICON_BUTTON_BASE} ${fav ? ICON_BUTTON_ACTIVE : ICON_BUTTON_INACTIVE}`}
       title={
         !effectiveId
           ? 'ログインしてお気に入り登録'
@@ -129,7 +126,7 @@ const FavoriteButton = memo(function FavoriteButton({
           <path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24z" />
         </svg>
       )}
-    </button>
+    </Button>
   );
 });
 

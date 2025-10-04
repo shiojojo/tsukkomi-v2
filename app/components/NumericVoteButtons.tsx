@@ -2,11 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useOptimisticAction } from '~/hooks/useOptimisticAction';
-import {
-  CONTROL_BTN_BASE,
-  CONTROL_BTN_ACTIVE,
-  CONTROL_BTN_INACTIVE,
-} from '~/styles/buttonStyles';
+import { Button } from '~/components/Button';
 
 export type NumericVoteButtonsProps = {
   answerId: number;
@@ -109,41 +105,43 @@ export function NumericVoteButtons({
     performAction({ answerId, level: isToggleOff ? 0 : level, userId: uid });
   };
 
-  const btnBase = `${CONTROL_BTN_BASE} gap-2 px-3`;
-  const active = CONTROL_BTN_ACTIVE;
-  const inactive = CONTROL_BTN_INACTIVE;
-
   return (
     <div className="flex items-center gap-2">
-      <button
+      <Button
+        variant="control"
+        active={selection === 1}
+        className="gap-2 px-3"
         onClick={() => handleVote(1)}
-        className={`${btnBase} ${selection === 1 ? active : inactive}`}
         aria-pressed={selection === 1}
         aria-label="投票1"
         type="button"
       >
         <span>1</span>
-      </button>
+      </Button>
 
-      <button
+      <Button
+        variant="control"
+        active={selection === 2}
+        className="gap-2 px-3"
         onClick={() => handleVote(2)}
-        className={`${btnBase} ${selection === 2 ? active : inactive}`}
         aria-pressed={selection === 2}
         aria-label="投票2"
         type="button"
       >
         <span>2</span>
-      </button>
+      </Button>
 
-      <button
+      <Button
+        variant="control"
+        active={selection === 3}
+        className="gap-2 px-3"
         onClick={() => handleVote(3)}
-        className={`${btnBase} ${selection === 3 ? active : inactive}`}
         aria-pressed={selection === 3}
         aria-label="投票3"
         type="button"
       >
         <span>3</span>
-      </button>
+      </Button>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { getItem, setItem, removeItem } from '~/lib/identityStorage';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
-import { DESTRUCTIVE_BUTTON } from '~/styles/buttonStyles';
+import { Button } from '~/components/Button';
 
 /**
  * 概要: /me ページ - 開発向けにサブユーザーの作成 / 削除 / 切替 を提供する。
@@ -265,7 +265,7 @@ export default function MeRoute() {
                           value={currentUserId ?? ''}
                         />
                         <input type="hidden" name="subId" value={s.id} />
-                        <button className={DESTRUCTIVE_BUTTON}>削除</button>
+                        <Button variant="destructive">削除</Button>
                       </remove.Form>
                     </div>
                   </li>

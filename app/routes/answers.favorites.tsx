@@ -13,7 +13,7 @@ import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
 import { logger } from '~/lib/logger';
 import { consumeToken } from '~/lib/rateLimiter';
-import { SMALL_BUTTON_INACTIVE } from '~/styles/buttonStyles';
+import { Button } from '~/components/Button';
 import { HEADER_BASE } from '~/styles/headerStyles';
 
 const _recentPostGuard = new Map<string, number>();
@@ -145,7 +145,9 @@ export default function FavoriteAnswersRoute() {
             お気に入り一覧を表示するには、まずログインしてユーザーを選択してください。
           </p>
           <Form method="get" action="/login" className="inline">
-            <button className={SMALL_BUTTON_INACTIVE}>ログインへ</button>
+            <Button variant="small" active={false}>
+              ログインへ
+            </Button>
           </Form>
         </div>
       </StickyHeaderLayout>
@@ -162,7 +164,9 @@ export default function FavoriteAnswersRoute() {
             から気になる回答をお気に入り登録しておくと、ここでまとめて採点やコメントができます。
           </p>
           <Form method="get" action="/answers" className="inline">
-            <button className={SMALL_BUTTON_INACTIVE}>回答一覧へ戻る</button>
+            <Button variant="small" active={false}>
+              回答一覧へ戻る
+            </Button>
           </Form>
         </div>
       </StickyHeaderLayout>
