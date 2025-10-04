@@ -1,7 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Form, useNavigate } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
 import { AnswersList } from '~/components/features/answers/AnswersList';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
@@ -11,12 +10,8 @@ import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
-import { logger } from '~/lib/logger';
-import { consumeToken } from '~/lib/rateLimiter';
 import { Button } from '~/components/ui/Button';
 import { HEADER_BASE } from '~/styles/headerStyles';
-
-const _recentPostGuard = new Map<string, number>();
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -89,7 +84,6 @@ export default function FavoriteAnswersRoute() {
   const { effectiveId: currentUserId, effectiveName: currentUserName } =
     useIdentity();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!requiresProfileId) return;

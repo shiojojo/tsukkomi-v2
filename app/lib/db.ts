@@ -465,10 +465,7 @@ export async function getFavoriteAnswersForProfile(profileId: string): Promise<A
     }
   }
 
-  const [profileData, votesByMap] = await Promise.all([
-    getProfileAnswerData(profileId, ids),
-    getVotesByForAnswers(ids),
-  ]);
+  const votesByMap = await getVotesByForAnswers(ids);
 
   const normalized = answers
     .map((a) => ({

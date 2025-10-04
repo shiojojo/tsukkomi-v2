@@ -1,5 +1,4 @@
 import { Form } from 'react-router';
-import { useState } from 'react';
 import { SearchInput } from '~/components/ui/SearchInput';
 import { DateRangeFilter } from './DateRangeFilter';
 import type { User } from '~/lib/schemas/user';

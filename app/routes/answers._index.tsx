@@ -1,11 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, Link, Form } from 'react-router';
-import { useEffect, useMemo, useState, useRef } from 'react';
-import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
+import { useLoaderData } from 'react-router';
+import { useEffect, useState, useRef } from 'react';
 import { AnswersList } from '~/components/features/answers/AnswersList';
-import { Pagination } from '~/components/common/Pagination';
-import { DateRangeFilter } from '~/components/forms/DateRangeFilter';
-import { SearchInput } from '~/components/ui/SearchInput';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useNameByProfileId } from '~/hooks/useNameByProfileId';
@@ -17,19 +13,8 @@ import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
-import { logger } from '~/lib/logger';
-import {
-  parsePaginationParams,
-  parseAnswersFilterParams,
-} from '~/lib/queryParser';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
-// Keyed by `${op}:${profileId}:${answerId}` and stores last timestamp (ms).
-// This is intentionally simple (in-memory) and exists to mitigate accidental
-// client-side storms while a proper fix (client batching / server rate-limit)
-// is implemented. It may be reset on server restart.
-const _recentPostGuard = new Map<string, number>();
-
 import { createListLoader } from '~/lib/loaders';
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -141,7 +126,7 @@ export default function AnswersRoute() {
   const fromDateParam: string = (data as any)?.fromDate ?? '';
   const toDateParam: string = (data as any)?.toDate ?? '';
 
-  const { nameByProfileId, getNameByProfileId } = useNameByProfileId(users);
+  const { getNameByProfileId } = useNameByProfileId(users);
 
   const { effectiveId: currentUserId, effectiveName: currentUserName } =
     useIdentity();
@@ -171,36 +156,13 @@ export default function AnswersRoute() {
     toDate: 'toDate',
   };
 
-  const { filters, updateFilter, resetFilters } = useFilters(
-    initialFilters,
-    urlKeys,
-    false
-  );
+  const { filters, updateFilter } = useFilters(initialFilters, urlKeys, false);
 
   const [showAdvancedFilters, setShowAdvancedFilters] =
     useState<boolean>(false);
 
   // ref to the scrollable answers container so we can scroll to top on page change
   const answersContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // helpers to adjust minScore in UI (mobile-friendly increment/decrement)
-  const incrementMinScore = () => {
-    const n = Number(filters.minScore || 0);
-    updateFilter('minScore', String(n + 1));
-  };
-  const decrementMinScore = () => {
-    const n = Math.max(0, Number(filters.minScore || 0) - 1);
-    updateFilter('minScore', String(n));
-  };
-
-  // reset all filters to defaults and reload the route (clears query params)
-  const resetFiltersWithReload = () => {
-    resetFilters();
-    try {
-      // reload without query params so loader receives defaults
-      window.location.href = window.location.pathname;
-    } catch {}
-  };
 
   // Persist advanced filters visibility so it doesn't unexpectedly close on reloads
   useEffect(() => {

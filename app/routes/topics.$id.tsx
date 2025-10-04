@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, Link } from 'react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useLoaderData } from 'react-router';
+import { useMemo } from 'react';
 import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
 import { AnswersList } from '~/components/features/answers/AnswersList';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
@@ -11,8 +11,6 @@ import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
 import { HEADER_BASE } from '~/styles/headerStyles';
-
-const _recentPostGuard = new Map<string, number>();
 
 /**
  * 概要: 指定されたお題に紐づく回答・コメント・ユーザー情報をまとめて取得する。
@@ -99,7 +97,7 @@ export default function TopicDetailRoute() {
   const { topic, answers, commentsByAnswer, users, profileId } =
     useLoaderData() as LoaderData;
 
-  const { nameByProfileId, getNameByProfileId } = useNameByProfileId(users);
+  const { getNameByProfileId } = useNameByProfileId(users);
 
   const { effectiveId: currentUserId, effectiveName: currentUserName } =
     useIdentity();

@@ -75,7 +75,7 @@ export async function handleAnswerActions({ request }: ActionFunctionArgs) {
 
   // Handle toggle (favorite)
   if (op === 'toggle') {
-    return await handleToggleFavorite(form, request);
+    return await handleToggleFavorite(form);
   }
 
   // Handle status (favorite check)
@@ -92,7 +92,7 @@ export async function handleAnswerActions({ request }: ActionFunctionArgs) {
   return await handleAddComment(form);
 }
 
-async function handleToggleFavorite(form: FormData, request: Request) {
+async function handleToggleFavorite(form: FormData) {
   const answerId = form.get('answerId');
   const profileId = form.get('profileId')
     ? String(form.get('profileId'))
