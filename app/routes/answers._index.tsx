@@ -11,6 +11,7 @@ import { useIdentity } from '~/hooks/useIdentity';
 import { useNameByProfileId } from '~/hooks/useNameByProfileId';
 import { useFilters, type AnswersFilters } from '~/hooks/useFilters';
 import { FilterForm } from '~/components/FilterForm';
+import { ListPageLayout } from '~/components/ListPageLayout';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
@@ -282,63 +283,57 @@ export default function AnswersRoute() {
   };
 
   return (
-    <StickyHeaderLayout
-      header={
-        <div className="z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-          <div className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold">大喜利 - 回答一覧</h1>
-              </div>
-              {/* removed link to /topics per UX: not needed on search screen */}
-            </div>
-
-            {/* Filters: search and sort (server-driven via GET) */}
-            <div className="mt-3">
-              <FilterForm
-                type="answers"
-                users={users}
-                query={filters.q}
-                setQuery={value => updateFilter('q', value)}
-                fromDate={filters.fromDate}
-                setFromDate={value => updateFilter('fromDate', value)}
-                toDate={filters.toDate}
-                setToDate={value => updateFilter('toDate', value)}
-                authorQuery={filters.author}
-                setAuthorQuery={value => updateFilter('author', value)}
-                sortBy={filters.sortBy}
-                setSortBy={value => updateFilter('sortBy', value)}
-                minScore={filters.minScore}
-                setMinScore={value => updateFilter('minScore', value)}
-                hasComments={filters.hasComments}
-                setHasComments={value => updateFilter('hasComments', value)}
-                showAdvancedFilters={showAdvancedFilters}
-                toggleAdvancedFilters={toggleAdvancedFilters}
-                onSubmit={() => setShowAdvancedFilters(false)}
-              />
-              {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
-            </div>
-          </div>
+    <ListPageLayout
+      headerTitle="大喜利 - 回答一覧"
+      filters={
+        <div className="mt-3">
+          <FilterForm
+            type="answers"
+            users={users}
+            query={filters.q}
+            setQuery={(value: string) => updateFilter('q', value)}
+            fromDate={filters.fromDate}
+            setFromDate={(value: string) => updateFilter('fromDate', value)}
+            toDate={filters.toDate}
+            setToDate={(value: string) => updateFilter('toDate', value)}
+            authorQuery={filters.author}
+            setAuthorQuery={(value: string) => updateFilter('author', value)}
+            sortBy={filters.sortBy}
+            setSortBy={(value: 'newest' | 'oldest' | 'scoreDesc') =>
+              updateFilter('sortBy', value)
+            }
+            minScore={filters.minScore}
+            setMinScore={(value: string) => updateFilter('minScore', value)}
+            hasComments={filters.hasComments}
+            setHasComments={(value: boolean) =>
+              updateFilter('hasComments', value)
+            }
+            showAdvancedFilters={showAdvancedFilters}
+            toggleAdvancedFilters={toggleAdvancedFilters}
+            onSubmit={() => setShowAdvancedFilters(false)}
+          />
+          {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
         </div>
       }
+      list={
+        <AnswersList
+          answers={paged}
+          topicsById={topicsById}
+          commentsByAnswer={commentsByAnswer}
+          getNameByProfileId={getNameByProfileId}
+          currentUserName={currentUserName}
+          currentUserId={currentUserId}
+          userAnswerData={userAnswerData}
+          onFavoriteUpdate={markFavorite}
+          actionPath="/answers"
+          pagination={{
+            currentPage,
+            pageCount,
+            buildHref,
+          }}
+        />
+      }
       contentRef={answersContainerRef}
-    >
-      <AnswersList
-        answers={paged}
-        topicsById={topicsById}
-        commentsByAnswer={commentsByAnswer}
-        getNameByProfileId={getNameByProfileId}
-        currentUserName={currentUserName}
-        currentUserId={currentUserId}
-        userAnswerData={userAnswerData}
-        onFavoriteUpdate={markFavorite}
-        actionPath="/answers"
-        pagination={{
-          currentPage,
-          pageCount,
-          buildHref,
-        }}
-      />
-    </StickyHeaderLayout>
+    />
   );
 }

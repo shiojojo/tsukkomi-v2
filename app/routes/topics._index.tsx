@@ -8,6 +8,7 @@ import { SearchInput } from '~/components/SearchInput';
 import { FilterForm } from '~/components/FilterForm';
 import { useFilters, type TopicsFilters } from '~/hooks/useFilters';
 import { TopicCard } from '~/components/TopicCard';
+import { ListPageLayout } from '~/components/ListPageLayout';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 import {
@@ -83,36 +84,33 @@ export default function TopicsRoute() {
   }, [currentPage]);
 
   return (
-    <StickyHeaderLayout
-      header={
-        <div className="z-30 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-gray-800">
-          <div className="p-4">
-            <h1 className="text-2xl font-semibold mb-4">お題一覧</h1>
-            <div className="mb-0">
-              <FilterForm
-                type="topics"
-                query={filters.q}
-                setQuery={value => updateFilter('q', value)}
-                fromDate={filters.fromDate}
-                setFromDate={value => updateFilter('fromDate', value)}
-                toDate={filters.toDate}
-                setToDate={value => updateFilter('toDate', value)}
-              />
-            </div>
-          </div>
+    <ListPageLayout
+      headerTitle="お題一覧"
+      filters={
+        <div className="mb-0">
+          <FilterForm
+            type="topics"
+            query={filters.q}
+            setQuery={(value: string) => updateFilter('q', value)}
+            fromDate={filters.fromDate}
+            setFromDate={(value: string) => updateFilter('fromDate', value)}
+            toDate={filters.toDate}
+            setToDate={(value: string) => updateFilter('toDate', value)}
+          />
         </div>
       }
-      contentRef={containerRef}
-    >
-      <div className="space-y-3 px-1">
-        <ul className="space-y-3">
-          {pagedTopics.map(t => (
-            <li key={t.id}>
-              <TopicCard topic={t} />
-            </li>
-          ))}
-        </ul>
-
+      list={
+        <div className="space-y-3 px-1">
+          <ul className="space-y-3">
+            {pagedTopics.map(t => (
+              <li key={t.id}>
+                <TopicCard topic={t} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      }
+      pagination={
         <Pagination
           currentPage={currentPage}
           pageCount={pageCount}
@@ -120,7 +118,8 @@ export default function TopicsRoute() {
             `?q=${encodeURIComponent(filters.q)}&fromDate=${encodeURIComponent(filters.fromDate)}&toDate=${encodeURIComponent(filters.toDate)}&page=${p}&pageSize=${pageSize}`
           }
         />
-      </div>
-    </StickyHeaderLayout>
+      }
+      contentRef={containerRef}
+    />
   );
 }
