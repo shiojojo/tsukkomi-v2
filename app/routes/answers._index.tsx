@@ -17,6 +17,10 @@ import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
 import { logger } from '~/lib/logger';
+import {
+  parsePaginationParams,
+  parseAnswersFilterParams,
+} from '~/lib/queryParser';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 // Keyed by `${op}:${profileId}:${answerId}` and stores last timestamp (ms).
@@ -31,20 +35,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const params = url.searchParams;
   const profileIdQuery = params.get('profileId') ?? undefined;
-  const q = params.get('q') ?? undefined;
-  const author = params.get('authorName') ?? undefined;
-  const page = Number(params.get('page') ?? '1');
-  const pageSize = Number(params.get('pageSize') ?? '20');
-  const sortBy = (params.get('sortBy') as any) ?? 'newest';
   const topicId = params.get('topicId') ?? undefined;
-  const minScore = params.get('minScore')
-    ? Number(params.get('minScore'))
-    : undefined;
-  const hasComments = params.get('hasComments')
-    ? params.get('hasComments') === '1' || params.get('hasComments') === 'true'
-    : undefined;
-  const fromDate = params.get('fromDate') || undefined;
-  const toDate = params.get('toDate') || undefined;
+  const { page, pageSize } = parsePaginationParams(request);
+  const { q, author, sortBy, minScore, hasComments, fromDate, toDate } =
+    parseAnswersFilterParams(request);
 
   const {
     getTopics,

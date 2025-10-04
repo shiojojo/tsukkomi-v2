@@ -10,15 +10,14 @@ import { useFilters, type TopicsFilters } from '~/hooks/useFilters';
 import { TopicCard } from '~/components/TopicCard';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
+import {
+  parsePaginationParams,
+  parseCommonFilterParams,
+} from '~/lib/queryParser';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  const params = url.searchParams;
-  const page = Number(params.get('page') ?? '1');
-  const pageSize = Number(params.get('pageSize') ?? '10');
-  const q = params.get('q') ?? undefined;
-  const fromDate = params.get('fromDate') ?? undefined;
-  const toDate = params.get('toDate') ?? undefined;
+  const { page, pageSize } = parsePaginationParams(request);
+  const { q, fromDate, toDate } = parseCommonFilterParams(request);
 
   const { getTopicsPaged } = await import('~/lib/db');
   const { topics, total } = await getTopicsPaged({
