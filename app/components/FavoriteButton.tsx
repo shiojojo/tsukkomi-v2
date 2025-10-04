@@ -3,6 +3,11 @@ import { useFetcher } from 'react-router';
 import { logger } from '~/lib/logger';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useOptimisticAction } from '~/hooks/useOptimisticAction';
+import {
+  ICON_BUTTON_BASE,
+  ICON_BUTTON_ACTIVE,
+  ICON_BUTTON_INACTIVE,
+} from '~/styles/buttonStyles';
 
 export type FavoriteButtonProps = {
   answerId: number;
@@ -94,7 +99,7 @@ const FavoriteButton = memo(function FavoriteButton({
       type="button"
       aria-pressed={fav}
       onClick={handleClick}
-      className={`p-2 rounded-md ${fav ? 'text-red-500' : 'text-gray-400 dark:text-white'} hover:opacity-90`}
+      className={`${ICON_BUTTON_BASE} ${fav ? ICON_BUTTON_ACTIVE : ICON_BUTTON_INACTIVE}`}
       title={
         !effectiveId
           ? 'ログインしてお気に入り登録'

@@ -6,6 +6,7 @@ import NumericVoteButtons from '~/components/NumericVoteButtons';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
+import { SECONDARY_BUTTON } from '~/styles/buttonStyles';
 
 export interface AnswerActionCardProps {
   answer: Answer;
@@ -222,7 +223,7 @@ export function AnswerActionCard({
                   type="button"
                   onClick={() => setOpen(prev => !prev)}
                   aria-expanded={open}
-                  className="inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50"
+                  className={SECONDARY_BUTTON}
                 >
                   {open ? '閉じる' : 'コメント / 採点'}
                 </button>

@@ -3,6 +3,11 @@ import { useLoaderData, useFetcher } from 'react-router';
 import { useEffect, useState } from 'react';
 import * as identityStorage from '~/lib/identityStorage';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
+import {
+  SMALL_BUTTON_ACTIVE,
+  SMALL_BUTTON_INACTIVE,
+  TERTIARY_BUTTON,
+} from '~/styles/buttonStyles';
 
 /**
  * 概要: /login (開発用) - メインユーザー選択 & サブユーザー作成 / 切替 を一画面で提供。
@@ -67,13 +72,13 @@ export default function LoginRoute() {
       (createFetcher.data as any).sub
     ) {
       try {
-  const sub = (createFetcher.data as any).sub;
-  const parentId = String((createFetcher.data as any).parentId || '');
-  const parent = users.find(u => u.id === parentId);
-  identityStorage.setItem('currentUserId', parentId);
-  if (parent) identityStorage.setItem('currentUserName', parent.name);
-  identityStorage.setItem('currentSubUserId', sub.id);
-  identityStorage.setItem('currentSubUserName', sub.name);
+        const sub = (createFetcher.data as any).sub;
+        const parentId = String((createFetcher.data as any).parentId || '');
+        const parent = users.find(u => u.id === parentId);
+        identityStorage.setItem('currentUserId', parentId);
+        if (parent) identityStorage.setItem('currentUserName', parent.name);
+        identityStorage.setItem('currentSubUserId', sub.id);
+        identityStorage.setItem('currentSubUserName', sub.name);
       } catch {}
       window.location.href = '/';
     }
@@ -81,28 +86,28 @@ export default function LoginRoute() {
 
   function selectMain(u: any) {
     try {
-  identityStorage.setItem('currentUserId', u.id);
-  identityStorage.setItem('currentUserName', u.name ?? '');
-  identityStorage.removeItem('currentSubUserId');
-  identityStorage.removeItem('currentSubUserName');
+      identityStorage.setItem('currentUserId', u.id);
+      identityStorage.setItem('currentUserName', u.name ?? '');
+      identityStorage.removeItem('currentSubUserId');
+      identityStorage.removeItem('currentSubUserName');
     } catch {}
     window.location.href = '/';
   }
 
   function selectSub(sub: any, parent: any) {
     try {
-  identityStorage.setItem('currentUserId', parent.id);
-  identityStorage.setItem('currentUserName', parent.name ?? '');
-  identityStorage.setItem('currentSubUserId', sub.id);
-  identityStorage.setItem('currentSubUserName', sub.name);
+      identityStorage.setItem('currentUserId', parent.id);
+      identityStorage.setItem('currentUserName', parent.name ?? '');
+      identityStorage.setItem('currentSubUserId', sub.id);
+      identityStorage.setItem('currentSubUserName', sub.name);
     } catch {}
     window.location.href = '/';
   }
 
   function clearSub() {
     try {
-  identityStorage.removeItem('currentSubUserId');
-  identityStorage.removeItem('currentSubUserName');
+      identityStorage.removeItem('currentSubUserId');
+      identityStorage.removeItem('currentSubUserName');
     } catch {}
     window.location.href = '/';
   }
@@ -156,7 +161,7 @@ export default function LoginRoute() {
                 ) : (
                   <button
                     onClick={() => selectMain(u)}
-                    className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                    className={SMALL_BUTTON_ACTIVE}
                   >
                     {currentUserId === u.id ? '再選択' : '選択'}
                   </button>
@@ -166,7 +171,7 @@ export default function LoginRoute() {
                   onClick={() =>
                     setSelectedMainId(s => (s === u.id ? null : u.id))
                   }
-                  className="text-xs px-2 py-1 border rounded"
+                  className={SMALL_BUTTON_INACTIVE}
                 >
                   {selectedMainId === u.id ? '閉じる' : '詳細'}
                 </button>
@@ -191,7 +196,7 @@ export default function LoginRoute() {
                             ) : (
                               <button
                                 onClick={() => selectSub(s, u)}
-                                className="text-[10px] px-2 py-1 rounded bg-gray-200 dark:bg-gray-700"
+                                className={TERTIARY_BUTTON}
                               >
                                 切替
                               </button>
@@ -220,7 +225,7 @@ export default function LoginRoute() {
                       />
                       <button
                         type="submit"
-                        className="text-xs px-2 py-1 rounded bg-blue-500 text-white"
+                        className={SMALL_BUTTON_ACTIVE}
                         disabled={createFetcher.state !== 'idle'}
                       >
                         追加

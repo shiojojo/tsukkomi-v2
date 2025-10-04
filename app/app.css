@@ -25,15 +25,7 @@ body {
 }
 
 /* App-wide form/button utilities to ensure contrast in dark and light themes */
-/* Primary small button used for inline forms (comment send) */
-.btn-inline {
-  /* Light: subtle white button; Dark: use an accessible indigo primary for contrast */
-  @apply bg-white dark:bg-indigo-600 text-gray-900 dark:text-white border border-gray-200 dark:border-transparent px-3 py-1 rounded-md shadow-sm;
-}
-
-.btn-inline:hover {
-  @apply bg-gray-50 dark:bg-indigo-500;
-}
+/* Primary small button used for inline forms (comment send) - MOVED TO buttonStyles.ts */
 
 /* Improve input contrast and focus */
 .form-input {

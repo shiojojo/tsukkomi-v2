@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useOptimisticAction } from '~/hooks/useOptimisticAction';
+import {
+  CONTROL_BTN_BASE,
+  CONTROL_BTN_ACTIVE,
+  CONTROL_BTN_INACTIVE,
+} from '~/styles/buttonStyles';
 
 export type NumericVoteButtonsProps = {
   answerId: number;
@@ -10,23 +15,6 @@ export type NumericVoteButtonsProps = {
   actionPath?: string;
   loginRedirectPath?: string;
 };
-
-const CONTROL_BTN_BASE =
-  'inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-md text-sm font-medium border';
-const CONTROL_BTN_ACTIVE = 'bg-blue-600 text-white border-blue-600';
-const CONTROL_BTN_INACTIVE =
-  'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100';
-
-/**
- * 概要: 3 段階の採点ボタン UI。ローカルストレージに状態を保存しつつ、サーバー action へ投票を送信する。
- * Intent: topics や favorites など複数画面で共通の採点 UI を提供し、重複実装を排除する。
- * Contract:
- *   - initialVotes は現在の集計。ユーザー操作で optimistic に更新し、サーバー応答が counts を返した場合に同期。
- *   - votesBy に現在のユーザーの投票レベルが含まれると選択済みとして表示。
- *   - actionPath へ POST (FormData: answerId, level, userId)。省略時は現在パス。
- * Environment: ブラウザ専用 (localStorage / window 参照あり)。SSR では非アクティブ。
- * Errors: fetch 失敗時は console.error にログし UI は optimism 状態を維持。
- */
 export function NumericVoteButtons({
   answerId,
   initialVotes,
