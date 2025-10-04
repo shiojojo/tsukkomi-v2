@@ -57,7 +57,6 @@ describe('FilterForm', () => {
       setFromDate: vi.fn(),
       toDate: '',
       setToDate: vi.fn(),
-      onClear: vi.fn(),
     };
 
     it('renders search input and date range filter', () => {
@@ -66,9 +65,6 @@ describe('FilterForm', () => {
       expect(screen.getByTestId('search-input')).toBeInTheDocument();
       expect(screen.getByTestId('date-range-filter')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '検索' })).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'クリア' })
-      ).toBeInTheDocument();
     });
 
     it('calls setQuery when search input changes', () => {
@@ -92,15 +88,6 @@ describe('FilterForm', () => {
       expect(defaultProps.setFromDate).toHaveBeenCalledWith('2023-01-01');
       expect(defaultProps.setToDate).toHaveBeenCalledWith('2023-12-31');
     });
-
-    it('calls onClear when clear button is clicked', () => {
-      render(<FilterForm {...defaultProps} />);
-
-      const clearButton = screen.getByRole('button', { name: 'クリア' });
-      fireEvent.click(clearButton);
-
-      expect(defaultProps.onClear).toHaveBeenCalled();
-    });
   });
 
   describe('answers type', () => {
@@ -123,7 +110,6 @@ describe('FilterForm', () => {
       setHasComments: vi.fn(),
       showAdvancedFilters: false,
       toggleAdvancedFilters: vi.fn(),
-      onClear: vi.fn(),
     };
 
     it('renders basic filters when advanced filters are hidden', () => {
@@ -134,9 +120,6 @@ describe('FilterForm', () => {
         screen.getByRole('button', { name: '詳細フィルタ' })
       ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: '検索' })).toBeInTheDocument();
-      expect(
-        screen.getByRole('button', { name: 'クリア' })
-      ).toBeInTheDocument();
     });
 
     it('renders advanced filters when showAdvancedFilters is true', () => {
@@ -174,15 +157,6 @@ describe('FilterForm', () => {
       fireEvent.click(button);
 
       expect(defaultProps.toggleAdvancedFilters).toHaveBeenCalled();
-    });
-
-    it('calls onClear when reset button is clicked', () => {
-      render(<FilterForm {...defaultProps} />);
-
-      const button = screen.getByRole('button', { name: 'クリア' });
-      fireEvent.click(button);
-
-      expect(defaultProps.onClear).toHaveBeenCalled();
     });
 
     it('increments minScore when + button is clicked', () => {

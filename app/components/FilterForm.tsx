@@ -11,7 +11,6 @@ interface BaseFilterProps {
   setFromDate: (value: string) => void;
   toDate: string;
   setToDate: (value: string) => void;
-  onClear?: () => void;
 }
 
 interface AnswersFilterProps extends BaseFilterProps {
@@ -36,16 +35,8 @@ interface TopicsFilterProps extends BaseFilterProps {
 type FilterFormProps = AnswersFilterProps | TopicsFilterProps;
 
 export function FilterForm(props: FilterFormProps) {
-  const {
-    type,
-    query,
-    setQuery,
-    fromDate,
-    setFromDate,
-    toDate,
-    setToDate,
-    onClear,
-  } = props;
+  const { type, query, setQuery, fromDate, setFromDate, toDate, setToDate } =
+    props;
 
   const incrementMinScore = () => {
     if (type === 'answers') {
@@ -69,15 +60,6 @@ export function FilterForm(props: FilterFormProps) {
       >
         検索
       </button>
-      {onClear && (
-        <button
-          type="button"
-          onClick={onClear}
-          className="text-xs px-2 py-1 border rounded-md text-gray-600 dark:text-white"
-        >
-          クリア
-        </button>
-      )}
     </div>
   );
 

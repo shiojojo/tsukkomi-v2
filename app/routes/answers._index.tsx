@@ -320,7 +320,6 @@ export default function AnswersRoute() {
                 setHasComments={value => updateFilter('hasComments', value)}
                 showAdvancedFilters={showAdvancedFilters}
                 toggleAdvancedFilters={toggleAdvancedFilters}
-                onClear={resetFilters}
               />
               {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
             </div>

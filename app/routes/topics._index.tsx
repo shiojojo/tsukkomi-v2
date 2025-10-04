@@ -98,7 +98,6 @@ export default function TopicsRoute() {
                 setFromDate={value => updateFilter('fromDate', value)}
                 toDate={filters.toDate}
                 setToDate={value => updateFilter('toDate', value)}
-                onClear={resetFilters}
               />
             </div>
           </div>
