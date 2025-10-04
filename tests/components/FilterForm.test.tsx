@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { FilterForm } from '~/components/FilterForm';
+import { FilterForm } from '~/components/forms/FilterForm';
 import type { User } from '~/lib/schemas/user';
 
 // Mock react-router
@@ -9,7 +9,7 @@ vi.mock('react-router', () => ({
 }));
 
 // Mock the components
-vi.mock('~/components/SearchInput', () => ({
+vi.mock('~/components/ui/SearchInput', () => ({
   SearchInput: ({ value, onChange, placeholder }: any) => (
     <input
       data-testid="search-input"
@@ -20,7 +20,7 @@ vi.mock('~/components/SearchInput', () => ({
   ),
 }));
 
-vi.mock('~/components/DateRangeFilter', () => ({
+vi.mock('~/components/forms/DateRangeFilter', () => ({
   DateRangeFilter: ({
     fromDate,
     toDate,

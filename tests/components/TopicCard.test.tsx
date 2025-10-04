@@ -1,11 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { TopicCard } from '~/components/TopicCard';
+import { TopicCard } from '~/components/features/topics/TopicCard';
 
 describe('TopicCard', () => {
   it('should render topic title without image', () => {
-    const topic = { id: 1, title: 'Test Topic', created_at: '2023-01-01T00:00:00Z', image: null };
+    const topic = {
+      id: 1,
+      title: 'Test Topic',
+      created_at: '2023-01-01T00:00:00Z',
+      image: null,
+    };
 
     render(
       <MemoryRouter>
@@ -18,7 +23,12 @@ describe('TopicCard', () => {
   });
 
   it('should render topic with image', () => {
-    const topic = { id: 1, title: 'Test Topic', created_at: '2023-01-01T00:00:00Z', image: 'https://example.com/image.jpg' };
+    const topic = {
+      id: 1,
+      title: 'Test Topic',
+      created_at: '2023-01-01T00:00:00Z',
+      image: 'https://example.com/image.jpg',
+    };
 
     render(
       <MemoryRouter>
@@ -31,7 +41,12 @@ describe('TopicCard', () => {
   });
 
   it('should include profileId in href when provided', () => {
-    const topic = { id: 1, title: 'Test Topic', created_at: '2023-01-01T00:00:00Z', image: null };
+    const topic = {
+      id: 1,
+      title: 'Test Topic',
+      created_at: '2023-01-01T00:00:00Z',
+      image: null,
+    };
 
     render(
       <MemoryRouter>
@@ -39,6 +54,9 @@ describe('TopicCard', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('link')).toHaveAttribute('href', '/topics/1?profileId=profile-1');
+    expect(screen.getByRole('link')).toHaveAttribute(
+      'href',
+      '/topics/1?profileId=profile-1'
+    );
   });
 });

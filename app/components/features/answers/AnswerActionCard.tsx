@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import FavoriteButton from '~/components/FavoriteButton';
-import NumericVoteButtons from '~/components/NumericVoteButtons';
+import FavoriteButton from '~/components/common/FavoriteButton';
+import NumericVoteButtons from '~/components/common/NumericVoteButtons';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
-import { Button } from '~/components/Button';
+import { Button } from '~/components/ui/Button';
 
 export interface AnswerActionCardProps {
   answer: Answer;

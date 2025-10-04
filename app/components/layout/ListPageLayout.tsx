@@ -1,5 +1,5 @@
 import type { ReactNode, RefObject } from 'react';
-import StickyHeaderLayout from '~/components/StickyHeaderLayout';
+import StickyHeaderLayout from './StickyHeaderLayout';
 import { HEADER_BASE } from '~/styles/headerStyles';
 
 interface ListPageLayoutProps {

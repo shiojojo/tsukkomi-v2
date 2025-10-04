@@ -1,9 +1,9 @@
 import { Form } from 'react-router';
 import { useState } from 'react';
-import { SearchInput } from './SearchInput';
+import { SearchInput } from '~/components/ui/SearchInput';
 import { DateRangeFilter } from './DateRangeFilter';
 import type { User } from '~/lib/schemas/user';
-import { Button } from './Button';
+import { Button } from '~/components/ui/Button';
 
 interface BaseFilterProps {
   query: string;

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Answer } from '~/lib/schemas/answer';
-import { Button } from '~/components/Button';
+import { Button } from '~/components/ui/Button';
 
 /**
  * 概要: トピック詳細ページ（/topics/:id）。初期ロードを最小化し TTFB / LCP を改善。

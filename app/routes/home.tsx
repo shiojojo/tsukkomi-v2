@@ -1,7 +1,7 @@
 import type { Route } from './+types/home';
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
-import { TopicCard } from '~/components/TopicCard';
+import { TopicCard } from '~/components/features/topics/TopicCard';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 

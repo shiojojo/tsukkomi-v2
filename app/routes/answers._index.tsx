@@ -1,17 +1,17 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link, Form } from 'react-router';
 import { useEffect, useMemo, useState, useRef } from 'react';
-import StickyHeaderLayout from '~/components/StickyHeaderLayout';
-import { AnswersList } from '~/components/AnswersList';
-import { Pagination } from '~/components/Pagination';
-import { DateRangeFilter } from '~/components/DateRangeFilter';
-import { SearchInput } from '~/components/SearchInput';
+import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
+import { AnswersList } from '~/components/features/answers/AnswersList';
+import { Pagination } from '~/components/common/Pagination';
+import { DateRangeFilter } from '~/components/forms/DateRangeFilter';
+import { SearchInput } from '~/components/ui/SearchInput';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useNameByProfileId } from '~/hooks/useNameByProfileId';
 import { useFilters, type AnswersFilters } from '~/hooks/useFilters';
-import { FilterForm } from '~/components/FilterForm';
-import { ListPageLayout } from '~/components/ListPageLayout';
+import { FilterForm } from '~/components/forms/FilterForm';
+import { ListPageLayout } from '~/components/layout/ListPageLayout';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';

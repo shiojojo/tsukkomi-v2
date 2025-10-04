@@ -3,7 +3,7 @@ import { useLoaderData, useFetcher } from 'react-router';
 import { useEffect, useState } from 'react';
 import * as identityStorage from '~/lib/identityStorage';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
-import { Button } from '~/components/Button';
+import { Button } from '~/components/ui/Button';
 
 /**
  * 概要: /login (開発用) - メインユーザー選択 & サブユーザー作成 / 切替 を一画面で提供。

@@ -28,6 +28,14 @@ app/
 		posts.$id.tsx       ← /posts/:id （動的セグメント = $）
 		posts.new.tsx       ← /posts/new
 	components/           ← 再利用 UI（ビジネスロジック含めない）
+		ui/                 ← 基本的な汎用 UI コンポーネント（Button, SearchInput など）
+		layout/             ← レイアウト関連（StickyHeaderLayout, ListPageLayout, ResponsiveNav など）
+		features/           ← 機能固有コンポーネント
+			answers/        ← 回答関連（AnswersList, AnswerActionCard など）
+			topics/         ← トピック関連（TopicCard など）
+		forms/              ← フォーム関連（FilterForm, DateRangeFilter など）
+		common/             ← 共通再利用コンポーネント（Pagination, NumericVoteButtons, FavoriteButton など）
+		icons/              ← アイコンコンポーネント（将来的に使用）
 	lib/
 		supabase.ts         ← Supabase クライアント生成（本番専用 init）
 		db.ts               ← すべてのデータアクセス統合ポイント

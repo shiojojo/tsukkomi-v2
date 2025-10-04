@@ -5,7 +5,7 @@ import { getItem, setItem, removeItem } from '~/lib/identityStorage';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
-import { Button } from '~/components/Button';
+import { Button } from '~/components/ui/Button';
 
 /**
  * 概要: /me ページ - 開発向けにサブユーザーの作成 / 削除 / 切替 を提供する。

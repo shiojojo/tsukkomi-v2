@@ -1,5 +1,5 @@
-import { Pagination } from '~/components/Pagination';
-import AnswerActionCard from '~/components/AnswerActionCard';
+import { Pagination } from '~/components/common/Pagination';
+import AnswerActionCard from './AnswerActionCard';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';

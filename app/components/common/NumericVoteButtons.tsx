@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useFetcher } from 'react-router';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useOptimisticAction } from '~/hooks/useOptimisticAction';
-import { Button } from '~/components/Button';
+import { Button } from '~/components/ui/Button';
 
 export type NumericVoteButtonsProps = {
   answerId: number;

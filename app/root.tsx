@@ -14,7 +14,7 @@ import { logger } from '~/lib/logger';
 
 import type { Route } from './+types/root';
 import './app.css';
-import ResponsiveNav from './components/ResponsiveNav';
+import ResponsiveNav from './components/layout/ResponsiveNav';
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },

@@ -1,8 +1,8 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Link } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
-import StickyHeaderLayout from '~/components/StickyHeaderLayout';
-import { AnswersList } from '~/components/AnswersList';
+import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
+import { AnswersList } from '~/components/features/answers/AnswersList';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useNameByProfileId } from '~/hooks/useNameByProfileId';

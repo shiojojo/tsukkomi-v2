@@ -1,14 +1,14 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Form } from 'react-router';
 import { useEffect, useRef, useState } from 'react';
-import StickyHeaderLayout from '~/components/StickyHeaderLayout';
-import { Pagination } from '~/components/Pagination';
-import { DateRangeFilter } from '~/components/DateRangeFilter';
-import { SearchInput } from '~/components/SearchInput';
-import { FilterForm } from '~/components/FilterForm';
+import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
+import { Pagination } from '~/components/common/Pagination';
+import { DateRangeFilter } from '~/components/forms/DateRangeFilter';
+import { SearchInput } from '~/components/ui/SearchInput';
+import { FilterForm } from '~/components/forms/FilterForm';
 import { useFilters, type TopicsFilters } from '~/hooks/useFilters';
-import { TopicCard } from '~/components/TopicCard';
-import { ListPageLayout } from '~/components/ListPageLayout';
+import { TopicCard } from '~/components/features/topics/TopicCard';
+import { ListPageLayout } from '~/components/layout/ListPageLayout';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 import {
