@@ -99,7 +99,6 @@ export default function TopicsRoute() {
                 toDate={filters.toDate}
                 setToDate={value => updateFilter('toDate', value)}
                 onClear={resetFilters}
-                onSubmit={() => {}}
               />
             </div>
           </div>
