@@ -40,16 +40,34 @@ export function getItem(key: string): string | null {
 
 export function setItem(key: string, value: string) {
   if (isLocalStorageAvailable()) {
-    try { window.localStorage.setItem(key, value); return; } catch {}
+    try { 
+      window.localStorage.setItem(key, value); 
+      // Dispatch custom event for same-tab updates
+      window.dispatchEvent(new Event('identity-change'));
+      return; 
+    } catch {}
   }
   writeCookie(key, value);
+  // Also dispatch for cookie fallback
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('identity-change'));
+  }
 }
 
 export function removeItem(key: string) {
   if (isLocalStorageAvailable()) {
-    try { window.localStorage.removeItem(key); return; } catch {}
+    try { 
+      window.localStorage.removeItem(key); 
+      // Dispatch custom event for same-tab updates
+      window.dispatchEvent(new Event('identity-change'));
+      return; 
+    } catch {}
   }
   removeCookie(key);
+  // Also dispatch for cookie fallback
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('identity-change'));
+  }
 }
 
 export function available() {

@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useFetcher } from 'react-router';
 import { useEffect, useState } from 'react';
 import * as identityStorage from '~/lib/identityStorage';
+import { useIdentity } from '~/hooks/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 
@@ -41,23 +42,13 @@ export default function LoginRoute() {
   const users = data.users as any[];
   const createFetcher = useFetcher();
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
-  const [currentSubUserId, setCurrentSubUserId] = useState<string | null>(null);
-  const [currentSubUserName, setCurrentSubUserName] = useState<string | null>(
-    null
-  );
+  const {
+    mainId: currentUserId,
+    mainName: currentUserName,
+    subId: currentSubUserId,
+    subName: currentSubUserName,
+  } = useIdentity();
   const [selectedMainId, setSelectedMainId] = useState<string | null>(null);
-
-  // 初期状態読み込み
-  useEffect(() => {
-    try {
-      setCurrentUserId(identityStorage.getItem('currentUserId'));
-      setCurrentUserName(identityStorage.getItem('currentUserName'));
-      setCurrentSubUserId(identityStorage.getItem('currentSubUserId'));
-      setCurrentSubUserName(identityStorage.getItem('currentSubUserName'));
-    } catch {}
-  }, []);
 
   // サブユーザー作成完了時: 直ちにそのサブをアクティブ化しトップへ遷移
   useEffect(() => {
@@ -75,6 +66,7 @@ export default function LoginRoute() {
         if (parent) identityStorage.setItem('currentUserName', parent.name);
         identityStorage.setItem('currentSubUserId', sub.id);
         identityStorage.setItem('currentSubUserName', sub.name);
+        // refresh() is not needed as storage event will trigger update
       } catch {}
       window.location.href = '/';
     }
@@ -86,6 +78,7 @@ export default function LoginRoute() {
       identityStorage.setItem('currentUserName', u.name ?? '');
       identityStorage.removeItem('currentSubUserId');
       identityStorage.removeItem('currentSubUserName');
+      // refresh() is not needed as storage event will trigger update
     } catch {}
     window.location.href = '/';
   }
@@ -96,6 +89,7 @@ export default function LoginRoute() {
       identityStorage.setItem('currentUserName', parent.name ?? '');
       identityStorage.setItem('currentSubUserId', sub.id);
       identityStorage.setItem('currentSubUserName', sub.name);
+      // refresh() is not needed as storage event will trigger update
     } catch {}
     window.location.href = '/';
   }
@@ -104,6 +98,7 @@ export default function LoginRoute() {
     try {
       identityStorage.removeItem('currentSubUserId');
       identityStorage.removeItem('currentSubUserName');
+      // refresh() is not needed as storage event will trigger update
     } catch {}
     window.location.href = '/';
   }

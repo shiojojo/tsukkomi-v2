@@ -4,6 +4,7 @@ import { consumeToken } from '~/lib/rateLimiter';
 import { getItem, setItem, removeItem } from '~/lib/identityStorage';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
+import { useIdentity } from '~/hooks/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 
@@ -73,27 +74,16 @@ export default function MeRoute() {
   const data = useLoaderData() as Awaited<ReturnType<typeof loader>>;
   const users = data.users as any[];
 
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
-  const [currentSubUserId, setCurrentSubUserId] = useState<string | null>(null);
-  const [currentSubUserName, setCurrentSubUserName] = useState<string | null>(
-    null
-  );
+  const {
+    mainId: currentUserId,
+    mainName: currentUserName,
+    subId: currentSubUserId,
+    subName: currentSubUserName,
+  } = useIdentity();
 
   // fetchers for mutate actions
   const add = useFetcher();
   const remove = useFetcher();
-
-  useEffect(() => {
-    try {
-      setCurrentUserId(getItem('currentUserId'));
-      setCurrentUserName(getItem('currentUserName'));
-      setCurrentSubUserId(getItem('currentSubUserId'));
-      setCurrentSubUserName(getItem('currentSubUserName'));
-    } catch {
-      // ignore
-    }
-  }, []);
 
   // Handle add result: set the created sub-user as active
   useEffect(() => {
@@ -106,6 +96,7 @@ export default function MeRoute() {
         if (parent) setItem('currentUserName', parent.name ?? '');
         setItem('currentSubUserId', sub.id);
         setItem('currentSubUserName', sub.name);
+        // refresh() is not needed as storage event will trigger update
       } catch {}
       // reload to reflect updated server-side mock state
       window.location.reload();
@@ -121,6 +112,7 @@ export default function MeRoute() {
           removeItem('currentSubUserId');
           removeItem('currentSubUserName');
         }
+        // refresh() is not needed as storage event will trigger update
       } catch {}
       window.location.reload();
     }
@@ -133,6 +125,7 @@ export default function MeRoute() {
       // clear any sub selection
       removeItem('currentSubUserId');
       removeItem('currentSubUserName');
+      // refresh() is not needed as storage event will trigger update
     } catch {}
     window.location.reload();
   }
@@ -143,6 +136,7 @@ export default function MeRoute() {
       setItem('currentUserName', parent.name ?? '');
       setItem('currentSubUserId', sub.id);
       setItem('currentSubUserName', sub.name);
+      // refresh() is not needed as storage event will trigger update
     } catch {}
     window.location.reload();
   }
@@ -152,6 +146,7 @@ export default function MeRoute() {
     try {
       removeItem('currentSubUserId');
       removeItem('currentSubUserName');
+      // refresh() is not needed as storage event will trigger update
     } catch {}
     window.location.reload();
   }
