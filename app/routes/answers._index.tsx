@@ -115,6 +115,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
     page,
     pageSize,
     users,
+    q,
+    author,
+    sortBy,
+    minScore,
+    hasComments,
+    fromDate,
+    toDate,
   };
 }
 
@@ -132,6 +139,18 @@ export default function AnswersRoute() {
   const commentsByAnswer: Record<string, Comment[]> =
     (data as any)?.commentsByAnswer ?? {};
   const users: User[] = (data as any)?.users ?? [];
+  const qParam: string = (data as any)?.q ?? '';
+  const authorParam: string = (data as any)?.author ?? '';
+  const sortByParam: string = (data as any)?.sortBy ?? 'newest';
+  const sortBy: 'newest' | 'oldest' | 'scoreDesc' =
+    sortByParam === 'oldest' || sortByParam === 'scoreDesc'
+      ? (sortByParam as any)
+      : 'newest';
+  const minScoreParam: string = String((data as any)?.minScore ?? '');
+  const hasCommentsParam: boolean = (data as any)?.hasComments ?? false;
+  const fromDateParam: string = (data as any)?.fromDate ?? '';
+  const toDateParam: string = (data as any)?.toDate ?? '';
+
   const { nameByProfileId, getNameByProfileId } = useNameByProfileId(users);
 
   const { effectiveId: currentUserId, effectiveName: currentUserName } =
@@ -143,13 +162,13 @@ export default function AnswersRoute() {
 
   // Filter UI state (server-driven via GET form)
   const initialFilters: AnswersFilters = {
-    q: '',
-    author: '',
-    sortBy: 'newest',
-    minScore: '',
-    hasComments: false,
-    fromDate: '',
-    toDate: '',
+    q: qParam,
+    author: authorParam,
+    sortBy: sortBy,
+    minScore: minScoreParam,
+    hasComments: hasCommentsParam,
+    fromDate: fromDateParam,
+    toDate: toDateParam,
   };
 
   const urlKeys: Record<keyof AnswersFilters, string> = {
