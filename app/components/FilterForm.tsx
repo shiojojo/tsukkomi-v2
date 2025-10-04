@@ -26,6 +26,7 @@ interface AnswersFilterProps extends BaseFilterProps {
   setHasComments: (value: boolean) => void;
   showAdvancedFilters: boolean;
   toggleAdvancedFilters: () => void;
+  onSubmit?: () => void;
 }
 
 interface TopicsFilterProps extends BaseFilterProps {
@@ -94,12 +95,14 @@ export function FilterForm(props: FilterFormProps) {
     setHasComments,
     showAdvancedFilters,
     toggleAdvancedFilters,
+    onSubmit,
   } = props;
 
   return (
     <Form
       method="get"
       className="flex flex-wrap gap-2 items-start md:items-center"
+      onSubmit={onSubmit}
     >
       {/* Group: author, sortBy, advanced toggle — keep single-line on small screens */}
       <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
