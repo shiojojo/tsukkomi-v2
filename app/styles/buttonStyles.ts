@@ -21,11 +21,15 @@ export const SMALL_BUTTON_BASE =
 export const SMALL_BUTTON_ACTIVE = 'bg-blue-600 text-white border-blue-600';
 
 export const SMALL_BUTTON_INACTIVE =
-  'bg-white text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-100';
+  'bg-transparent text-gray-800 border-gray-200 dark:bg-transparent dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700';
 
 // セカンダリボタン（アウトラインスタイル）
 export const SECONDARY_BUTTON =
   'inline-flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-md border border-blue-200 text-blue-600 hover:bg-blue-50';
+
+// セカンダリボタン小サイズ（アウトラインスタイル）
+export const SMALL_SECONDARY_BUTTON =
+  'inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border border-blue-200 bg-black text-white hover:bg-gray-800';
 
 // ターシャリボタン（グレー背景）
 export const TERTIARY_BUTTON =

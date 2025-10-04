@@ -3,10 +3,7 @@ import { useState } from 'react';
 import { SearchInput } from './SearchInput';
 import { DateRangeFilter } from './DateRangeFilter';
 import type { User } from '~/lib/schemas/user';
-import {
-  SMALL_BUTTON_INACTIVE,
-  SMALL_BUTTON_ACTIVE,
-} from '~/styles/buttonStyles';
+import { SMALL_SECONDARY_BUTTON } from '~/styles/buttonStyles';
 
 interface BaseFilterProps {
   query: string;
@@ -59,7 +56,7 @@ export function FilterForm(props: FilterFormProps) {
 
   const SubmitAndClearButtons = () => (
     <div className="flex items-center gap-2">
-      <button type="submit" className={SMALL_BUTTON_ACTIVE}>
+      <button type="submit" className={SMALL_SECONDARY_BUTTON}>
         検索
       </button>
     </div>
@@ -142,7 +139,7 @@ export function FilterForm(props: FilterFormProps) {
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
             type="button"
-            className={SMALL_BUTTON_INACTIVE}
+            className={SMALL_SECONDARY_BUTTON}
             onClick={toggleAdvancedFilters}
           >
             {showAdvancedFilters ? '詳細を閉じる' : '詳細フィルタ'}
