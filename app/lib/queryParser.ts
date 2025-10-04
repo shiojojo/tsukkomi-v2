@@ -53,3 +53,13 @@ export function parseAnswersFilterParams(request: LoaderFunctionArgs['request'])
 
 // topics 固有のフィルタ（今のところ common と同じ）
 export type TopicsFilterParams = CommonFilterParams;
+
+export type FilterParams = CommonFilterParams | AnswersFilterParams;
+
+export function parseFilterParams(request: LoaderFunctionArgs['request'], entityType: 'topics' | 'answers'): FilterParams {
+  if (entityType === 'topics') {
+    return parseCommonFilterParams(request);
+  } else {
+    return parseAnswersFilterParams(request);
+  }
+}

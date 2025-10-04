@@ -15,32 +15,30 @@ import {
   parsePaginationParams,
   parseCommonFilterParams,
 } from '~/lib/queryParser';
+import { createListLoader } from '~/lib/loaders';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { page, pageSize } = parsePaginationParams(request);
-  const { q, fromDate, toDate } = parseCommonFilterParams(request);
-
-  const { getTopicsPaged } = await import('~/lib/db');
-  const { topics, total } = await getTopicsPaged({
-    page,
-    pageSize,
-    q,
-    fromDate,
-    toDate,
-  });
-  return { topics, total, page, pageSize, q, fromDate, toDate };
+  return createListLoader('topics', request);
 }
 
 export default function TopicsRoute() {
-  type LoaderData = Awaited<ReturnType<typeof loader>>;
+  type LoaderData = {
+    topics: Topic[];
+    total: number;
+    page: number;
+    pageSize: number;
+    q?: string;
+    fromDate?: string;
+    toDate?: string;
+  };
   const data = useLoaderData() as LoaderData;
   const topics: Topic[] = data?.topics ?? [];
-  const total: number = (data as any)?.total ?? topics.length;
-  const currentPage: number = (data as any)?.page ?? 1;
-  const pageSize: number = (data as any)?.pageSize ?? 10;
-  const qParam: string = (data as any)?.q ?? '';
-  const fromDateParam: string = (data as any)?.fromDate ?? '';
-  const toDateParam: string = (data as any)?.toDate ?? '';
+  const total: number = data?.total ?? topics.length;
+  const currentPage: number = data?.page ?? 1;
+  const pageSize: number = data?.pageSize ?? 10;
+  const qParam: string = data?.q ?? '';
+  const fromDateParam: string = data?.fromDate ?? '';
+  const toDateParam: string = data?.toDate ?? '';
 
   const initialFilters: TopicsFilters = {
     q: qParam,

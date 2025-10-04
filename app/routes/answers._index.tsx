@@ -30,41 +30,36 @@ import {
 // is implemented. It may be reset on server restart.
 const _recentPostGuard = new Map<string, number>();
 
-import { consumeToken } from '~/lib/rateLimiter';
+import { createListLoader } from '~/lib/loaders';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const params = url.searchParams;
   const profileIdQuery = params.get('profileId') ?? undefined;
   const topicId = params.get('topicId') ?? undefined;
-  const { page, pageSize } = parsePaginationParams(request);
-  const { q, author, sortBy, minScore, hasComments, fromDate, toDate } =
-    parseAnswersFilterParams(request);
 
-  const {
-    getTopics,
-    searchAnswers,
-    getCommentsForAnswers,
-    getUsers,
-    getUserAnswerData,
-  } = await import('~/lib/db');
+  const { getTopics, getCommentsForAnswers, getUsers, getUserAnswerData } =
+    await import('~/lib/db');
   const topics = await getTopics();
   const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
   // Limit users fetched for the answers listing to avoid scanning the entire profiles table
   const users = await getUsers({ limit: 200 });
 
-  const { answers, total } = await searchAnswers({
-    q,
-    topicId,
+  const listData = await createListLoader('answers', request, { topicId });
+  const {
+    answers: rawAnswers,
+    total,
     page,
     pageSize,
+    q,
+    author,
     sortBy,
-    minScore: Number.isNaN(minScore) ? undefined : minScore,
-    hasComments: hasComments ?? false,
+    minScore,
+    hasComments,
     fromDate,
     toDate,
-    author,
-  });
+  } = listData as any;
+  const answers = rawAnswers as Answer[];
   const answerIds = answers.map(a => a.id);
   const commentsByAnswer = await getCommentsForAnswers(answerIds);
 
