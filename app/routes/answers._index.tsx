@@ -109,7 +109,6 @@ export async function action(args: ActionFunctionArgs) {
 export default function AnswersRoute() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
   const data = useLoaderData() as LoaderData;
-  const answers: Answer[] = data?.answers ?? [];
   const topicsById: Record<string, Topic> = (data as any)?.topicsById ?? {};
   const commentsByAnswer: Record<string, Comment[]> =
     (data as any)?.commentsByAnswer ?? {};
@@ -132,7 +131,7 @@ export default function AnswersRoute() {
     useIdentity();
 
   // Client-side user data sync for answers
-  const answerIds = answers.map(a => a.id);
+  const answerIds = (data as any)?.answers?.map((a: Answer) => a.id) ?? [];
   const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);
 
   // Filter UI state (server-driven via GET form)
@@ -198,9 +197,10 @@ export default function AnswersRoute() {
   // Server-driven pagination: answers returned by the loader are already paged
   const serverPage = (data as any)?.page ?? 1;
   const serverPageSize = (data as any)?.pageSize ?? 20;
-  const total = (data as any)?.total ?? answers.length;
+  const total = (data as any)?.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / serverPageSize));
   const currentPage = Math.min(Math.max(1, serverPage), pageCount);
+  const answers: Answer[] = (data as any)?.answers ?? [];
   const paged = answers;
 
   // Scroll to top of the answers container when page changes (client-side navigation)
