@@ -25,7 +25,7 @@ describe('queryParser', () => {
 
       expect(result).toEqual({
         page: 1,
-        pageSize: 10,
+        pageSize: 20,
       });
     });
   });

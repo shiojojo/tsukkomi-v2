@@ -16,7 +16,7 @@ export function parsePaginationParams(request: LoaderFunctionArgs['request']): P
   const params = url.searchParams;
   return {
     page: Number(params.get('page') ?? '1'),
-    pageSize: Number(params.get('pageSize') ?? '10'),
+    pageSize: Number(params.get('pageSize') ?? '20'),
   };
 }
 

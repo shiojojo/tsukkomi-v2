@@ -30,6 +30,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const firstPage = await getAnswersPageByTopic({
     topicId: id,
     cursor: null,
+    pageSize: 5,
     profileId,
   });
   // enrich answers with displayName when possible to avoid exposing raw profile ids

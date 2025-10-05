@@ -1,198 +1,304 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData } from 'react-router';
-import { useMemo } from 'react';
-import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
+import { useLoaderData, useParams } from 'react-router';
+import { useEffect, useState, useRef } from 'react';
 import { AnswersList } from '~/components/features/answers/AnswersList';
+import { TopicOverviewCard } from '~/components/features/topics/TopicOverviewCard';
 import { useAnswerUserData } from '~/hooks/useAnswerUserData';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useNameByProfileId } from '~/hooks/useNameByProfileId';
-import { handleAnswerActions } from '~/lib/actionHandlers';
-import type { Comment } from '~/lib/schemas/comment';
-import type { Topic } from '~/lib/schemas/topic';
+import { useFilters, type AnswersFilters } from '~/hooks/useFilters';
+import { FilterForm } from '~/components/forms/FilterForm';
+import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
+// server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
-import { HEADER_BASE } from '~/styles/headerStyles';
+import type { Topic } from '~/lib/schemas/topic';
+import type { Comment } from '~/lib/schemas/comment';
+import type { User } from '~/lib/schemas/user';
 
-/**
- * 概要: 指定されたお題に紐づく回答・コメント・ユーザー情報をまとめて取得する。
- * Intent: /topics/:id でも /answers と同じカード UI を利用できるよう、初期描画に必要なデータを一括で返却する。
- * Contract:
- *   - params.id は必須。存在しない場合 400。
- *   - 戻り値は { topic, answers, commentsByAnswer, users, profileId }。
- *     answers は created_at desc を維持し、副作用として favorited / favCount を付与する可能性がある。
- * Environment:
- *   - dev: モック DB。
- *   - prod: Supabase。
- * Errors: DB エラーや対象なし時は Response を throw し上位ハンドラに委譲。
- */
+// Simple in-memory guard to suppress very short-window duplicate POSTs.
+import { createListLoader } from '~/lib/loaders';
+
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const topicId = params.id ? String(params.id) : '';
-  if (!topicId) throw new Response('Invalid topic id', { status: 400 });
-
   const url = new URL(request.url);
-  const profileId = url.searchParams.get('profileId') ?? undefined;
+  const urlParams = url.searchParams;
+  const profileIdQuery = urlParams.get('profileId') ?? undefined;
+  const topicId = params.id ? String(params.id) : undefined;
 
-  const { getTopic, getAnswersByTopic, getCommentsForAnswers, getUsers } =
+  const { getTopics, getCommentsForAnswers, getUsers, getUserAnswerData } =
     await import('~/lib/db');
-
-  const topic = await getTopic(topicId);
-  if (!topic) throw new Response('Not Found', { status: 404 });
-
-  const answers = (await getAnswersByTopic(topicId, profileId)) as Answer[];
-  const answerIds = answers.map(answer => Number(answer.id));
-
-  const commentsByAnswer: Record<string, Comment[]> = answerIds.length
-    ? await getCommentsForAnswers(answerIds)
-    : {};
-
+  const topics = await getTopics();
+  const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
+  // Limit users fetched for the answers listing to avoid scanning the entire profiles table
   const users = await getUsers({ limit: 200 });
 
+  const listData = await createListLoader('answers', request, { topicId });
+  const {
+    answers: rawAnswers,
+    total,
+    page,
+    pageSize,
+    q,
+    author,
+    sortBy,
+    minScore,
+    hasComments,
+    fromDate,
+    toDate,
+  } = listData as any;
+  const answers = rawAnswers as Answer[];
+  const answerIds = answers.map(a => a.id);
+  const commentsByAnswer = await getCommentsForAnswers(answerIds);
+
+  // Get user-specific data if profileId provided
+  let userAnswerData: {
+    votes: Record<number, number>;
+    favorites: Set<number>;
+  } = { votes: {}, favorites: new Set<number>() };
+  if (profileIdQuery) {
+    userAnswerData = await getUserAnswerData(profileIdQuery, answerIds);
+  }
+
+  // Merge user data into answers
+  const answersWithUserData = answers.map(a => {
+    const embeddedVotes = ((a as any).votesBy ?? {}) as Record<string, number>;
+    const mergedVotesBy = { ...embeddedVotes };
+    if (profileIdQuery && userAnswerData.votes[a.id]) {
+      mergedVotesBy[profileIdQuery] = userAnswerData.votes[a.id];
+    }
+
+    return {
+      ...a,
+      votesBy: mergedVotesBy,
+      favorited: userAnswerData.favorites.has(a.id),
+    };
+  });
+
+  // favorite counts for answers (DB-backed)
   try {
-    const { getFavoriteCounts, getFavoritesForProfile } = await import(
-      '~/lib/db'
-    );
-    const favoriteCounts = await getFavoriteCounts(answerIds);
-    for (const answer of answers) {
-      (answer as any).favCount = favoriteCounts[Number(answer.id)] ?? 0;
+    const { getFavoriteCounts } = await import('~/lib/db');
+    const favCounts = await getFavoriteCounts(answerIds);
+    // attach counts onto answers (non-destructive)
+    for (const a of answersWithUserData) {
+      (a as any).favCount = favCounts[Number(a.id)] ?? 0;
     }
-    if (profileId) {
-      try {
-        const favorites = await getFavoritesForProfile(profileId, answerIds);
-        const favSet = new Set((favorites || []).map(value => Number(value)));
-        for (const answer of answers) {
-          (answer as any).favorited = favSet.has(Number(answer.id));
-        }
-      } catch {}
-    }
-  } catch {}
+  } catch (err) {}
 
   return {
-    topic,
-    answers,
+    answers: answersWithUserData,
+    topicsById,
     commentsByAnswer,
+    total,
+    page,
+    pageSize,
     users,
-    profileId: profileId ?? null,
-  } as const;
+    q,
+    author,
+    sortBy,
+    minScore,
+    hasComments,
+    fromDate,
+    toDate,
+    profileId: profileIdQuery,
+  };
 }
 
-/**
- * 概要: /topics/:id の回答に対するお気に入り・採点・コメント投稿を処理する。
- * Intent: AnswerActionCard から送信される FormData を /answers と同じプロトコルで処理し、UI の一貫性を保つ。
- * Contract:
- *   - Favorite toggle: { op:'toggle', answerId, profileId } → { favorited:boolean }
- *   - Vote: { answerId, level(0-3), previousLevel?, userId } → { answer }
- *   - Comment: { answerId, text, profileId } → { ok:true }
- * Environment:
- *   - dev/prod で lib/db が適切な実装を返す。
- * Errors: バリデーション失敗は 400、レート制限は 429、DB 失敗は 500。
- */
+import { handleAnswerActions } from '~/lib/actionHandlers';
+
 export async function action(args: ActionFunctionArgs) {
   return handleAnswerActions(args);
 }
 
-/**
- * お題詳細ページ本体。回答カードを AnswerActionCard に統一し、/answers と同じ UI/UX を提供する。
- */
 export default function TopicDetailRoute() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
-  const { topic, answers, commentsByAnswer, users, profileId } =
-    useLoaderData() as LoaderData;
+  const data = useLoaderData() as LoaderData;
+  const params = useParams();
+  const topicsById: Record<string, Topic> = (data as any)?.topicsById ?? {};
+  const commentsByAnswer: Record<string, Comment[]> =
+    (data as any)?.commentsByAnswer ?? {};
+  const users: User[] = (data as any)?.users ?? [];
+  const qParam: string = (data as any)?.q ?? '';
+  const authorParam: string = (data as any)?.author ?? '';
+  const sortByParam: string = (data as any)?.sortBy ?? 'newest';
+  const sortBy: 'newest' | 'oldest' | 'scoreDesc' =
+    sortByParam === 'oldest' || sortByParam === 'scoreDesc'
+      ? (sortByParam as any)
+      : 'newest';
+  const minScoreParam: string = String((data as any)?.minScore ?? '');
+  const hasCommentsParam: boolean = (data as any)?.hasComments ?? false;
+  const fromDateParam: string = (data as any)?.fromDate ?? '';
+  const toDateParam: string = (data as any)?.toDate ?? '';
+  const profileId: string | undefined = (data as any)?.profileId ?? undefined;
 
   const { getNameByProfileId } = useNameByProfileId(users);
 
   const { effectiveId: currentUserId, effectiveName: currentUserName } =
     useIdentity();
 
-  const answerIds = useMemo(() => answers.map(answer => answer.id), [answers]);
+  // Client-side user data sync for answers
+  const answerIds = (data as any)?.answers?.map((a: Answer) => a.id) ?? [];
   const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);
+
+  // Filter UI state (server-driven via GET form)
+  const initialFilters: AnswersFilters = {
+    q: qParam,
+    author: authorParam,
+    sortBy: sortBy,
+    minScore: minScoreParam,
+    hasComments: hasCommentsParam,
+    fromDate: fromDateParam,
+    toDate: toDateParam,
+  };
+
+  const urlKeys: Record<keyof AnswersFilters, string> = {
+    q: 'q',
+    author: 'authorName',
+    sortBy: 'sortBy',
+    minScore: 'minScore',
+    hasComments: 'hasComments',
+    fromDate: 'fromDate',
+    toDate: 'toDate',
+  };
+
+  const { filters, updateFilter } = useFilters(initialFilters, urlKeys, false);
+
+  const [showAdvancedFilters, setShowAdvancedFilters] =
+    useState<boolean>(false);
+
+  // ref to the scrollable answers container so we can scroll to top on page change
+  const answersContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Persist advanced filters visibility so it doesn't unexpectedly close on reloads
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const p = params.get('showAdvancedFilters');
+      if (p === '1') {
+        setShowAdvancedFilters(true);
+      } else {
+        const v = localStorage.getItem('answers:showAdvancedFilters');
+        if (v === '1') setShowAdvancedFilters(true);
+      }
+    } catch {}
+  }, []);
+
+  const toggleAdvancedFilters = () => {
+    setShowAdvancedFilters(s => {
+      const next = !s;
+      try {
+        localStorage.setItem('answers:showAdvancedFilters', next ? '1' : '0');
+        // also persist to URL so GET navigations keep the setting
+        try {
+          const url = new URL(window.location.href);
+          if (next) url.searchParams.set('showAdvancedFilters', '1');
+          else url.searchParams.delete('showAdvancedFilters');
+          history.replaceState(null, '', url.toString());
+        } catch {}
+      } catch {}
+      return next;
+    });
+  };
+
+  // Server-driven pagination: answers returned by the loader are already paged
+  const serverPage = (data as any)?.page ?? 1;
+  const serverPageSize = (data as any)?.pageSize ?? 20;
+  const total = (data as any)?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / serverPageSize));
+  const currentPage = Math.min(Math.max(1, serverPage), pageCount);
+  const answers: Answer[] = (data as any)?.answers ?? [];
+  const paged = answers;
+
+  // Scroll to top of the answers container when page changes (client-side navigation)
+  useEffect(() => {
+    try {
+      const el = answersContainerRef.current;
+      if (el) {
+        // Keep existing inner scroll behavior for iOS Safari / non-Chrome browsers
+        el.scrollTop = 0;
+        try {
+          el.scrollTo?.({ top: 0, behavior: 'auto' } as any);
+        } catch {}
+      }
+
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
+    } catch {}
+  }, [currentPage]);
+
+  // helper to build href preserving current filters (used by mobile & desktop)
+  const buildHref = (p: number) => {
+    const parts: string[] = [];
+    if (filters.q) parts.push(`q=${encodeURIComponent(filters.q)}`);
+    if (filters.author)
+      parts.push(`authorName=${encodeURIComponent(filters.author)}`);
+    parts.push(`sortBy=${encodeURIComponent(String(filters.sortBy))}`);
+    parts.push(`page=${p}`);
+    parts.push(`pageSize=${serverPageSize}`);
+    if (filters.minScore)
+      parts.push(`minScore=${encodeURIComponent(String(filters.minScore))}`);
+    if (filters.hasComments) parts.push('hasComments=1');
+    if (filters.fromDate)
+      parts.push(`fromDate=${encodeURIComponent(filters.fromDate)}`);
+    if (filters.toDate)
+      parts.push(`toDate=${encodeURIComponent(filters.toDate)}`);
+    return `?${parts.join('&')}`;
+  };
+
+  const topicId = params.id ? String(params.id) : '';
+  const topic = topicsById[topicId];
 
   return (
     <StickyHeaderLayout
       header={
-        <div className={HEADER_BASE}>
-          <div className="p-4 flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-50">
-              お題詳細
-            </h1>
-          </div>
+        <div className="mt-3">
+          <FilterForm
+            type="answers"
+            users={users}
+            query={filters.q}
+            setQuery={(value: string) => updateFilter('q', value)}
+            fromDate={filters.fromDate}
+            setFromDate={(value: string) => updateFilter('fromDate', value)}
+            toDate={filters.toDate}
+            setToDate={(value: string) => updateFilter('toDate', value)}
+            authorQuery={filters.author}
+            setAuthorQuery={(value: string) => updateFilter('author', value)}
+            sortBy={filters.sortBy}
+            setSortBy={(value: 'newest' | 'oldest' | 'scoreDesc') =>
+              updateFilter('sortBy', value)
+            }
+            minScore={filters.minScore}
+            setMinScore={(value: string) => updateFilter('minScore', value)}
+            hasComments={filters.hasComments}
+            setHasComments={(value: boolean) =>
+              updateFilter('hasComments', value)
+            }
+            showAdvancedFilters={showAdvancedFilters}
+            toggleAdvancedFilters={toggleAdvancedFilters}
+            onSubmit={() => setShowAdvancedFilters(false)}
+          />
         </div>
       }
+      contentRef={answersContainerRef}
     >
-      <TopicOverviewCard topic={topic} answerCount={answers.length} />
+      <TopicOverviewCard topic={topic} answerCount={total} />
       <AnswersList
-        answers={answers}
-        topic={topic}
+        answers={paged}
+        topicsById={topicsById}
         commentsByAnswer={commentsByAnswer}
         getNameByProfileId={getNameByProfileId}
         currentUserName={currentUserName}
         currentUserId={currentUserId}
         userAnswerData={userAnswerData}
         onFavoriteUpdate={markFavorite}
-        actionPath={`/topics/${topic.id}`}
+        actionPath={`/topics/${topicId}`}
         profileIdForVotes={profileId ?? currentUserId}
         emptyMessage="まだ回答が投稿されていません。"
+        pagination={{
+          currentPage,
+          pageCount,
+          buildHref,
+        }}
       />
     </StickyHeaderLayout>
-  );
-}
-
-/**
- * 概要: お題ヘッダー情報 (タイトル / 画像 / 回答数) をカード表示する。
- * Intent: 回答カードでは繰り返さないトピック文脈を 1 箇所にまとめ、モバイルでも視認性を確保する。
- * Contract:
- *   - topic.title / topic.created_at / topic.image をそのまま利用。
- *   - answerCount は 0 以上の整数。
- */
-function TopicOverviewCard({
-  topic,
-  answerCount,
-}: {
-  topic: Topic;
-  answerCount: number;
-}) {
-  let createdAtLabel: string | null = null;
-  try {
-    const created = new Date(topic.created_at);
-    if (!Number.isNaN(created.getTime())) {
-      createdAtLabel = created.toLocaleString();
-    }
-  } catch {
-    createdAtLabel = null;
-  }
-
-  return (
-    <section className="px-4 pt-4">
-      <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-900/80 shadow-sm">
-        <div className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-1 font-semibold text-[11px] text-gray-600 dark:text-gray-200">
-              お題
-            </span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              回答 {answerCount} 件
-            </span>
-          </div>
-          <h2 className="text-xl font-semibold leading-snug text-gray-900 dark:text-gray-100 break-words">
-            {topic.title}
-          </h2>
-          {topic.image ? (
-            <div className="block p-0 border rounded-md overflow-hidden">
-              <div className="w-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                <img
-                  src={topic.image}
-                  alt={topic.title}
-                  className="w-full h-auto max-h-40 object-contain"
-                  loading="lazy"
-                />
-              </div>
-            </div>
-          ) : null}
-          {createdAtLabel ? (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              作成: {createdAtLabel}
-            </p>
-          ) : null}
-        </div>
-      </div>
-    </section>
   );
 }
