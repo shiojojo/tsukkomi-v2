@@ -9,7 +9,7 @@
 • Supabase JS Client（DB / Auth / Storage）  
 • Tailwind CSS + shadcn/ui  
 • TanStack Query（ユーザー操作後の再取得 / 増分更新 / キャッシュ）  
-• Zustand（必要最小限のグローバル状態。安易に追加しない）  
+• Zustand（グローバル状態）  
 • date-fns（日付フォーマット/計算）  
 • zod（スキーマ & バリデーション）  
 • react-hook-form（複雑フォーム。単純送信は <Form> と action）  
