@@ -1,0 +1,119 @@
+import { UserSchema } from '~/lib/schemas/user';
+import type { User, SubUser } from '~/lib/schemas/user';
+import { IdentitySchema } from '~/lib/schemas/identity';
+import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
+
+// Note: in-memory caching and edge-config have been removed to always query
+// the database directly for freshest results and to avoid cache wait delays.
+// keep a no-op invalidation function so existing mutation code can call it
+// without conditional edits. This intentionally does nothing now.
+function invalidateCache(_prefix: string) {
+  // no-op: caching removed
+}
+
+export async function getUsers(opts?: { limit?: number; onlyMain?: boolean }): Promise<User[]> {
+  // fetch profiles and attach sub_users
+  // If opts.limit is provided, only fetch up to that many profiles and then fetch
+  // sub-users for the returned main users. This avoids scanning the full profiles
+  // table on pages that don't need the entire list (e.g. /answers loader).
+  const limit = opts?.limit;
+  if (limit && limit <= 0) return [];
+
+  if (!limit) {
+    // original full-fetch behavior
+    const { data, error } = await supabase.from('profiles').select('id, parent_id, name, line_id, created_at');
+    if (error) throw error;
+    const identitiesTmp = (data ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+    const mains = identitiesTmp.filter(i => i.parentId == null);
+    const rows = mains.map(m => ({ id: m.id, name: m.name, line_id: m.line_id, subUsers: identitiesTmp.filter(c => c.parentId === m.id).map(c => ({ id: c.id, name: c.name, line_id: c.line_id })) }));
+    return UserSchema.array().parse(rows as any);
+  }
+
+  // limited fetch: get first `limit` profiles (may include mains and subs), then
+  // determine mains and fetch their sub-users explicitly.
+  const { data: dataLimited, error: errLimited } = await supabase
+    .from('profiles')
+    .select('id, parent_id, name, line_id, created_at')
+    .order('created_at', { ascending: false })
+    .range(0, limit - 1);
+  if (errLimited) throw errLimited;
+  const fetched = (dataLimited ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+
+  const mains = fetched.filter(i => i.parentId == null);
+  const mainIds = mains.map(m => m.id).filter(Boolean);
+
+  // fetch sub-users belonging to these mains (if any)
+  let subs: any[] = [];
+  if (mainIds.length) {
+    const { data: subData, error: subErr } = await supabase
+      .from('profiles')
+      .select('id, parent_id, name, line_id')
+      .in('parent_id', mainIds);
+    if (subErr) throw subErr;
+    subs = (subData ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+  }
+
+  const rows = mains.map(m => ({
+    id: m.id,
+    name: m.name,
+    line_id: m.line_id,
+    subUsers: subs.filter((c: any) => c.parentId === m.id).map((c: any) => ({ id: c.id, name: c.name, line_id: c.line_id })),
+  }));
+
+  return UserSchema.array().parse(rows as any);
+}
+
+/**
+ * addSubUser
+ * Intent: create a new sub-user in dev and return it
+ * Contract: name validated elsewhere. id is generated to be unique within mockUsers.
+ */
+export async function addSubUser(input: { parentId: string; name: string }): Promise<SubUser> {
+  await ensureConnection();
+  await ensureConnection();
+  const writeClient = supabaseAdmin ?? supabase;
+  if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
+  const { data, error } = await writeClient
+  .from('profiles')
+  .insert({ parent_id: input.parentId, name: input.name })
+    .select('*')
+    .single();
+  if (error) throw error;
+  try { invalidateCache('profiles:all'); } catch {}
+  return data as SubUser;
+}
+
+/**
+ * removeSubUser
+ * Intent: delete a sub-user from parent in dev and return boolean
+ */
+export async function removeSubUser(parentId: string, subId: string): Promise<boolean> {
+  await ensureConnection();
+  await ensureConnection();
+  const writeClient = supabaseAdmin ?? supabase;
+  if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
+  const { error } = await writeClient
+  .from('profiles')
+  .delete()
+  .eq('id', subId)
+  .eq('parent_id', parentId);
+  if (error) throw error;
+  try { invalidateCache('profiles:all'); } catch {}
+  return true;
+}
+
+export async function getProfilesByIds(ids: Array<string | number>): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  const uniq = Array.from(new Set((ids ?? []).map(id => String(id)).filter(Boolean)));
+  if (uniq.length === 0) return result;
+  await ensureConnection();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', uniq);
+  if (error) throw error;
+  for (const r of (data ?? [])) {
+    if (r && r.id) result[String(r.id)] = r.name;
+  }
+  return result;
+}
