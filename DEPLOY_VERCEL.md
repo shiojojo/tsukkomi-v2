@@ -17,5 +17,6 @@ Notes and troubleshooting
 
 - If build fails with Supabase errors, ensure the Vercel Build Environment variables include the `VITE_SUPABASE_*` values. In development the project uses `mock/` data when `import.meta.env.DEV === true`.
 - Static assets (files with an extension) are served from `build/client` directly. All other paths are routed to the serverless function for SSR.
+- Sharp version is pinned to 0.32.6 due to Vercel compatibility issues with newer versions (0.33.0+). Do not upgrade Sharp without testing on Vercel.
 
 If you'd like, I can also add a tiny Vercel GitHub Action or update the README with a one-click deploy button.
