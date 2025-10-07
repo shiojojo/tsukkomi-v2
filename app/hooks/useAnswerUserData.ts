@@ -59,7 +59,7 @@ export function useAnswerUserData(
       };
     },
     enabled: enabled && !!userId && !!normalized.key,
-    initialData: { votes: {}, favorites: [] },
+    placeholderData: { votes: {}, favorites: [] },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
