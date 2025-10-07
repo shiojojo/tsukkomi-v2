@@ -161,38 +161,29 @@ export default function TopicDetailRoute() {
 
   const { filters, updateFilter } = useFilters(initialFilters, urlKeys, false);
 
-  const [showAdvancedFilters, setShowAdvancedFilters] =
-    useState<boolean>(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(
+    () => {
+      if (typeof window === 'undefined') return false;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        return params.get('showAdvancedFilters') === '1';
+      } catch {
+        return false;
+      }
+    }
+  );
 
   // ref to the scrollable answers container so we can scroll to top on page change
   const answersContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // Persist advanced filters visibility so it doesn't unexpectedly close on reloads
-  useEffect(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const p = params.get('showAdvancedFilters');
-      if (p === '1') {
-        setShowAdvancedFilters(true);
-      } else {
-        const v = localStorage.getItem('answers:showAdvancedFilters');
-        if (v === '1') setShowAdvancedFilters(true);
-      }
-    } catch {}
-  }, []);
 
   const toggleAdvancedFilters = () => {
     setShowAdvancedFilters(s => {
       const next = !s;
       try {
-        localStorage.setItem('answers:showAdvancedFilters', next ? '1' : '0');
-        // also persist to URL so GET navigations keep the setting
-        try {
-          const url = new URL(window.location.href);
-          if (next) url.searchParams.set('showAdvancedFilters', '1');
-          else url.searchParams.delete('showAdvancedFilters');
-          history.replaceState(null, '', url.toString());
-        } catch {}
+        const url = new URL(window.location.href);
+        if (next) url.searchParams.set('showAdvancedFilters', '1');
+        else url.searchParams.delete('showAdvancedFilters');
+        history.replaceState(null, '', url.toString());
       } catch {}
       return next;
     });
