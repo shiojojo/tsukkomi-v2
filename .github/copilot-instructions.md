@@ -1,6 +1,5 @@
 このプロジェクトは React Router v7（@react-router/fs-routes によるファイルベースルーティング + Remix 由来の loader / action パターン）と Supabase を組み合わせたモダンな React 19 + TypeScript アプリです。Copilot は下記ガイドラインを厳守して提案してください。曖昧表現を避け、すべて「行動可能 (actionable)」であること。
 
-ドメイン駆動設計 (DDD) の考え方を取り入れる。
 ⸻
 
 ## ✅ 技術スタック（使用前提）
@@ -39,7 +38,7 @@ app/
 		icons/              ← アイコンコンポーネント（将来的に使用）
 	lib/
 		supabase.ts         ← Supabase クライアント生成（本番専用 init）
-		db.ts               ← すべてのデータアクセス統合ポイント
+		db/              		← データアクセス統合ポイント
 		schemas/            ← zod スキーマ（I/O 変換 & 型出力）
 	hooks/                ← 再利用カスタムフック
 	styles/               ← Tailwind / グローバル CSS
