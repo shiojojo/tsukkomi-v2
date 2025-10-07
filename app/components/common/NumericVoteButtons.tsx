@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useOptimisticAction } from '~/hooks/useOptimisticAction';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '~/components/ui/Button';
 
 export type NumericVoteButtonsProps = {
@@ -23,6 +24,7 @@ export function NumericVoteButtons({
       (typeof window !== 'undefined' ? window.location.pathname : '/'),
     loginRedirectPath
   );
+  const queryClient = useQueryClient();
 
   const readStoredSelection = () => {
     if (typeof window === 'undefined') return null;
@@ -102,6 +104,14 @@ export function NumericVoteButtons({
     persistSelection(isToggleOff ? null : level);
 
     performAction({ answerId, level: isToggleOff ? 0 : level, userId: uid });
+
+    // Invalidate user data queries to refresh votes
+    if (uid) {
+      queryClient.invalidateQueries({
+        queryKey: ['user-data', uid],
+        exact: false,
+      });
+    }
   };
 
   return (
