@@ -1,5 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
-import * as identityStorage from '~/lib/identityStorage';
+import { useIdentityStore } from '~/lib/store';
 
 /**
  * 概要: localStorage に保存されたメイン/サブユーザー情報をリアクティブに提供するフック。
@@ -12,59 +11,7 @@ import * as identityStorage from '~/lib/identityStorage';
  * Errors: 例外は握りつぶし安全に null。
  */
 export function useIdentity() {
-  // 初期描画は SSR と同じ (全て null) にすることで hydration mismatch を防止
-  const [state, setState] = useState<ReturnType<typeof empty>>(() => empty());
+  const { mainId, mainName, subId, subName, effectiveId, effectiveName, refresh } = useIdentityStore();
 
-  // 初回 + storage/identity-change で同期
-  useEffect(() => {
-    const apply = () => {
-      try { setState(read()); } catch { /* ignore */ }
-    };
-    apply(); // mount 時に読み込み
-    try {
-      window.addEventListener('storage', apply);
-      window.addEventListener('identity-change', apply as any);
-    } catch {}
-    return () => {
-      try {
-        window.removeEventListener('storage', apply);
-        window.removeEventListener('identity-change', apply as any);
-      } catch {}
-    };
-  }, []);
-
-  const refresh = useCallback(() => {
-    try { setState(read()); } catch {}
-  }, []);
-
-  return { ...state, refresh };
-}
-
-function empty() {
-  return {
-    mainId: null as string | null,
-    mainName: null as string | null,
-    subId: null as string | null,
-    subName: null as string | null,
-    effectiveId: null as string | null,
-    effectiveName: null as string | null,
-  } as const;
-}
-
-function read() {
-  if (typeof window === 'undefined') return empty();
-  try {
-  const mainId = identityStorage.getItem('currentUserId');
-  const mainName = identityStorage.getItem('currentUserName');
-  const subId = identityStorage.getItem('currentSubUserId');
-  const subName = identityStorage.getItem('currentSubUserName');
-    return {
-      mainId,
-      mainName,
-      subId,
-      subName,
-      effectiveId: subId || mainId,
-      effectiveName: subName || mainName,
-    } as const;
-  } catch { return empty(); }
+  return { mainId, mainName, subId, subName, effectiveId, effectiveName, refresh };
 }
