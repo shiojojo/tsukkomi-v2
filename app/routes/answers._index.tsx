@@ -2,10 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
 import { useEffect, useState, useRef } from 'react';
 import { AnswersList } from '~/components/features/answers/AnswersList';
-import { useAnswerUserData } from '~/hooks/useAnswerUserData';
-import { useIdentity } from '~/hooks/useIdentity';
-import { useNameByProfileId } from '~/hooks/useNameByProfileId';
-import { useFilters, type AnswersFilters } from '~/hooks/useFilters';
+import { useAnswersPage } from '~/hooks/useAnswersPage';
 import { FilterForm } from '~/components/forms/FilterForm';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
@@ -32,126 +29,28 @@ export async function action(args: ActionFunctionArgs) {
 export default function AnswersRoute() {
   type LoaderData = Awaited<ReturnType<typeof loader>>;
   const data = useLoaderData() as LoaderData;
-  const topicsById: Record<string, Topic> = (data as any)?.topicsById ?? {};
-  const commentsByAnswer: Record<string, Comment[]> =
-    (data as any)?.commentsByAnswer ?? {};
-  const users: User[] = (data as any)?.users ?? [];
-  const qParam: string = (data as any)?.q ?? '';
-  const authorParam: string = (data as any)?.author ?? '';
-  const sortByParam: string = (data as any)?.sortBy ?? 'newest';
-  const sortBy: 'newest' | 'oldest' | 'scoreDesc' =
-    sortByParam === 'oldest' || sortByParam === 'scoreDesc'
-      ? (sortByParam as any)
-      : 'newest';
-  const minScoreParam: string = String((data as any)?.minScore ?? '');
-  const hasCommentsParam: boolean = (data as any)?.hasComments ?? false;
-  const fromDateParam: string = (data as any)?.fromDate ?? '';
-  const toDateParam: string = (data as any)?.toDate ?? '';
 
-  const { getNameByProfileId } = useNameByProfileId(users);
-
-  const { effectiveId: currentUserId, effectiveName: currentUserName } =
-    useIdentity();
-
-  // Client-side user data sync for answers
-  const answerIds = (data as any)?.answers?.map((a: Answer) => a.id) ?? [];
-  const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);
-
-  // Filter UI state (server-driven via GET form)
-  const initialFilters: AnswersFilters = {
-    q: qParam,
-    author: authorParam,
-    sortBy: sortBy,
-    minScore: minScoreParam,
-    hasComments: hasCommentsParam,
-    fromDate: fromDateParam,
-    toDate: toDateParam,
-  };
-
-  const urlKeys: Record<keyof AnswersFilters, string> = {
-    q: 'q',
-    author: 'authorName',
-    sortBy: 'sortBy',
-    minScore: 'minScore',
-    hasComments: 'hasComments',
-    fromDate: 'fromDate',
-    toDate: 'toDate',
-  };
-
-  const { filters, updateFilter } = useFilters(initialFilters, urlKeys, false);
-
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(
-    () => {
-      if (typeof window === 'undefined') return false;
-      try {
-        const params = new URLSearchParams(window.location.search);
-        return params.get('showAdvancedFilters') === '1';
-      } catch {
-        return false;
-      }
-    }
-  );
-
-  // ref to the scrollable answers container so we can scroll to top on page change
-  const answersContainerRef = useRef<HTMLDivElement | null>(null);
-
-  const toggleAdvancedFilters = () => {
-    setShowAdvancedFilters(s => {
-      const next = !s;
-      try {
-        const url = new URL(window.location.href);
-        if (next) url.searchParams.set('showAdvancedFilters', '1');
-        else url.searchParams.delete('showAdvancedFilters');
-        history.replaceState(null, '', url.toString());
-      } catch {}
-      return next;
-    });
-  };
-
-  // Server-driven pagination: answers returned by the loader are already paged
-  const serverPage = (data as any)?.page ?? 1;
-  const serverPageSize = (data as any)?.pageSize ?? 20;
-  const total = (data as any)?.total ?? 0;
-  const pageCount = Math.max(1, Math.ceil(total / serverPageSize));
-  const currentPage = Math.min(Math.max(1, serverPage), pageCount);
-  const answers: Answer[] = (data as any)?.answers ?? [];
-  const paged = answers;
-
-  // Scroll to top of the answers container when page changes (client-side navigation)
-  useEffect(() => {
-    try {
-      const el = answersContainerRef.current;
-      if (el) {
-        // Keep existing inner scroll behavior for iOS Safari / non-Chrome browsers
-        el.scrollTop = 0;
-        try {
-          el.scrollTo?.({ top: 0, behavior: 'auto' } as any);
-        } catch {}
-      }
-
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-      }
-    } catch {}
-  }, [currentPage]);
-
-  // helper to build href preserving current filters (used by mobile & desktop)
-  const buildHref = (p: number) => {
-    const parts: string[] = [];
-    if (filters.q) parts.push(`q=${encodeURIComponent(filters.q)}`);
-    if (filters.author)
-      parts.push(`authorName=${encodeURIComponent(filters.author)}`);
-    parts.push(`sortBy=${encodeURIComponent(String(filters.sortBy))}`);
-    parts.push(`page=${p}`);
-    if (filters.minScore)
-      parts.push(`minScore=${encodeURIComponent(String(filters.minScore))}`);
-    if (filters.hasComments) parts.push('hasComments=1');
-    if (filters.fromDate)
-      parts.push(`fromDate=${encodeURIComponent(filters.fromDate)}`);
-    if (filters.toDate)
-      parts.push(`toDate=${encodeURIComponent(filters.toDate)}`);
-    return `?${parts.join('&')}`;
-  };
+  const {
+    topicsById,
+    commentsByAnswer,
+    users,
+    answers,
+    total,
+    getNameByProfileId,
+    currentUserId,
+    currentUserName,
+    userAnswerData,
+    markFavorite,
+    profileId,
+    filters,
+    updateFilter,
+    showAdvancedFilters,
+    toggleAdvancedFilters,
+    currentPage,
+    pageCount,
+    buildHref,
+    answersContainerRef,
+  } = useAnswersPage(data as any);
 
   return (
     <ListPageLayout
@@ -181,14 +80,14 @@ export default function AnswersRoute() {
             }
             showAdvancedFilters={showAdvancedFilters}
             toggleAdvancedFilters={toggleAdvancedFilters}
-            onSubmit={() => setShowAdvancedFilters(false)}
+            onSubmit={() => toggleAdvancedFilters()}
           />
           {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
         </div>
       }
       list={
         <AnswersList
-          answers={paged}
+          answers={answers}
           topicsById={topicsById}
           commentsByAnswer={commentsByAnswer}
           getNameByProfileId={getNameByProfileId}
