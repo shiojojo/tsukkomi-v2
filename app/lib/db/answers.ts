@@ -4,14 +4,6 @@ import type { Answer } from '~/lib/schemas/answer';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 import { getFavoritesForProfile } from './favorites';
 
-// Note: in-memory caching and edge-config have been removed to always query
-// the database directly for freshest results and to avoid cache wait delays.
-// keep a no-op invalidation function so existing mutation code can call it
-// without conditional edits. This intentionally does nothing now.
-function invalidateCache(_prefix: string) {
-  // no-op: caching removed
-}
-
 async function getVotesByForAnswers(
   answerIds: Array<number | string>,
   client: SupabaseClient | null = supabase
@@ -556,10 +548,6 @@ export async function voteAnswer({
     votes: votesObj,
     votesBy: votesByObj,
   } as const;
-
-  try {
-    invalidateCache('answers:all');
-  } catch {}
 
   return AnswerSchema.parse(result as any);
 }

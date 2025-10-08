@@ -3,14 +3,6 @@ import type { User, SubUser } from '~/lib/schemas/user';
 import { IdentitySchema } from '~/lib/schemas/identity';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 
-// Note: in-memory caching and edge-config have been removed to always query
-// the database directly for freshest results and to avoid cache wait delays.
-// keep a no-op invalidation function so existing mutation code can call it
-// without conditional edits. This intentionally does nothing now.
-function invalidateCache(_prefix: string) {
-  // no-op: caching removed
-}
-
 export async function getUsers(opts?: { limit?: number; onlyMain?: boolean }): Promise<User[]> {
   // fetch profiles and attach sub_users
   // If opts.limit is provided, only fetch up to that many profiles and then fetch
@@ -79,7 +71,6 @@ export async function addSubUser(input: { parentId: string; name: string }): Pro
     .select('*')
     .single();
   if (error) throw error;
-  try { invalidateCache('profiles:all'); } catch {}
   return data as SubUser;
 }
 
@@ -98,7 +89,6 @@ export async function removeSubUser(parentId: string, subId: string): Promise<bo
   .eq('id', subId)
   .eq('parent_id', parentId);
   if (error) throw error;
-  try { invalidateCache('profiles:all'); } catch {}
   return true;
 }
 

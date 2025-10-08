@@ -2,14 +2,6 @@ import { CommentSchema } from '~/lib/schemas/comment';
 import type { Comment } from '~/lib/schemas/comment';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 
-// Note: in-memory caching and edge-config have been removed to always query
-// the database directly for freshest results and to avoid cache wait delays.
-// keep a no-op invalidation function so existing mutation code can call it
-// without conditional edits. This intentionally does nothing now.
-function invalidateCache(_prefix: string) {
-  // no-op: caching removed
-}
-
 export async function getCommentsByAnswer(answerId: string | number): Promise<Comment[]> {
   // Delegate to getCommentsForAnswers to avoid duplicated query/mapping logic
   const map = await getCommentsForAnswers([answerId]);
@@ -94,10 +86,5 @@ export async function addComment(input: { answerId: string | number; text: strin
   };
 
   const row = mapped;
-  // clear related caches after successful insert
-  try {
-    invalidateCache(`comments:answer:${String(input.answerId)}`);
-    invalidateCache('answers:all');
-  } catch {}
   return CommentSchema.parse(row as any);
 }

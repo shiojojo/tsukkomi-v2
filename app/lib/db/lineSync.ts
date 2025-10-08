@@ -18,14 +18,6 @@ const STORAGE_FOLDER =
   (import.meta.env.VITE_STORAGE_FOLDER as string | undefined) ??
   'line-sync';
 
-// Note: in-memory caching and edge-config have been removed to always query
-// the database directly for freshest results and to avoid cache wait delays.
-// keep a no-op invalidation function so existing mutation code can call it
-// without conditional edits. This intentionally does nothing now.
-function invalidateCache(_prefix: string) {
-  // no-op: caching removed
-}
-
 function resolveStorageBucket() {
   if (!STORAGE_BUCKET) {
     throw new Error('Supabase storage bucket is not configured (STORAGE_BUCKET)');
@@ -34,6 +26,7 @@ function resolveStorageBucket() {
 }
 
 function extFromContentType(contentType: string | null | undefined) {
+
   if (!contentType) return null;
   const normalized = contentType.split(';')[0]?.trim().toLowerCase();
   switch (normalized) {
@@ -197,7 +190,6 @@ export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise
           .update({ image: uploadInfo.publicUrl, title: topicTitle })
           .eq('id', topicExisting.id);
         if (updateErr) throw updateErr;
-        try { invalidateCache('topics:all'); } catch {}
       }
     } else {
       const uploadInfo = await uploadImageToSupabaseStorage(sourceImage);
@@ -215,7 +207,6 @@ export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise
       if (topicInsertErr) throw topicInsertErr;
       topicId = Number(topicInserted.id);
       createdTopic = true;
-      try { invalidateCache('topics:all'); } catch {}
     }
   } else {
     const topicTitle = payload.topic.title.trim();
@@ -244,7 +235,6 @@ export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise
       if (topicInsertErr) throw topicInsertErr;
       topicId = Number(topicInserted.id);
       createdTopic = true;
-      try { invalidateCache('topics:all'); } catch {}
     }
   }
 
@@ -297,7 +287,6 @@ export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise
     }
   }
   if (createdProfiles || updatedProfiles) {
-    try { invalidateCache('profiles:all'); } catch {}
   }
 
   const { data: existingAnswers, error: existingAnswersErr } = await writeClient
@@ -347,7 +336,6 @@ export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise
       .select('id');
     if (insertErr) throw insertErr;
     inserted = insertedRows?.length ?? rowsToInsert.length;
-    try { invalidateCache('answers:all'); } catch {}
   }
 
   return {
