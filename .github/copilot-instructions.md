@@ -128,13 +128,17 @@ export default function Route() {
 
 ## � TanStack Query 利用ガイド
 
-利用目的: ユーザー操作後の「部分的リフレッシュ」やポーリング。初期表示は必ず loader。
+利用目的: ユーザー操作後の「部分的リフレッシュ」やポーリング、リアルタイムUI更新。初期表示は原則loaderだが、コンポーネントレベルでQueryを使う場合も許容（loader + Queryのハイブリッド）。
 基本フロー:
 
-1. loader で初期データ `prefetch` 代替（サーバー同期状態）
-2. クライアントで `useQuery(['posts'], getPosts)` など再取得トリガー（ユーザー操作後）
-3. 変更操作成功後 `queryClient.invalidateQueries(['posts'])`
-   禁止: 初期ロード専用に Query だけを使い loader を欠落させること。
+1. **初期データ取得**: loaderでサーバー同期状態を確保。コンポーネントで`useQuery`を使って補完的に取得（例: リアルタイム更新が必要なデータ）。
+2. **操作実行**: `useMutation`でアクションを実行（投票、いいねなど）。成功後に`queryClient.invalidateQueries`で関連Queryを無効化。
+3. **状態管理**: QueryのデータでUIを駆動。useStateは最小限に（例: 楽観的更新のローカル状態のみ）。
+
+禁止事項:
+
+- loaderを完全に欠落させ、Queryだけに頼ること（サーバー同期を保証するため）。
+- 過度なuseState依存。Queryのキャッシュ/再取得で状態を管理。
 
 ⸻
 
