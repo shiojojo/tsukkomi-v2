@@ -314,6 +314,72 @@ export async function getAnswersByTopic(topicId: string | number, profileId?: st
  *  - prod: Supabase query with .lt('created_at', cursor) when cursor provided
  * Errors: Supabase error そのまま throw。
  */
+async function buildAnswersQuery(topicId: number, cursor: string | null, pageSize: number) {
+  let query = supabase
+    .from('answers')
+    .select('id, text, profile_id, topic_id, created_at')
+    .eq('topic_id', topicId)
+    .order('created_at', { ascending: false })
+    .limit(pageSize);
+  if (cursor) query = query.lt('created_at', cursor);
+  return query;
+}
+
+async function aggregateVoteCounts(answerIds: number[]): Promise<Record<number, { level1: number; level2: number; level3: number }>> {
+  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
+
+  if (!answerIds.length) return countsMap;
+
+  const { data: countsData, error: countsErr } = await supabase
+    .from('answer_vote_counts')
+    .select('answer_id, level1, level2, level3')
+    .in('answer_id', answerIds);
+
+  if (!countsErr && countsData && countsData.length) {
+    for (const c of countsData) {
+      countsMap[Number(c.answer_id)] = {
+        level1: Number(c.level1 ?? 0),
+        level2: Number(c.level2 ?? 0),
+        level3: Number(c.level3 ?? 0),
+      };
+    }
+  } else {
+    // Fallback: fetch raw vote rows and aggregate client-side
+    const { data: agg, error: aggErr } = await supabase
+      .from('votes')
+      .select('answer_id, level', { head: false })
+      .in('answer_id', answerIds);
+    if (aggErr) throw aggErr;
+    for (const row of agg ?? []) {
+      const aid = Number(row.answer_id);
+      countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
+      const lv = Number(row.level);
+      if (lv === 1) countsMap[aid].level1 += 1;
+      else if (lv === 2) countsMap[aid].level2 += 1;
+      else if (lv === 3) countsMap[aid].level3 += 1;
+    }
+  }
+
+  return countsMap;
+}
+
+async function normalizeAnswers(
+  rows: any[],
+  countsMap: Record<number, { level1: number; level2: number; level3: number }>,
+  votesByMap: Record<number, Record<string, number>>,
+  userFavorites: Set<number>,
+  profileId?: string
+) {
+  const normalizedRows = rows.map((a: any) => ({
+    ...a,
+    votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+    votesBy: votesByMap[a.id] ?? {},
+    favorited: profileId ? userFavorites.has(a.id) : undefined,
+  }));
+
+  return AnswerSchema.array().parse(normalizedRows as any);
+}
+
 export async function getAnswersPageByTopic({
   topicId,
   cursor,
@@ -337,13 +403,7 @@ export async function getAnswersPageByTopic({
   }
 
   const numericTopic = Number(topicId);
-  let query = supabase
-    .from('answers')
-    .select('id, text, profile_id, topic_id, created_at')
-    .eq('topic_id', numericTopic)
-    .order('created_at', { ascending: false })
-    .limit(pageSize);
-  if (cursor) query = query.lt('created_at', cursor);
+  const query = buildAnswersQuery(numericTopic, cursor, pageSize);
 
   const { data, error } = await query;
   if (error) throw error;
@@ -357,38 +417,7 @@ export async function getAnswersPageByTopic({
   }));
 
   const ids = rows.map((r: any) => Number(r.id)).filter(Boolean);
-  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
-
-  if (ids.length) {
-    const { data: countsData, error: countsErr } = await supabase
-      .from('answer_vote_counts')
-      .select('answer_id, level1, level2, level3')
-      .in('answer_id', ids);
-
-    if (!countsErr && countsData && countsData.length) {
-      for (const c of countsData) {
-        countsMap[Number(c.answer_id)] = {
-          level1: Number(c.level1 ?? 0),
-          level2: Number(c.level2 ?? 0),
-          level3: Number(c.level3 ?? 0),
-        };
-      }
-    } else {
-      const { data: agg, error: aggErr } = await supabase
-        .from('votes')
-        .select('answer_id, level', { head: false })
-        .in('answer_id', ids);
-      if (aggErr) throw aggErr;
-      for (const row of agg ?? []) {
-        const aid = Number(row.answer_id);
-        countsMap[aid] = countsMap[aid] ?? { level1: 0, level2: 0, level3: 0 };
-        const lv = Number(row.level);
-        if (lv === 1) countsMap[aid].level1 += 1;
-        else if (lv === 2) countsMap[aid].level2 += 1;
-        else if (lv === 3) countsMap[aid].level3 += 1;
-      }
-    }
-  }
+  const countsMap = await aggregateVoteCounts(ids);
 
   let userFavorites: Set<number> = new Set();
   if (profileId && ids.length) {
@@ -398,14 +427,7 @@ export async function getAnswersPageByTopic({
 
   const votesByMap = ids.length ? await getVotesByForAnswers(ids) : {};
 
-  const normalizedRows = rows.map((a: any) => ({
-    ...a,
-    votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-    votesBy: votesByMap[a.id] ?? {},
-    favorited: profileId ? userFavorites.has(a.id) : undefined,
-  }));
-
-  const answers = AnswerSchema.array().parse(normalizedRows as any);
+  const answers = await normalizeAnswers(rows, countsMap, votesByMap, userFavorites, profileId);
   const next = answers.length === pageSize ? answers[answers.length - 1].created_at : null;
   return { answers, nextCursor: next };
 }
