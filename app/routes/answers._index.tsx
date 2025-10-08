@@ -15,89 +15,12 @@ import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
-import { createListLoader } from '~/lib/loaders';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
-  const params = url.searchParams;
-  const profileIdQuery = params.get('profileId') ?? undefined;
-  const topicId = params.get('topicId') ?? undefined;
-
-  const { getTopics, getCommentsForAnswers, getUsers, getUserAnswerData } =
-    await import('~/lib/db');
-  const topics = await getTopics();
-  const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
-  // Limit users fetched for the answers listing to avoid scanning the entire profiles table
-  const users = await getUsers({ limit: 200 });
-
-  const listData = await createListLoader('answers', request, { topicId });
-  const {
-    answers: rawAnswers,
-    total,
-    page,
-    pageSize,
-    q,
-    author,
-    sortBy,
-    minScore,
-    hasComments,
-    fromDate,
-    toDate,
-  } = listData as any;
-  const answers = rawAnswers as Answer[];
-  const answerIds = answers.map(a => a.id);
-  const commentsByAnswer = await getCommentsForAnswers(answerIds);
-
-  // Get user-specific data if profileId provided
-  let userAnswerData: {
-    votes: Record<number, number>;
-    favorites: Set<number>;
-  } = { votes: {}, favorites: new Set<number>() };
-  if (profileIdQuery) {
-    userAnswerData = await getUserAnswerData(profileIdQuery, answerIds);
-  }
-
-  // Merge user data into answers
-  const answersWithUserData = answers.map(a => {
-    const embeddedVotes = ((a as any).votesBy ?? {}) as Record<string, number>;
-    const mergedVotesBy = { ...embeddedVotes };
-    if (profileIdQuery && userAnswerData.votes[a.id]) {
-      mergedVotesBy[profileIdQuery] = userAnswerData.votes[a.id];
-    }
-
-    return {
-      ...a,
-      votesBy: mergedVotesBy,
-      favorited: userAnswerData.favorites.has(a.id),
-    };
-  });
-
-  // favorite counts for answers (DB-backed)
-  try {
-    const { getFavoriteCounts } = await import('~/lib/db');
-    const favCounts = await getFavoriteCounts(answerIds);
-    // attach counts onto answers (non-destructive)
-    for (const a of answersWithUserData) {
-      (a as any).favCount = favCounts[Number(a.id)] ?? 0;
-    }
-  } catch (err) {}
-
-  return {
-    answers: answersWithUserData,
-    topicsById,
-    commentsByAnswer,
-    total,
-    page,
-    pageSize,
-    users,
-    q,
-    author,
-    sortBy,
-    minScore,
-    hasComments,
-    fromDate,
-    toDate,
-  };
+  const topicId = url.searchParams.get('topicId') ?? undefined;
+  const { createAnswersListLoader } = await import('~/lib/loaders');
+  return await createAnswersListLoader(request, { topicId });
 }
 
 import { handleAnswerActions } from '~/lib/actionHandlers';
