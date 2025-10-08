@@ -1,0 +1,75 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { loader, action } from '~/routes/answers._index';
+
+// Mock loaders and actionHandlers
+vi.mock('~/lib/loaders', () => ({
+  createAnswersListLoader: vi.fn(),
+}));
+vi.mock('~/lib/actionHandlers', () => ({
+  handleAnswerActions: vi.fn(),
+}));
+
+describe('answers._index route', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('loader', () => {
+    it('should call createAnswersListLoader', async () => {
+      const mockRequest = new Request('http://localhost/answers');
+      const mockData = {
+        answers: [
+          {
+            id: 1,
+            text: 'Test Answer',
+            created_at: '2023-01-01',
+            votes: { level1: 0, level2: 0, level3: 0 },
+            votesBy: {},
+            profileId: undefined,
+            topicId: 1,
+            favorited: undefined,
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+        q: undefined,
+        fromDate: undefined,
+        toDate: undefined,
+        author: undefined,
+        sortBy: 'newest' as const,
+        minScore: undefined,
+        hasComments: undefined,
+        topicsById: {},
+        commentsByAnswer: {},
+        users: [],
+        profileId: null,
+      } as any;
+      const { createAnswersListLoader } = await import('~/lib/loaders');
+      vi.mocked(createAnswersListLoader).mockResolvedValue(mockData);
+
+      const result = await loader({ request: mockRequest } as any);
+      expect(createAnswersListLoader).toHaveBeenCalledWith(mockRequest, {
+        topicId: undefined,
+      });
+      expect(result).toEqual(mockData);
+    });
+  });
+
+  describe('action', () => {
+    it('should call handleAnswerActions', async () => {
+      const mockArgs = {
+        request: new Request('http://localhost/answers', { method: 'POST' }),
+      } as any;
+      const mockResponse = new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+      });
+      const { handleAnswerActions } = await import('~/lib/actionHandlers');
+      vi.mocked(handleAnswerActions).mockResolvedValue(mockResponse);
+
+      const result = await action(mockArgs);
+      expect(handleAnswerActions).toHaveBeenCalledWith(mockArgs);
+      expect(result).toEqual(mockResponse);
+    });
+  });
+});
