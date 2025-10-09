@@ -51,8 +51,4 @@ export {
   getVotesByForAnswers,
 } from './db/votes';
 
-// Line Sync domain
-export {
-  ingestLineAnswers,
-  type LineAnswerIngestResult,
-} from './db/lineSync';
+// Line Sync domain - moved to direct import in api.line-ingest.ts to avoid browser bundling

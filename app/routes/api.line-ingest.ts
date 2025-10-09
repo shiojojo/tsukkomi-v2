@@ -64,7 +64,7 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   try {
-    const { ingestLineAnswers } = await import('~/lib/db');
+    const { ingestLineAnswers } = await import('~/lib/db/lineSync');
     const result = await ingestLineAnswers(parsed.data);
     return jsonResponse({ ok: true, result });
   } catch (error) {
