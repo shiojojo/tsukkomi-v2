@@ -63,6 +63,7 @@ export function AnswerActionCard({
   const commentFormRef = useRef<HTMLFormElement>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
+  const [currentUserVote, setCurrentUserVote] = useState<number | null>(null);
 
   useEffect(() => {
     if (commentFetcher.state === 'idle' && commentFetcher.data) {
@@ -77,12 +78,13 @@ export function AnswerActionCard({
     const embedded = (answer.votesBy ?? {}) as Record<string, number>;
     const combined = { ...embedded };
 
-    if (profileForVote && userAnswerData.votes[answer.id]) {
-      combined[profileForVote] = userAnswerData.votes[answer.id];
+    if (profileForVote && currentUserVote !== null) {
+      combined[profileForVote] = currentUserVote;
     }
+    // Note: When currentUserVote is null, we don't add userAnswerData to avoid stale data
 
     return Object.keys(combined).length ? combined : undefined;
-  }, [answer, profileForVote, userAnswerData.votes]);
+  }, [answer, profileForVote, currentUserVote]);
 
   const resolveProfileName = useCallback(
     (pid?: string | null) => {
@@ -238,8 +240,8 @@ export function AnswerActionCard({
               <NumericVoteButtons
                 answerId={answer.id}
                 initialVotes={votesCounts}
-                votesBy={votesBy}
                 actionPath={actionPath}
+                onSelectionChange={setCurrentUserVote}
               />
               <div className="text-[11px] text-gray-400 dark:text-gray-500">
                 1〜3

@@ -10,6 +10,7 @@ export type NumericVoteButtonsProps = {
   votesBy?: Record<string, number>;
   actionPath?: string;
   loginRedirectPath?: string;
+  onSelectionChange?: (level: number | null) => void;
 };
 export function NumericVoteButtons({
   answerId,
@@ -17,6 +18,7 @@ export function NumericVoteButtons({
   votesBy,
   actionPath,
   loginRedirectPath = '/login',
+  onSelectionChange,
 }: NumericVoteButtonsProps) {
   const { effectiveId } = useIdentity();
   const { fetcher, performAction } = useOptimisticAction(
@@ -51,9 +53,11 @@ export function NumericVoteButtons({
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setSelection(readStoredSelection());
+      const initial = readStoredSelection();
+      setSelection(initial);
+      onSelectionChange?.(initial);
     }
-  }, [effectiveId]);
+  }, [effectiveId, onSelectionChange]);
 
   useEffect(() => {
     if (fetcher.data && fetcher.data.answer && fetcher.data.answer.votes) {
@@ -98,6 +102,8 @@ export function NumericVoteButtons({
 
     setSelection(isToggleOff ? null : level);
     persistSelection(isToggleOff ? null : level);
+
+    onSelectionChange?.(isToggleOff ? null : level);
 
     performAction({ answerId, level: isToggleOff ? 0 : level, userId: uid });
 
