@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAnswerUserData } from './useAnswerUserData';
 import { useIdentity } from './useIdentity';
 import { useNameByProfileId } from './useNameByProfileId';
@@ -51,6 +52,21 @@ export function useAnswersPage(data: LoaderData) {
   const answerIds = data.answers?.map((a: Answer) => a.id) ?? [];
   const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);
 
+  // Use React Query for answers list with loader data as placeholder
+  const query = useQuery({
+    queryKey: ['answers', data.page, data.pageSize, data.q, data.author, data.sortBy, data.minScore, data.hasComments, data.fromDate, data.toDate],
+    queryFn: async () => {
+      const { createAnswersListLoader } = await import('~/lib/loaders');
+      const request = new Request(window.location.href);
+      return await createAnswersListLoader(request, { topicId: data.profileId });
+    },
+    placeholderData: data,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  // Use query data if available, otherwise fallback to loader data
+  const currentData = query.data ?? data;
+
   // Filter UI state (server-driven via GET form)
   const initialFilters: AnswersFilters = {
     q: qParam,
@@ -100,12 +116,12 @@ export function useAnswersPage(data: LoaderData) {
   };
 
   // Server-driven pagination
-  const serverPage = data.page ?? 1;
-  const serverPageSize = data.pageSize ?? 20;
-  const total = data.total ?? 0;
+  const serverPage = currentData.page ?? 1;
+  const serverPageSize = currentData.pageSize ?? 20;
+  const total = currentData.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / serverPageSize));
   const currentPage = Math.min(Math.max(1, serverPage), pageCount);
-  const answers = data.answers ?? [];
+  const answers = currentData.answers ?? [];
 
   // ref to the scrollable answers container
   const answersContainerRef = useRef<HTMLDivElement | null>(null);
@@ -143,9 +159,9 @@ export function useAnswersPage(data: LoaderData) {
 
   return {
     // Data
-    topicsById,
-    commentsByAnswer,
-    users,
+    topicsById: currentData.topicsById ?? {},
+    commentsByAnswer: currentData.commentsByAnswer ?? {},
+    users: currentData.users ?? [],
     answers,
     total,
     // User
@@ -154,7 +170,7 @@ export function useAnswersPage(data: LoaderData) {
     currentUserName,
     userAnswerData,
     markFavorite,
-    profileId,
+    profileId: currentData.profileId,
     // Filters
     filters,
     updateFilter,

@@ -31,10 +31,6 @@ export function NumericVoteButtons({
     const uid = effectiveId;
     if (!uid) return null;
 
-    if (votesBy && uid in votesBy) {
-      return votesBy[uid] as 1 | 2 | 3;
-    }
-
     try {
       const key = `vote:answer:${answerId}:user:${uid}`;
       const stored = localStorage.getItem(key);
@@ -57,7 +53,7 @@ export function NumericVoteButtons({
     if (typeof window !== 'undefined') {
       setSelection(readStoredSelection());
     }
-  }, [votesBy, effectiveId]);
+  }, [effectiveId]);
 
   useEffect(() => {
     if (fetcher.data && fetcher.data.answer && fetcher.data.answer.votes) {
@@ -109,6 +105,11 @@ export function NumericVoteButtons({
     if (uid) {
       queryClient.invalidateQueries({
         queryKey: ['user-data', uid],
+        exact: false,
+      });
+      // Invalidate answers list to refresh vote counts
+      queryClient.invalidateQueries({
+        queryKey: ['answers'],
         exact: false,
       });
     }
