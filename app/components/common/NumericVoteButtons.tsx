@@ -28,26 +28,12 @@ export function NumericVoteButtons({
   );
   const queryClient = useQueryClient();
 
-  const readStoredSelection = () => {
-    if (typeof window === 'undefined') return null;
-    const uid = effectiveId;
-    if (!uid) return null;
-
-    try {
-      const key = `vote:answer:${answerId}:user:${uid}`;
-      const stored = localStorage.getItem(key);
-      return stored ? (Number(stored) as 1 | 2 | 3) : null;
-    } catch {
-      return null;
-    }
-  };
-
   // React Query for user vote
   const userVoteQuery = useQuery({
     queryKey: ['user-vote', answerId, effectiveId],
-    queryFn: () => readStoredSelection(),
-    placeholderData: null,
-    staleTime: Infinity, // localStorageなのでstaleにしない
+    queryFn: () => votesBy?.[effectiveId || ''] || null,
+    placeholderData: votesBy?.[effectiveId || ''] || null,
+    staleTime: Infinity, // loader dataなのでstaleにしない
   });
 
   // React Query for vote counts
@@ -64,13 +50,13 @@ export function NumericVoteButtons({
   // Mutation for voting
   const voteMutation = useMutation({
     mutationFn: async ({ level }: { level: number }) => {
-      return new Promise<void>((resolve, reject) => {
+      return new Promise<any>((resolve, reject) => {
         performAction({ answerId, level, userId: effectiveId });
-        // Wait for fetcher to complete
+        // Wait for fetcher to complete and return response
         const checkComplete = () => {
           if (fetcher.state === 'idle') {
             if (fetcher.data) {
-              resolve();
+              resolve(fetcher.data);
             } else {
               reject(new Error('Vote failed'));
             }
@@ -81,31 +67,24 @@ export function NumericVoteButtons({
         checkComplete();
       });
     },
-    onSuccess: (_, { level }) => {
-      const voteLevel = level === 0 ? null : (level as 1 | 2 | 3);
-      // Update user vote
+    onSuccess: response => {
+      const voteLevel = response?.answer ? response.answer.level || null : null;
+      // Update user vote with server response
       queryClient.setQueryData(['user-vote', answerId, effectiveId], voteLevel);
-      persistSelection(voteLevel);
       onSelectionChange?.(voteLevel);
-      // Invalidate to refresh counts
-      queryClient.invalidateQueries({ queryKey: ['vote-counts', answerId] });
+      // Update vote counts with server response
+      if (response?.answer?.votes) {
+        queryClient.setQueryData(['vote-counts', answerId], {
+          level1: response.answer.votes.level1 || 0,
+          level2: response.answer.votes.level2 || 0,
+          level3: response.answer.votes.level3 || 0,
+        });
+      }
+      // Invalidate other queries
       queryClient.invalidateQueries({ queryKey: ['user-data'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['answers'], exact: false });
     },
   });
-
-  const persistSelection = (level: 1 | 2 | 3 | null) => {
-    const uid = effectiveId;
-    if (!uid) return;
-    const key = `vote:answer:${answerId}:user:${uid}`;
-    try {
-      if (level === null) {
-        localStorage.removeItem(key);
-      } else {
-        localStorage.setItem(key, String(level));
-      }
-    } catch {}
-  };
 
   const handleVote = (level: 1 | 2 | 3) => {
     const uid = effectiveId;
