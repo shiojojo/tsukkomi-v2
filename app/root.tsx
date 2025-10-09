@@ -9,6 +9,7 @@ import {
   type Navigation,
 } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useState } from 'react';
 import { useEffect } from 'react';
 import { logger } from '~/lib/logger';
@@ -253,6 +254,9 @@ export default function App() {
           loadingTimeout={loadingTimeout}
         />
       </Layout>
+
+      {/* React Query DevTools - only in development */}
+      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 }
