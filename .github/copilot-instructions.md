@@ -8,7 +8,6 @@
 • React Router v7 + @react-router/fs-routes（Remix スタイル: loader / action / useLoaderData / useFetcher / defer）  
 • Supabase JS Client（DB / Auth / Storage）  
 • Tailwind CSS + shadcn/ui  
-• TanStack Query（ユーザー操作後の再取得 / 増分更新 / キャッシュ）  
 • Zustand（グローバル状態）  
 • date-fns（日付フォーマット/計算）  
 • zod（スキーマ & バリデーション）  
@@ -136,7 +135,7 @@ export default function Route() {
   - `useLoaderData` でコンポーネントに渡す
   - ナビゲーション時のデータプリロード
 
-- **React Query**: クライアント更新/キャッシュ
+- **TanStack Query**: クライアント更新/キャッシュ
   - ユーザー操作後の部分的リフレッシュ
   - リアルタイムUI更新とキャッシュ管理
   - 楽観的更新（optimistic updates）
@@ -159,14 +158,14 @@ export async function loader({ params }: LoaderFunctionArgs) {
   return json({ data });
 }
 
-// React Query: クライアント更新
+// TanStack Query: クライアント更新
 const { data, refetch } = useQuery({
   queryKey: ['data', id],
   queryFn: () => fetchData(id),
   initialData: loaderData, // Loaderデータを使用
 });
 
-// React Query Mutation: Action をトリガー
+// TanStack Query Mutation: Action をトリガー
 const mutation = useMutation({
   mutationFn: async input => {
     const response = await fetch('/action-path', {
@@ -205,6 +204,30 @@ export async function action({ request }: ActionFunctionArgs) {
 
 - loaderを完全に欠落させ、Queryだけに頼ること（サーバー同期を保証するため）。
 - 過度なuseState依存。Queryのキャッシュ/再取得で状態を管理。
+- **localStorageの使用**: loader/Actionで管理するデータ（投票、いいねなど）はlocalStorageを使わず、TanStack Queryで管理。localStorageはユーザー設定などのクライアント専用データのみ使用。
+
+⸻
+
+## 💾 localStorage 利用ガイド
+
+**基本原則**: localStorageは最小限に使用。サーバー同期が必要なデータ（投票、いいね、コメントなど）はloaderデータとTanStack Queryで管理し、デバイス間同期を保証。
+
+**許可される使用例**:
+
+- ユーザー設定（テーマ、言語、表示設定など）
+- クライアント専用の一時データ（ドラフト、UI状態など）
+
+**禁止される使用例**:
+
+- 投票状態の保存（NumericVoteButtonsのようにloaderデータを使用）
+- いいね状態の保存（FavoriteButtonのようにTanStack Queryを使用）
+- サーバー同期が必要なあらゆるデータ
+
+**移行パターン**: localStorageを使用していたコンポーネントは以下の手順でTanStack Queryに移行:
+
+1. loaderで初期データを取得
+2. useQueryでクライアント状態を管理（initialDataとしてloaderデータを使用）
+3. useMutationでActionをトリガーし、成功時にキャッシュを更新
 
 ⸻
 
@@ -217,6 +240,8 @@ export async function action({ request }: ActionFunctionArgs) {
 • カラー/タイポはデザイントークン（Tailwind 設定）から参照。  
 • 一貫性確保のため spacing は 2 / 4 / 6 / 8 / 12 / 16 を中心に。
 • モバイルファースト: モバイル幅 (例: ~375–430px) で最初にレイアウト確定。Hover 依存 UI 禁止。ファーストビュー内に主要 CTA を収める。
+• **FavoriteButton**: useState/useEffect 禁止。TanStack Query (useQuery/useMutation) を使用し、loader データから初期状態を取得。Action で書き込み処理を実行。
+• **NumericVoteButtons**: localStorage禁止。loaderデータからvotesBy propを受け取り、TanStack Queryで状態管理。
 
 ⸻
 
@@ -234,7 +259,8 @@ export async function action({ request }: ActionFunctionArgs) {
 2. ルートファイル: `loader` で取得 / `action` で mutate
 3. 必要なら `useQuery` を補助的に追加（キー命名: `['entity', id]`）
 4. UI コンポーネントは props 経由
-5. ESLint / TypeScript エラー 0 を確認
+5. **TanStack Query必須**: FavoriteButton/NumericVoteButtons 同様、useState禁止。loaderデータから初期状態を取得し、useQuery/useMutationを使用
+6. ESLint / TypeScript エラー 0 を確認
 
 ⸻
 
@@ -253,8 +279,9 @@ export async function action({ request }: ActionFunctionArgs) {
 ## 🚀 最重要 3 原則
 
 1. Supabase 直呼び禁止 → 100% `lib/db.ts` 経由
-2. **Loader**: 初回/SSRデータ取得 / **React Query**: クライアント更新/キャッシュ / **Action**: 書き込み処理
-3. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
+2. **Loader**: 初回/SSRデータ取得 / **TanStack Query**: クライアント更新/キャッシュ / **Action**: 書き込み処理
+3. **TanStack Query必須**: useState/useEffect禁止。loaderデータから初期状態を取得し、useQuery/useMutationを使用
+4. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
 
 ⸻
 
