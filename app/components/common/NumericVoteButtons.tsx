@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useIdentity } from '~/hooks/useIdentity';
 import { useOptimisticAction } from '~/hooks/useOptimisticAction';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '~/components/ui/Button';
 
 export type NumericVoteButtonsProps = {
@@ -42,32 +42,57 @@ export function NumericVoteButtons({
     }
   };
 
-  const [selection, setSelection] = useState<1 | 2 | 3 | null>(
-    typeof window !== 'undefined' ? readStoredSelection() : null
-  );
-  const [, setCounts] = useState(() => ({ ...initialVotes }));
+  // React Query for user vote
+  const userVoteQuery = useQuery({
+    queryKey: ['user-vote', answerId, effectiveId],
+    queryFn: () => readStoredSelection(),
+    placeholderData: null,
+    staleTime: Infinity, // localStorageなのでstaleにしない
+  });
 
-  useEffect(() => {
-    setCounts({ ...initialVotes });
-  }, [initialVotes.level1, initialVotes.level2, initialVotes.level3]);
+  // React Query for vote counts
+  const voteCountsQuery = useQuery({
+    queryKey: ['vote-counts', answerId],
+    queryFn: () => initialVotes,
+    placeholderData: initialVotes,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const initial = readStoredSelection();
-      setSelection(initial);
-      onSelectionChange?.(initial);
-    }
-  }, [effectiveId, onSelectionChange]);
+  const selection = userVoteQuery.data;
+  const counts = voteCountsQuery.data || initialVotes;
 
-  useEffect(() => {
-    if (fetcher.data && fetcher.data.answer && fetcher.data.answer.votes) {
-      setCounts({
-        level1: Number(fetcher.data.answer.votes.level1 ?? 0),
-        level2: Number(fetcher.data.answer.votes.level2 ?? 0),
-        level3: Number(fetcher.data.answer.votes.level3 ?? 0),
+  // Mutation for voting
+  const voteMutation = useMutation({
+    mutationFn: async ({ level }: { level: number }) => {
+      return new Promise<void>((resolve, reject) => {
+        performAction({ answerId, level, userId: effectiveId });
+        // Wait for fetcher to complete
+        const checkComplete = () => {
+          if (fetcher.state === 'idle') {
+            if (fetcher.data) {
+              resolve();
+            } else {
+              reject(new Error('Vote failed'));
+            }
+          } else {
+            setTimeout(checkComplete, 100);
+          }
+        };
+        checkComplete();
       });
-    }
-  }, [fetcher.data]);
+    },
+    onSuccess: (_, { level }) => {
+      const voteLevel = level === 0 ? null : (level as 1 | 2 | 3);
+      // Update user vote
+      queryClient.setQueryData(['user-vote', answerId, effectiveId], voteLevel);
+      persistSelection(voteLevel);
+      onSelectionChange?.(voteLevel);
+      // Invalidate to refresh counts
+      queryClient.invalidateQueries({ queryKey: ['vote-counts', answerId] });
+      queryClient.invalidateQueries({ queryKey: ['user-data'], exact: false });
+      queryClient.invalidateQueries({ queryKey: ['answers'], exact: false });
+    },
+  });
 
   const persistSelection = (level: 1 | 2 | 3 | null) => {
     const uid = effectiveId;
@@ -87,38 +112,30 @@ export function NumericVoteButtons({
     const prev = selection;
     const isToggleOff = prev === level;
 
-    setCounts(c => {
-      const next = { ...c };
-      if (prev === 1) next.level1 = Math.max(0, next.level1 - 1);
-      if (prev === 2) next.level2 = Math.max(0, next.level2 - 1);
-      if (prev === 3) next.level3 = Math.max(0, next.level3 - 1);
-      if (!isToggleOff) {
-        if (level === 1) next.level1 = (next.level1 || 0) + 1;
-        if (level === 2) next.level2 = (next.level2 || 0) + 1;
-        if (level === 3) next.level3 = (next.level3 || 0) + 1;
-      }
-      return next;
-    });
-
-    setSelection(isToggleOff ? null : level);
-    persistSelection(isToggleOff ? null : level);
-
-    onSelectionChange?.(isToggleOff ? null : level);
-
-    performAction({ answerId, level: isToggleOff ? 0 : level, userId: uid });
-
-    // Invalidate user data queries to refresh votes
-    if (uid) {
-      queryClient.invalidateQueries({
-        queryKey: ['user-data', uid],
-        exact: false,
-      });
-      // Invalidate answers list to refresh vote counts
-      queryClient.invalidateQueries({
-        queryKey: ['answers'],
-        exact: false,
-      });
+    // Optimistic update for counts
+    const optimisticCounts = { ...counts };
+    if (prev === 1)
+      optimisticCounts.level1 = Math.max(0, optimisticCounts.level1 - 1);
+    if (prev === 2)
+      optimisticCounts.level2 = Math.max(0, optimisticCounts.level2 - 1);
+    if (prev === 3)
+      optimisticCounts.level3 = Math.max(0, optimisticCounts.level3 - 1);
+    if (!isToggleOff) {
+      if (level === 1)
+        optimisticCounts.level1 = (optimisticCounts.level1 || 0) + 1;
+      if (level === 2)
+        optimisticCounts.level2 = (optimisticCounts.level2 || 0) + 1;
+      if (level === 3)
+        optimisticCounts.level3 = (optimisticCounts.level3 || 0) + 1;
     }
+    queryClient.setQueryData(['vote-counts', answerId], optimisticCounts);
+
+    // Optimistic update for user vote
+    const newVote = isToggleOff ? null : level;
+    queryClient.setQueryData(['user-vote', answerId, effectiveId], newVote);
+    onSelectionChange?.(newVote);
+
+    voteMutation.mutate({ level: isToggleOff ? 0 : level });
   };
 
   return (
