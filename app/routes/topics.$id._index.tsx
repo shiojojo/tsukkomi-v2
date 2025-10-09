@@ -6,6 +6,7 @@ import { TopicOverviewCard } from '~/components/features/topics/TopicOverviewCar
 import { useAnswersPage } from '~/hooks/useAnswersPage';
 import { FilterForm } from '~/components/forms/FilterForm';
 import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
+import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
@@ -109,5 +110,13 @@ export default function TopicDetailRoute() {
         }}
       />
     </StickyHeaderLayout>
+  );
+}
+
+export function ErrorBoundary() {
+  return (
+    <ErrorBoundaryComponent showDetails={import.meta.env.DEV}>
+      <div />
+    </ErrorBoundaryComponent>
   );
 }

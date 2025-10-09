@@ -6,6 +6,7 @@ import { useIdentity } from '~/hooks/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
+import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
 
 /**
  * 概要: /login (開発用) - メインユーザー選択 & サブユーザー作成 / 切替 を一画面で提供。
@@ -263,5 +264,13 @@ export default function LoginRoute() {
         </ul>
       </section>
     </div>
+  );
+}
+
+export function ErrorBoundary() {
+  return (
+    <ErrorBoundaryComponent showDetails={import.meta.env.DEV}>
+      <div />
+    </ErrorBoundaryComponent>
   );
 }

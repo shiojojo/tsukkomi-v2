@@ -5,11 +5,6 @@ import { AnswersList } from '~/components/features/answers/AnswersList';
 import { useAnswersPage } from '~/hooks/useAnswersPage';
 import { FilterForm } from '~/components/forms/FilterForm';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';
-// server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
-import type { Answer } from '~/lib/schemas/answer';
-import type { Topic } from '~/lib/schemas/topic';
-import type { Comment } from '~/lib/schemas/comment';
-import type { User } from '~/lib/schemas/user';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 
@@ -105,5 +100,17 @@ export default function AnswersRoute() {
       }
       contentRef={answersContainerRef}
     />
+  );
+}
+
+import { isRouteErrorResponse } from 'react-router';
+import type { Route } from './+types/answers._index';
+import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
+
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  return (
+    <ErrorBoundaryComponent showDetails={import.meta.env.DEV}>
+      <div />
+    </ErrorBoundaryComponent>
   );
 }

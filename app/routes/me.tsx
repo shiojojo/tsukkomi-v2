@@ -8,6 +8,7 @@ import { useIdentity } from '~/hooks/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
+import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
 
 /**
  * 概要: /me ページ - 開発向けにサブユーザーの作成 / 削除 / 切替 を提供する。
@@ -302,5 +303,13 @@ export default function MeRoute() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export function ErrorBoundary() {
+  return (
+    <ErrorBoundaryComponent showDetails={import.meta.env.DEV}>
+      <div />
+    </ErrorBoundaryComponent>
   );
 }
