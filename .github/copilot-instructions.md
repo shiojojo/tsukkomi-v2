@@ -259,7 +259,7 @@ export async function action({ request }: ActionFunctionArgs) {
 2. ルートファイル: `loader` で取得 / `action` で mutate
 3. 必要なら `useQuery` を補助的に追加（キー命名: `['entity', id]`）
 4. UI コンポーネントは props 経由
-5. **TanStack Query必須**: FavoriteButton/NumericVoteButtons 同様、useState禁止。loaderデータから初期状態を取得し、useQuery/useMutationを使用
+5. **TanStack Query**: NumericVoteButtons 同様、useStateな過度な利用禁止。loaderデータから初期状態を取得し、useQuery/useMutationを使用
 6. ESLint / TypeScript エラー 0 を確認
 
 ⸻
@@ -280,7 +280,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 1. Supabase 直呼び禁止 → 100% `lib/db.ts` 経由
 2. **Loader**: 初回/SSRデータ取得 / **TanStack Query**: クライアント更新/キャッシュ / **Action**: 書き込み処理
-3. **TanStack Query必須**: useState/useEffect禁止。loaderデータから初期状態を取得し、useQuery/useMutationを使用
+3. **TanStack Query**: loaderデータから初期状態を取得し、useQuery/useMutationを使用
 4. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
 
 ⸻
