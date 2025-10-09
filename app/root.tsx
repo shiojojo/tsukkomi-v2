@@ -6,6 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
   useNavigation,
+  type Navigation,
 } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -75,7 +76,7 @@ function ClientOnlyDebugInfo({
   isLoading,
   loadingTimeout,
 }: {
-  navigation: any;
+  navigation: Navigation;
   isLoading: boolean;
   loadingTimeout: boolean;
 }) {
@@ -168,7 +169,7 @@ export default function App() {
     let rafId: number | null = null;
     const setVh = () => {
       try {
-        const vv = (window as any).visualViewport;
+        const vv = window.visualViewport;
         const vh =
           vv && typeof vv.height === 'number' ? vv.height : window.innerHeight;
         document.documentElement.style.setProperty(
@@ -195,7 +196,7 @@ export default function App() {
     window.addEventListener('pageshow', schedule);
     window.addEventListener('visibilitychange', schedule);
 
-    const vv = (window as any).visualViewport;
+    const vv = window.visualViewport;
     if (vv && typeof vv.addEventListener === 'function') {
       vv.addEventListener('resize', schedule);
       vv.addEventListener('scroll', schedule);

@@ -50,7 +50,7 @@ export default function AnswersRoute() {
     pageCount,
     buildHref,
     answersContainerRef,
-  } = useAnswersPage(data as any);
+  } = useAnswersPage(data);
 
   return (
     <ListPageLayout

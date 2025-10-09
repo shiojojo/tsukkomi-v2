@@ -2,6 +2,9 @@ import { parsePaginationParams, parseFilterParams } from '~/lib/queryParser';
 import { getTopicsPaged, searchAnswers, getTopics, getCommentsForAnswers, getUsers, getUserAnswerData, getFavoriteCounts } from '~/lib/db';
 import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
 import type { Answer } from '~/lib/schemas/answer';
+import type { Topic } from '~/lib/schemas/topic';
+import type { Comment } from '~/lib/schemas/comment';
+import type { User } from '~/lib/schemas/user';
 
 /**
  * 概要: リストページの loader を共通化するためのヘルパー関数。
@@ -11,7 +14,30 @@ import type { Answer } from '~/lib/schemas/answer';
  * Environment: サーバーサイドのみ。db.ts 関数を呼び出す。
  * Errors: DBエラー時は throw（呼び出し側 loader が捕捉）。
  */
-export async function createListLoader(entityType: 'topics' | 'answers', request: Request, extraParams?: Record<string, any>) {
+export async function createListLoader(entityType: 'topics' | 'answers', request: Request, extraParams?: Record<string, any>): Promise<
+  | {
+      answers?: Answer[];
+      total: number;
+      page: number;
+      pageSize: number;
+      q?: string;
+      fromDate?: string;
+      toDate?: string;
+    }
+  | {
+      answers?: Answer[];
+      total: number;
+      page: number;
+      pageSize: number;
+      q?: string;
+      author?: string;
+      sortBy: string;
+      minScore?: number;
+      hasComments?: boolean;
+      fromDate?: string;
+      toDate?: string;
+    }
+> {
   const { page, pageSize } = parsePaginationParams(request);
   const filters = parseFilterParams(request, entityType);
 
@@ -30,7 +56,23 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
  * Environment: サーバーサイドのみ。
  * Errors: DBエラー時は throw。
  */
-export async function createAnswersListLoader(request: Request, extraParams?: Record<string, any>) {
+export async function createAnswersListLoader(request: Request, extraParams?: Record<string, any>): Promise<{
+  answers: Answer[];
+  total: number;
+  page: number;
+  pageSize: number;
+  q?: string;
+  author?: string;
+  sortBy: string;
+  minScore?: number;
+  hasComments?: boolean;
+  fromDate?: string;
+  toDate?: string;
+  topicsById: Record<string, Topic>;
+  commentsByAnswer: Record<string, Comment[]>;
+  users: User[];
+  profileId?: string;
+}> {
   const url = new URL(request.url);
   const profileIdQuery = url.searchParams.get('profileId') ?? undefined;
 
@@ -41,8 +83,20 @@ export async function createAnswersListLoader(request: Request, extraParams?: Re
   const users = await getUsers({ limit: 200 });
 
   // answersリストデータ
-  const listData = await createListLoader('answers', request, extraParams);
-  const answers = (listData as any).answers as Answer[];
+  const listData = await createListLoader('answers', request, extraParams) as {
+    answers: Answer[];
+    total: number;
+    page: number;
+    pageSize: number;
+    q?: string;
+    author?: string;
+    sortBy: string;
+    minScore?: number;
+    hasComments?: boolean;
+    fromDate?: string;
+    toDate?: string;
+  };
+  const answers = listData.answers;
   const answerIds = answers.map(a => a.id);
 
   // 追加データ

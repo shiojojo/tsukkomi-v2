@@ -12,7 +12,7 @@ interface AnswersListProps {
   getNameByProfileId: (pid?: string | null) => string | undefined;
   currentUserName: string | null;
   currentUserId: string | null;
-  userAnswerData: any;
+  userAnswerData: { votes: Record<number, number>; favorites: Set<number> };
   onFavoriteUpdate: (id: number, favorited: boolean) => void;
   actionPath: string;
   profileIdForVotes?: string | null;

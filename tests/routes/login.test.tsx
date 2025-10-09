@@ -43,7 +43,8 @@ describe('login route', () => {
         parentId: 'parent1',
         name: 'New Sub',
       });
-      expect(result).toEqual({ ok: true, sub: mockSub, parentId: 'parent1' });
+      const data = await result.json();
+      expect(data).toEqual({ ok: true, sub: mockSub, parentId: 'parent1' });
     });
 
     it('should return error for invalid subuser data', async () => {
@@ -57,8 +58,9 @@ describe('login route', () => {
       });
 
       const result = await action({ request: mockRequest } as any);
-      expect(result).toHaveProperty('ok', false);
-      expect(result).toHaveProperty('errors');
+      const data = await result.json();
+      expect(data).toHaveProperty('ok', false);
+      expect(data).toHaveProperty('errors');
     });
   });
 });

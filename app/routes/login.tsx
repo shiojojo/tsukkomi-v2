@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import * as identityStorage from '~/lib/identityStorage';
 import { useIdentity } from '~/hooks/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
+import type { User, SubUser } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 
 /**
@@ -29,18 +30,34 @@ export async function action({ request }: ActionFunctionArgs) {
     const name = String(form.get('name') || '');
     const parsed = SubUserCreateSchema.safeParse({ parentId, name });
     if (!parsed.success)
-      return { ok: false, errors: parsed.error.format() } as any;
+      return new Response(
+        JSON.stringify({ ok: false, errors: parsed.error.format() }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
     const { addSubUser } = await import('~/lib/db');
     const sub = await addSubUser(parsed.data);
-    return { ok: true, sub, parentId } as any;
+    return new Response(JSON.stringify({ ok: true, sub, parentId }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
-  return { ok: false } as any;
+  return new Response(JSON.stringify({ ok: false }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 export default function LoginRoute() {
   const data = useLoaderData() as Awaited<ReturnType<typeof loader>>;
-  const users = data.users as any[];
+  const users = data.users;
   const createFetcher = useFetcher();
+
+  type ActionData = {
+    ok: boolean;
+    sub?: { id: string; name: string };
+    parentId?: string;
+    errors?: any;
+  };
 
   const {
     mainId: currentUserId,
@@ -55,12 +72,14 @@ export default function LoginRoute() {
     if (
       createFetcher.state === 'idle' &&
       createFetcher.data &&
-      (createFetcher.data as any).ok &&
-      (createFetcher.data as any).sub
+      (createFetcher.data as ActionData).ok &&
+      (createFetcher.data as ActionData).sub
     ) {
       try {
-        const sub = (createFetcher.data as any).sub;
-        const parentId = String((createFetcher.data as any).parentId || '');
+        const sub = (createFetcher.data as ActionData).sub!;
+        const parentId = String(
+          (createFetcher.data as ActionData).parentId || ''
+        );
         const parent = users.find(u => u.id === parentId);
         identityStorage.setItem('currentUserId', parentId);
         if (parent) identityStorage.setItem('currentUserName', parent.name);
@@ -72,7 +91,7 @@ export default function LoginRoute() {
     }
   }, [createFetcher.state, createFetcher.data, users]);
 
-  function selectMain(u: any) {
+  function selectMain(u: User) {
     try {
       identityStorage.setItem('currentUserId', u.id);
       identityStorage.setItem('currentUserName', u.name ?? '');
@@ -83,7 +102,7 @@ export default function LoginRoute() {
     window.location.href = '/';
   }
 
-  function selectSub(sub: any, parent: any) {
+  function selectSub(sub: SubUser, parent: User) {
     try {
       identityStorage.setItem('currentUserId', parent.id);
       identityStorage.setItem('currentUserName', parent.name ?? '');
@@ -176,7 +195,7 @@ export default function LoginRoute() {
                     <h3 className="text-xs font-semibold mb-1">サブユーザー</h3>
                     {u.subUsers && u.subUsers.length ? (
                       <ul className="space-y-1">
-                        {u.subUsers.map((s: any) => (
+                        {u.subUsers.map((s: SubUser) => (
                           <li
                             key={s.id}
                             className="flex items-center justify-between"
@@ -231,7 +250,7 @@ export default function LoginRoute() {
                       </div>
                     )}
                     {createFetcher.data &&
-                      (createFetcher.data as any).ok === false && (
+                      (createFetcher.data as ActionData).ok === false && (
                         <div className="text-[10px] text-red-600 mt-1">
                           エラー: 入力を確認してください。
                         </div>

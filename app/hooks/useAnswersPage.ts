@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useAnswerUserData } from './useAnswerUserData';
 import { useIdentity } from './useIdentity';
 import { useNameByProfileId } from './useNameByProfileId';
@@ -13,13 +13,13 @@ type LoaderData = {
   total: number;
   page: number;
   pageSize: number;
-  q: string;
-  author: string;
+  q?: string;
+  author?: string;
   sortBy: string;
-  minScore: string;
-  hasComments: boolean;
-  fromDate: string;
-  toDate: string;
+  minScore?: number;
+  hasComments?: boolean;
+  fromDate?: string;
+  toDate?: string;
   topicsById: Record<string, Topic>;
   commentsByAnswer: Record<string, Comment[]>;
   users: User[];
@@ -36,7 +36,7 @@ export function useAnswersPage(data: LoaderData) {
   const sortByParam = data.sortBy ?? 'newest';
   const sortBy: 'newest' | 'oldest' | 'scoreDesc' =
     sortByParam === 'oldest' || sortByParam === 'scoreDesc'
-      ? (sortByParam as any)
+      ? sortByParam
       : 'newest';
   const minScoreParam = String(data.minScore ?? '');
   const hasCommentsParam = data.hasComments ?? false;
@@ -117,7 +117,7 @@ export function useAnswersPage(data: LoaderData) {
       if (el) {
         el.scrollTop = 0;
         try {
-          el.scrollTo?.({ top: 0, behavior: 'auto' } as any);
+          el.scrollTo?.({ top: 0, behavior: 'auto' });
         } catch {}
       }
       if (typeof window !== 'undefined') {

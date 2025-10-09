@@ -51,7 +51,7 @@ export default function TopicDetailRoute() {
     pageCount,
     buildHref,
     answersContainerRef,
-  } = useAnswersPage(data as any);
+  } = useAnswersPage(data);
 
   const topicId = params.id ? String(params.id) : '';
   const topic = topicsById[topicId];

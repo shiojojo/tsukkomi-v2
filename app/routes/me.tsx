@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useIdentity } from '~/hooks/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
+import type { User, SubUser } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 
 /**
@@ -44,7 +45,10 @@ export async function action({ request }: ActionFunctionArgs) {
     }
     // if no token available, return 429
     if (!consumeToken(rateKey, 1)) {
-      return { ok: false, error: 'rate_limited' } as any;
+      return new Response(
+        JSON.stringify({ ok: false, error: 'rate_limited' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
     }
   } catch {}
   const intent = form.get('intent') ? String(form.get('intent')) : '';
@@ -67,12 +71,15 @@ export async function action({ request }: ActionFunctionArgs) {
     return { ok, parentId, subId };
   }
 
-  return { ok: false };
+  return new Response(JSON.stringify({ ok: false }), {
+    status: 400,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 export default function MeRoute() {
   const data = useLoaderData() as Awaited<ReturnType<typeof loader>>;
-  const users = data.users as any[];
+  const users = data.users;
 
   const {
     mainId: currentUserId,
@@ -85,12 +92,23 @@ export default function MeRoute() {
   const add = useFetcher();
   const remove = useFetcher();
 
+  type ActionData = {
+    ok: boolean;
+    sub?: SubUser;
+    parentId?: string;
+  };
+
   // Handle add result: set the created sub-user as active
   useEffect(() => {
-    if (add.state === 'idle' && add.data && add.data.ok && add.data.sub) {
+    if (
+      add.state === 'idle' &&
+      add.data &&
+      (add.data as ActionData).ok &&
+      (add.data as ActionData).sub
+    ) {
       try {
-        const sub = add.data.sub as any;
-        const parentId = String(add.data.parentId || '');
+        const sub = (add.data as ActionData).sub!;
+        const parentId = String((add.data as ActionData).parentId || '');
         setItem('currentUserId', parentId);
         const parent = users.find(u => u.id === parentId);
         if (parent) setItem('currentUserName', parent.name ?? '');
@@ -118,7 +136,7 @@ export default function MeRoute() {
     }
   }, [remove.state, remove.data]);
 
-  function selectMain(user: any) {
+  function selectMain(user: User) {
     try {
       setItem('currentUserId', user.id);
       setItem('currentUserName', user.name ?? '');
@@ -130,7 +148,7 @@ export default function MeRoute() {
     window.location.reload();
   }
 
-  function switchToSub(sub: any, parent: any) {
+  function switchToSub(sub: SubUser, parent: User) {
     try {
       setItem('currentUserId', parent.id);
       setItem('currentUserName', parent.name ?? '');
@@ -161,7 +179,7 @@ export default function MeRoute() {
       <section className="mb-6">
         <h2 className="text-sm font-semibold">メインアカウントを選択</h2>
         <ul className="mt-2 space-y-2">
-          {users.map((u: any) => (
+          {users.map((u: User) => (
             <li key={u.id} className="flex items-center justify-between">
               <div>
                 <div className="font-medium">{u.name}</div>
@@ -232,8 +250,8 @@ export default function MeRoute() {
           <ul className="mt-2 space-y-2">
             {users.find(u => u.id === currentUserId)?.subUsers?.length ? (
               users
-                .find(u => u.id === currentUserId)
-                .subUsers.map((s: any) => (
+                .find(u => u.id === currentUserId)!
+                .subUsers!.map((s: SubUser) => (
                   <li key={s.id} className="flex items-center justify-between">
                     <div>{s.name}</div>
                     <div className="flex items-center gap-2">
@@ -242,7 +260,7 @@ export default function MeRoute() {
                         onClick={() =>
                           switchToSub(
                             s,
-                            users.find(u => u.id === currentUserId)
+                            users.find(u => u.id === currentUserId)!
                           )
                         }
                       >

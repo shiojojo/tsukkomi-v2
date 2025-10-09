@@ -74,7 +74,7 @@ export function AnswerActionCard({
 
   const profileForVote = profileIdForVotes ?? currentUserId ?? null;
   const votesBy = useMemo(() => {
-    const embedded = ((answer as any).votesBy ?? {}) as Record<string, number>;
+    const embedded = (answer.votesBy ?? {}) as Record<string, number>;
     const combined = { ...embedded };
 
     if (profileForVote && userAnswerData.votes[answer.id]) {
@@ -97,7 +97,7 @@ export function AnswerActionCard({
 
   const { votesCounts, score } = useMemo(() => {
     const fallbackCounts = (() => {
-      const votes = (answer as any).votes || {
+      const votes = answer.votes || {
         level1: 0,
         level2: 0,
         level3: 0,
@@ -163,7 +163,7 @@ export function AnswerActionCard({
 
   const initialFavorited = useMemo(() => {
     if (userAnswerData.favorites.has(answer.id)) return true;
-    return Boolean((answer as any).favorited);
+    return Boolean(answer.favorited);
   }, [answer, userAnswerData.favorites]);
 
   return (
@@ -203,9 +203,9 @@ export function AnswerActionCard({
                 Score:{' '}
                 <span className="text-gray-900 dark:text-gray-50">{score}</span>
               </div>
-              {resolveProfileName((answer as any).profileId) && (
+              {resolveProfileName(answer.profileId) && (
                 <span className="text-sm text-gray-600 dark:text-gray-400">
-                  作者: {resolveProfileName((answer as any).profileId)}
+                  作者: {resolveProfileName(answer.profileId)}
                 </span>
               )}
             </div>
@@ -290,9 +290,7 @@ export function AnswerActionCard({
                   >
                     <div className="whitespace-pre-wrap">{comment.text}</div>{' '}
                     <span className="text-xs text-gray-400 dark:text-gray-400">
-                      —{' '}
-                      {resolveProfileName((comment as any).profileId) ??
-                        '名無し'}
+                      — {resolveProfileName(comment.profileId) ?? '名無し'}
                     </span>
                   </li>
                 ))}
