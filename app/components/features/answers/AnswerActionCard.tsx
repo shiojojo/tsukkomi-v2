@@ -81,10 +81,19 @@ export function AnswerActionCard({
     if (profileForVote && currentUserVote !== null) {
       combined[profileForVote] = currentUserVote;
     }
-    // Note: When currentUserVote is null, we don't add userAnswerData to avoid stale data
+    // Add userAnswerData for current user
+    if (profileForVote && userAnswerData.votes[answer.id] !== undefined) {
+      combined[profileForVote] = userAnswerData.votes[answer.id];
+    }
 
     return Object.keys(combined).length ? combined : undefined;
-  }, [answer, profileForVote, currentUserVote]);
+  }, [
+    answer,
+    profileForVote,
+    currentUserVote,
+    userAnswerData.votes,
+    answer.id,
+  ]);
 
   const resolveProfileName = useCallback(
     (pid?: string | null) => {
@@ -240,6 +249,7 @@ export function AnswerActionCard({
               <NumericVoteButtons
                 answerId={answer.id}
                 initialVotes={votesCounts}
+                votesBy={votesBy}
                 actionPath={actionPath}
                 onSelectionChange={setCurrentUserVote}
               />
