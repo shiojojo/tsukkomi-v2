@@ -126,6 +126,70 @@ export default function Route() {
 
 ⸻
 
+## 📊 データ取得・更新アーキテクチャ
+
+### 役割分担（必須）
+
+- **Loader**: 初回/SSRデータ取得
+  - ページ初回表示時のサーバーサイドデータ取得
+  - SSR/SSG対応のための同期データ確保
+  - `useLoaderData` でコンポーネントに渡す
+  - ナビゲーション時のデータプリロード
+
+- **React Query**: クライアント更新/キャッシュ
+  - ユーザー操作後の部分的リフレッシュ
+  - リアルタイムUI更新とキャッシュ管理
+  - 楽観的更新（optimistic updates）
+  - ポーリングやバックグラウンド更新
+  - 初期データとして Loader データを活用
+  - **useMutation**: Action をトリガーするクライアントサイド処理（書き込みは Action が担当）
+
+- **Action**: 書き込み処理
+  - フォーム送信やユーザー操作によるデータ変更
+  - サーバーサイドでのバリデーションと永続化
+  - `useFetcher` や `<Form>` 経由の実行
+  - 成功時のリダイレクトやエラーハンドリング
+
+### 実装パターン
+
+```ts
+// Loader: 初回データ取得
+export async function loader({ params }: LoaderFunctionArgs) {
+  const data = await getData(params.id);
+  return json({ data });
+}
+
+// React Query: クライアント更新
+const { data, refetch } = useQuery({
+  queryKey: ['data', id],
+  queryFn: () => fetchData(id),
+  initialData: loaderData, // Loaderデータを使用
+});
+
+// React Query Mutation: Action をトリガー
+const mutation = useMutation({
+  mutationFn: async input => {
+    const response = await fetch('/action-path', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    return response.json();
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['data'] });
+  },
+});
+
+// Action: 書き込み
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  await updateData(formData);
+  return json({ success: true });
+}
+```
+
+⸻
+
 ## � TanStack Query 利用ガイド
 
 利用目的: ユーザー操作後の「部分的リフレッシュ」やポーリング、リアルタイムUI更新。初期表示は原則loaderだが、コンポーネントレベルでQueryを使う場合も許容（loader + Queryのハイブリッド）。
@@ -134,6 +198,8 @@ export default function Route() {
 1. **初期データ取得**: loaderでサーバー同期状態を確保。コンポーネントで`useQuery`を使って補完的に取得（例: リアルタイム更新が必要なデータ）。
 2. **操作実行**: `useMutation`でアクションを実行（投票、いいねなど）。成功後に`queryClient.invalidateQueries`で関連Queryを無効化。
 3. **状態管理**: QueryのデータでUIを駆動。useStateは最小限に（例: 楽観的更新のローカル状態のみ）。
+
+**Action との連携**: `useMutation` の `mutationFn` で `useFetcher` や fetch を使用して Action をトリガー。書き込み処理自体は Action が担当。
 
 禁止事項:
 
@@ -187,7 +253,7 @@ export default function Route() {
 ## 🚀 最重要 3 原則
 
 1. Supabase 直呼び禁止 → 100% `lib/db.ts` 経由
-2. 初期データは loader / mutate は action → クライアント副作用 fetch 不要
+2. **Loader**: 初回/SSRデータ取得 / **React Query**: クライアント更新/キャッシュ / **Action**: 書き込み処理
 3. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
 
 ⸻
