@@ -240,8 +240,6 @@ export async function action({ request }: ActionFunctionArgs) {
 • カラー/タイポはデザイントークン（Tailwind 設定）から参照。  
 • 一貫性確保のため spacing は 2 / 4 / 6 / 8 / 12 / 16 を中心に。
 • モバイルファースト: モバイル幅 (例: ~375–430px) で最初にレイアウト確定。Hover 依存 UI 禁止。ファーストビュー内に主要 CTA を収める。
-• **FavoriteButton**: useState/useEffect 禁止。TanStack Query (useQuery/useMutation) を使用し、loader データから初期状態を取得。Action で書き込み処理を実行。
-• **NumericVoteButtons**: localStorage禁止。loaderデータからvotesBy propを受け取り、TanStack Queryで状態管理。
 
 ⸻
 
