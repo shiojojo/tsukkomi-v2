@@ -10,9 +10,20 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function loader(_args: LoaderFunctionArgs) {
-  const { getLatestTopic } = await import('~/lib/db');
-  const latest = await getLatestTopic();
-  return { latest };
+  try {
+    const { getLatestTopic } = await import('~/lib/db');
+    const latest = await getLatestTopic();
+    return { latest };
+  } catch (error) {
+    console.error('Failed to load latest topic:', error);
+    return new Response(
+      JSON.stringify({ latest: null, error: 'Failed to load data' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
 }
 
 export default function Index() {

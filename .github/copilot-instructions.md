@@ -249,6 +249,14 @@ export async function action({ request }: ActionFunctionArgs) {
 • loader/action: try/catch で把握したい場合は `return json({ error: message }, { status: 400 })`。  
 • UI: クリティカルでなければトースト表示（後日 toast 実装予定）。
 
+### エラーハンドリングの原則
+
+- 関連が薄く見えるエラーでも必ず解決する
+- エラーの抑制（@ts-ignore、try-catch で握りつぶす等）ではなく、根本原因を修正
+- 早期にエラーを検出し、明確なエラーメッセージを提供
+- エラーケースも必ずテストでカバーする
+- 外部APIやネットワーク通信は必ず失敗する可能性を考慮
+
 ⸻
 
 ## ✅ 追加時チェックリスト（開発者向け）

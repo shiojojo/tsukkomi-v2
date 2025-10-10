@@ -18,34 +18,50 @@ import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/Err
  * Errors: バリデーション失敗時は { ok:false, errors }。DB エラーは 500 例外 -> ルートエラー境界へ。
  */
 export async function loader(_args: LoaderFunctionArgs) {
-  const { getUsers } = await import('~/lib/db');
-  const users = await getUsers();
-  return { users };
+  try {
+    const { getUsers } = await import('~/lib/db');
+    const users = await getUsers();
+    return { users };
+  } catch (error) {
+    console.error('Failed to load users:', error);
+    return { users: [] };
+  }
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  const form = await request.formData();
-  const intent = String(form.get('intent') || '');
-  if (intent === 'add-subuser') {
-    const parentId = String(form.get('parentId') || '');
-    const name = String(form.get('name') || '');
-    const parsed = SubUserCreateSchema.safeParse({ parentId, name });
-    if (!parsed.success)
-      return new Response(
-        JSON.stringify({ ok: false, errors: parsed.error.format() }),
-        { status: 400, headers: { 'Content-Type': 'application/json' } }
-      );
-    const { addSubUser } = await import('~/lib/db');
-    const sub = await addSubUser(parsed.data);
-    return new Response(JSON.stringify({ ok: true, sub, parentId }), {
-      status: 200,
+  try {
+    const form = await request.formData();
+    const intent = String(form.get('intent') || '');
+    if (intent === 'add-subuser') {
+      const parentId = String(form.get('parentId') || '');
+      const name = String(form.get('name') || '');
+      const parsed = SubUserCreateSchema.safeParse({ parentId, name });
+      if (!parsed.success)
+        return new Response(
+          JSON.stringify({ ok: false, errors: parsed.error.format() }),
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
+        );
+      const { addSubUser } = await import('~/lib/db');
+      const sub = await addSubUser(parsed.data);
+      return new Response(JSON.stringify({ ok: true, sub, parentId }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response(JSON.stringify({ ok: false }), {
+      status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
+  } catch (error) {
+    console.error('Failed to handle login action:', error);
+    return new Response(
+      JSON.stringify({ ok: false, error: 'Internal server error' }),
+      {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
-  return new Response(JSON.stringify({ ok: false }), {
-    status: 400,
-    headers: { 'Content-Type': 'application/json' },
-  });
 }
 
 export default function LoginRoute() {

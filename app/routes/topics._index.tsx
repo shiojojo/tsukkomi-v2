@@ -10,7 +10,21 @@ import type { Topic } from '~/lib/schemas/topic';
 import { createListLoader } from '~/lib/loaders';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  return createListLoader('topics', request);
+  try {
+    return createListLoader('topics', request);
+  } catch (error) {
+    console.error('Failed to load topics:', error);
+    // Return a safe fallback response
+    return {
+      topics: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      q: '',
+      fromDate: '',
+      toDate: '',
+    };
+  }
 }
 
 export default function TopicsRoute() {

@@ -16,9 +16,28 @@ import type { User } from '~/lib/schemas/user';
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  const topicId = params.id ? String(params.id) : undefined;
-  const { createAnswersListLoader } = await import('~/lib/loaders');
-  return await createAnswersListLoader(request, { topicId });
+  try {
+    const topicId = params.id ? String(params.id) : undefined;
+    const { createAnswersListLoader } = await import('~/lib/loaders');
+    return await createAnswersListLoader(request, { topicId });
+  } catch (error) {
+    console.error('Failed to load topic answers:', error);
+    // Return a safe fallback response
+    return {
+      answers: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      q: '',
+      author: '',
+      sortBy: 'created_at',
+      fromDate: '',
+      toDate: '',
+      topicsById: {},
+      commentsByAnswer: {},
+      users: [],
+    };
+  }
 }
 
 import { handleAnswerActions } from '~/lib/actionHandlers';

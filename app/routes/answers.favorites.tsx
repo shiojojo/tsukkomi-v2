@@ -14,46 +14,58 @@ import { Button } from '~/components/ui/Button';
 import { HEADER_BASE } from '~/styles/headerStyles';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const url = new URL(request.url);
-  const profileId = url.searchParams.get('profileId') ?? undefined;
+  try {
+    const url = new URL(request.url);
+    const profileId = url.searchParams.get('profileId') ?? undefined;
 
-  const base = {
-    answers: [] as Answer[],
-    topicsById: {} as Record<string, Topic>,
-    commentsByAnswer: {} as Record<string, Comment[]>,
-    users: [] as User[],
-    requiresProfileId: true,
-    profileId: profileId ?? null,
-  };
+    const base = {
+      answers: [] as Answer[],
+      topicsById: {} as Record<string, Topic>,
+      commentsByAnswer: {} as Record<string, Comment[]>,
+      users: [] as User[],
+      requiresProfileId: true,
+      profileId: profileId ?? null,
+    };
 
-  if (!profileId) {
-    return base;
+    if (!profileId) {
+      return base;
+    }
+
+    const {
+      getFavoriteAnswersForProfile,
+      getTopics,
+      getCommentsForAnswers,
+      getUsers,
+    } = await import('~/lib/db');
+
+    const answers = await getFavoriteAnswersForProfile(profileId);
+    const answerIds = answers.map(a => a.id);
+    const commentsByAnswer = answerIds.length
+      ? await getCommentsForAnswers(answerIds)
+      : {};
+    const topics = await getTopics();
+    const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
+    const users = await getUsers({ limit: 500 });
+
+    return {
+      answers,
+      topicsById,
+      commentsByAnswer,
+      users,
+      requiresProfileId: false,
+      profileId,
+    };
+  } catch (error) {
+    console.error('Failed to load favorites:', error);
+    return {
+      answers: [],
+      topicsById: {},
+      commentsByAnswer: {},
+      users: [],
+      requiresProfileId: true,
+      profileId: null,
+    };
   }
-
-  const {
-    getFavoriteAnswersForProfile,
-    getTopics,
-    getCommentsForAnswers,
-    getUsers,
-  } = await import('~/lib/db');
-
-  const answers = await getFavoriteAnswersForProfile(profileId);
-  const answerIds = answers.map(a => a.id);
-  const commentsByAnswer = answerIds.length
-    ? await getCommentsForAnswers(answerIds)
-    : {};
-  const topics = await getTopics();
-  const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
-  const users = await getUsers({ limit: 500 });
-
-  return {
-    answers,
-    topicsById,
-    commentsByAnswer,
-    users,
-    requiresProfileId: false,
-    profileId,
-  };
 }
 
 export async function action(args: ActionFunctionArgs) {

@@ -20,9 +20,14 @@ import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/Err
  * Errors: バリデーションエラーは { ok: false, errors } を返す
  */
 export async function loader({}: LoaderFunctionArgs) {
-  const { getUsers } = await import('~/lib/db');
-  const users = await getUsers();
-  return { users };
+  try {
+    const { getUsers } = await import('~/lib/db');
+    const users = await getUsers();
+    return { users };
+  } catch (error) {
+    console.error('Failed to load users:', error);
+    return { users: [] };
+  }
 }
 
 export async function action({ request }: ActionFunctionArgs) {
