@@ -247,7 +247,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 • db.ts: 外部エラー → そのまま throw。  
 • loader/action: try/catch で把握したい場合は `return json({ error: message }, { status: 400 })`。  
-• UI: クリティカルでなければトースト表示（後日 toast 実装予定）。
+• UI: クリティカルでなければトースト表示
 
 ### エラーハンドリングの原則
 
