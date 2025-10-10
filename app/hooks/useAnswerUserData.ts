@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { logger } from '~/lib/logger';
 import { useIdentity } from './useIdentity';
+import { useQueryWithError } from './useQueryWithError';
+import { useMutationWithError } from './useMutationWithError';
 
 export interface AnswerUserData {
   votes: Record<number, number>;
@@ -36,9 +38,9 @@ export function useAnswerUserData(
 
   const queryClient = useQueryClient();
 
-  const query = useQuery({
-    queryKey: ['user-data', userId, normalized.key],
-    queryFn: async () => {
+  const query = useQueryWithError(
+    ['user-data', userId || 'anonymous', normalized.key],
+    async () => {
       if (!userId || !normalized.key) {
         return { votes: {}, favorites: [] };
       }
@@ -58,10 +60,12 @@ export function useAnswerUserData(
         favorites: (payload?.favorites ?? []).map((v: number) => Number(v)),
       };
     },
-    enabled: enabled && !!userId && !!normalized.key,
-    placeholderData: { votes: {}, favorites: [] },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+    {
+      enabled: enabled && !!userId && !!normalized.key,
+      placeholderData: { votes: {}, favorites: [] },
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    }
+  );
 
   const data = useMemo(() => ({
     votes: query.data?.votes ?? {},
