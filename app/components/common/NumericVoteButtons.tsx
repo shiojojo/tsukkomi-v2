@@ -104,16 +104,7 @@ export function NumericVoteButtons({
         return { previousUserVote, previousVoteCounts };
       },
       onSuccess: () => {
-        // Invalidate specific queries
-        queryClient.invalidateQueries({
-          queryKey: ['user-vote', answerId, effectiveId],
-        });
-        queryClient.invalidateQueries({ queryKey: ['vote-counts', answerId] });
-        queryClient.invalidateQueries({
-          queryKey: ['user-data'],
-          exact: false,
-        });
-        queryClient.invalidateQueries({ queryKey: ['answers'], exact: false });
+        // 成功時は楽観的更新を維持し、リフェッチしない
       },
       onError: (error, { level }, context) => {
         // On error, invalidate to refetch from server
