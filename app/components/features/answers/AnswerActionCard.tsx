@@ -64,7 +64,6 @@ export function AnswerActionCard({
   const commentFormRef = useRef<HTMLFormElement>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
-  const [currentUserVote, setCurrentUserVote] = useState<number | null>(null);
 
   useEffect(() => {
     if (commentFetcher.state === 'idle' && commentFetcher.data) {
@@ -75,26 +74,16 @@ export function AnswerActionCard({
   }, [commentFetcher.state, commentFetcher.data, queryClient]);
 
   const profileForVote = profileIdForVotes ?? currentUserId ?? null;
-  const votesBy = useMemo(() => {
+
+  const [votesBy, setVotesBy] = useState(() => {
     const embedded = (answer.votesBy ?? {}) as Record<string, number>;
     const combined = { ...embedded };
-
-    if (profileForVote && currentUserVote !== null) {
-      combined[profileForVote] = currentUserVote;
-    }
     // Add userAnswerData for current user
     if (profileForVote && userAnswerData.votes[answer.id] !== undefined) {
       combined[profileForVote] = userAnswerData.votes[answer.id];
     }
-
     return Object.keys(combined).length ? combined : undefined;
-  }, [
-    answer,
-    profileForVote,
-    currentUserVote,
-    userAnswerData.votes,
-    answer.id,
-  ]);
+  });
 
   const resolveProfileName = useCallback(
     (pid?: string | null) => {
@@ -156,7 +145,18 @@ export function AnswerActionCard({
     initialVotes: votesCounts,
     votesBy,
     actionPath,
-    onSelectionChange: setCurrentUserVote,
+    onSelectionChange: level => {
+      setVotesBy(prev => {
+        if (!prev) return prev;
+        const newVotesBy = { ...prev };
+        if (level === null) {
+          delete newVotesBy[profileForVote!];
+        } else {
+          newVotesBy[profileForVote!] = level;
+        }
+        return Object.keys(newVotesBy).length ? newVotesBy : undefined;
+      });
+    },
   });
 
   const voteEntries = useMemo(() => {
