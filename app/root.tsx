@@ -10,9 +10,8 @@ import {
 } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState } from 'react';
-import { useEffect } from 'react';
-import { logger } from '~/lib/logger';
+import { useState, useEffect } from 'react';
+import { Toaster } from '~/components/ui/toaster';
 
 import type { Route } from './+types/root';
 import './app.css';
@@ -114,7 +113,7 @@ export default function App() {
 
   // Debug navigation state - client-side only
   useEffect(() => {
-    logger.log('Navigation state:', navigation.state, 'isLoading:', isLoading);
+    console.log('Navigation state:', navigation.state, 'isLoading:', isLoading);
   }, [navigation.state, isLoading]);
 
   // Add timeout for loading state to prevent permanent loading overlay.
@@ -257,35 +256,173 @@ export default function App() {
 
       {/* React Query DevTools - only in development */}
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+
+      {/* Toast notifications */}
+      <Toaster />
     </QueryClientProvider>
   );
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
-  let message = 'Oops!';
-  let details = 'An unexpected error occurred.';
-  let stack: string | undefined;
-
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? '404' : 'Error';
-    details =
-      error.status === 404
-        ? 'The requested page could not be found.'
-        : error.statusText || details;
-  } else if (import.meta.env.DEV && error && error instanceof Error) {
-    details = error.message;
-    stack = error.stack;
+    if (error.status === 404) {
+      return <NotFoundPage />;
+    }
+    if (error.status === 500) {
+      return <ServerErrorPage />;
+    }
+    return (
+      <GenericErrorPage status={error.status} message={error.statusText} />
+    );
   }
 
+  // 予期せぬエラー
+  return (
+    <GenericErrorPage status={500} message="予期せぬエラーが発生しました" />
+  );
+}
+
+// 専用エラーページコンポーネント
+function NotFoundPage() {
   return (
     <main className="pt-16 p-4 container mx-auto">
-      <h1>{message}</h1>
-      <p>{details}</p>
-      {stack && (
-        <pre className="w-full p-4 overflow-x-auto">
-          <code>{stack}</code>
-        </pre>
-      )}
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-gray-600 dark:text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.29-.98-5.5-2.5m.5-4C6.19 8.98 4.24 9 2 9s-4.19-.02-4.5-.5m.5-4C6.19 4.98 4.24 4 2 4s-4.19.02-4.5.5"
+              />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+            404 - ページが見つかりません
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            お探しのページは存在しないか、移動した可能性があります。
+          </p>
+          <div className="flex gap-3 justify-center">
+            <a
+              href="/"
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              ホームに戻る
+            </a>
+            <button
+              onClick={() => window.history.back()}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              戻る
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function ServerErrorPage() {
+  return (
+    <main className="pt-16 p-4 container mx-auto">
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-red-600 dark:text-red-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+            500 - サーバーエラー
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            サーバーで問題が発生しました。しばらく経ってから再度お試しください。
+          </p>
+          <div className="flex gap-3 justify-center">
+            <a
+              href="/"
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              ホームに戻る
+            </a>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              ページを再読み込み
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function GenericErrorPage({
+  status,
+  message,
+}: {
+  status: number;
+  message: string;
+}) {
+  return (
+    <main className="pt-16 p-4 container mx-auto">
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="max-w-md w-full bg-white dark:bg-gray-900 rounded-lg shadow-lg p-6 text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+            <svg
+              className="w-8 h-8 text-red-600 dark:text-red-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+              />
+            </svg>
+          </div>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            {status} - {message}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            エラーが発生しました。しばらく経ってから再度お試しください。
+          </p>
+          <div className="flex gap-3 justify-center">
+            <a
+              href="/"
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            >
+              ホームに戻る
+            </a>
+            <button
+              onClick={() => window.history.back()}
+              className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+            >
+              戻る
+            </button>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

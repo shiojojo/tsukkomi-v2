@@ -1,29 +1,18 @@
 import { TopicSchema } from '~/lib/schemas/topic';
 import type { Topic } from '~/lib/schemas/topic';
 import { supabase, ensureConnection } from '../supabase';
+import { ServerError } from '../errors';
 
 export async function getTopics(): Promise<Topic[]> {
-  try {
-    await ensureConnection();
-  } catch (e) {
-    // If connection probe fails, return a safe empty list so loaders can finish
-    // quickly and the UI can show a fallback state instead of hanging.
-    // eslint-disable-next-line no-console
-    console.error('getTopics: ensureConnection failed, returning empty list', e);
-    return [];
-  }
+  await ensureConnection(); // 接続失敗時は throw
 
-  try {
-    const { data, error } = await supabase
-      .from('topics')
-      .select('id, title, created_at, image')
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return TopicSchema.array().parse(data ?? []);
-  } catch (error) {
-    console.error('Topics query failed:', error);
-    return []; // Return empty array on query failure
-  }
+  const { data, error } = await supabase
+    .from('topics')
+    .select('id, title, created_at, image')
+    .order('created_at', { ascending: false });
+  if (error) throw new ServerError(`Failed to fetch topics: ${error.message}`);
+
+  return TopicSchema.array().parse(data ?? []);
 }
 
 /**
@@ -82,19 +71,15 @@ export async function getLatestTopic(): Promise<Topic | null> {
   // request latency. We rely on the actual topics query to surface network
   // errors quickly; callers receive null only if no topic exists.
 
-  try {
-    const { data, error } = await supabase
-      .from('topics')
-      .select('id, title, created_at, image')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    if (error) throw error;
-    const row = (data ?? [])[0] ?? null;
-    return row ? TopicSchema.parse(row as any) : null;
-  } catch (error) {
-    console.error('Supabase connection failed in getLatestTopic:', error);
-    return null; // Return null on connection failure
-  }
+  const { data, error } = await supabase
+    .from('topics')
+    .select('id, title, created_at, image')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw new ServerError(`Failed to fetch latest topic: ${error.message}`);
+
+  const row = (data ?? [])[0] ?? null;
+  return row ? TopicSchema.parse(row as any) : null;
 }
 
 export async function getTopic(id: string | number): Promise<Topic | undefined> {

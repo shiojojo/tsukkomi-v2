@@ -9,29 +9,10 @@ import { ListPageLayout } from '~/components/layout/ListPageLayout';
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  try {
-    const url = new URL(request.url);
-    const topicId = url.searchParams.get('topicId') ?? undefined;
-    const { createAnswersListLoader } = await import('~/lib/loaders');
-    return await createAnswersListLoader(request, { topicId });
-  } catch (error) {
-    console.error('Failed to load answers:', error);
-    // Return a safe fallback response with minimal required fields
-    return {
-      answers: [],
-      total: 0,
-      page: 1,
-      pageSize: 20,
-      q: '',
-      author: '',
-      sortBy: 'created_at',
-      fromDate: '',
-      toDate: '',
-      topicsById: {},
-      commentsByAnswer: {},
-      users: [],
-    };
-  }
+  const url = new URL(request.url);
+  const topicId = url.searchParams.get('topicId') ?? undefined;
+  const { createAnswersListLoader } = await import('~/lib/loaders');
+  return await createAnswersListLoader(request, { topicId });
 }
 
 import { handleAnswerActions } from '~/lib/actionHandlers';

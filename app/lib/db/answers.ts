@@ -3,6 +3,7 @@ import { AnswerSchema } from '~/lib/schemas/answer';
 import type { Answer } from '~/lib/schemas/answer';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 import { getFavoritesForProfile } from './favorites';
+import { ServerError } from '../errors';
 
 async function getVotesByForAnswers(
   answerIds: Array<number | string>,
@@ -39,17 +40,13 @@ async function getVotesByForAnswers(
 
 export async function getAnswers(): Promise<Answer[]> {
   // always fetch fresh answers from DB
-  try {
-    await ensureConnection();
-  } catch (error) {
-    console.error('Supabase connection failed in getAnswers:', error);
-    return []; // Return empty array on connection failure
-  }
+  await ensureConnection(); // 接続失敗時は throw
+
   const { data: answerRows, error: answerErr } = await supabase
     .from('answers')
     .select('id, text, profile_id, topic_id, created_at')
     .order('created_at', { ascending: false });
-  if (answerErr) throw answerErr;
+  if (answerErr) throw new ServerError(`Failed to fetch answers: ${answerErr.message}`);
 
   const answers = (answerRows ?? []).map((a: any) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
