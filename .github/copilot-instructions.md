@@ -9,11 +9,13 @@
 • Supabase JS Client（DB / Auth / Storage）  
 • Tailwind CSS + shadcn/ui  
 • Zustand（グローバル状態）  
+• TanStack Query（クライアントサイドのデータ取得/キャッシュ/同期）  
 • date-fns（日付フォーマット/計算）  
 • zod（スキーマ & バリデーション）  
 • react-hook-form（複雑フォーム。単純送信は <Form> と action）  
 • framer-motion（インタラクション / アニメーション）  
-• lucide-react（アイコン）
+• lucide-react（アイコン）  
+• @radix-ui/react-toast（トースト通知）
 
 ⸻
 
@@ -121,6 +123,7 @@ export default function Route() {
 - **Loader**: 初回/SSRデータ取得（`useLoaderData` でコンポーネントに渡す）
 - **TanStack Query**: クライアント更新/キャッシュ（初期データとして Loader データを活用、`useMutation` で Action をトリガー）
 - **Action**: 書き込み処理（サーバーサイドでのバリデーションと永続化）
+- **useQueryWithError / useMutationWithError**: エラーハンドリング付きの Query/Mutation フック
 
 localStorage は最小限に使用。サーバー同期が必要なデータ（投票、いいねなど）は loader/Action と TanStack Query で管理。
 
@@ -136,13 +139,143 @@ localStorage は最小限に使用。サーバー同期が必要なデータ（�
 
 ## 🛡️ エラーハンドリング
 
-• db.ts: 外部エラー → そのまま throw。  
-• loader/action: `return json({ error: message }, { status: 400 })`。  
-• UI: クリティカルでなければトースト表示。
+### エラーの伝播原則
+
+- **DB 層**: エラーを常に `throw`（握りつぶさない）
+- **Loader/Action**: エラーを `throw new Response()` または `throw new Error()` で伝播
+- **UI 層**: `ErrorBoundary` でキャッチし、適切に表示
+
+### エラータイプの分類
+
+- **予期せぬエラー (500)**: DB 接続失敗、サーバーエラー → `ErrorBoundary` で表示
+- **クライアントエラー (400)**: バリデーションエラー、無効なリクエスト → トーストで表示
+- **404**: ページが見つからない → 専用ページ
+- **認証エラー (401/403)**: ログインが必要 → リダイレクト
+
+### 実装コンポーネント
+
+#### 強化されたルート ErrorBoundary
+
+```tsx
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  if (isRouteErrorResponse(error)) {
+    if (error.status === 404) {
+      return <NotFoundPage />;
+    }
+    if (error.status === 500) {
+      return <ServerErrorPage />;
+    }
+    return (
+      <GenericErrorPage status={error.status} message={error.statusText} />
+    );
+  }
+  return (
+    <GenericErrorPage status={500} message="予期せぬエラーが発生しました" />
+  );
+}
+```
+
+#### 専用エラーページ
+
+- `routes/404.tsx`: 404 エラー専用
+- `routes/500.tsx`: 500 エラー専用
+
+#### エラークラス (`lib/errors.ts`)
+
+```ts
+export class AppError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+    public code?: string
+  ) {
+    super(message);
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(
+    message: string,
+    public field?: string
+  ) {
+    super(400, message, 'VALIDATION_ERROR');
+  }
+}
+
+export class AuthError extends AppError {
+  constructor(message: string = '認証が必要です') {
+    super(401, message, 'AUTH_ERROR');
+  }
+}
+```
+
+#### TanStack Query エラーハンドリング
+
+**QueryClient 設定:**
+
+```ts
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (error instanceof Response && error.status === 401) return false;
+        return failureCount < 3;
+      },
+      staleTime: 5 * 60 * 1000,
+    },
+    mutations: {
+      onError: error => {
+        console.error('Mutation error:', error);
+      },
+    },
+  },
+});
+```
+
+**useQueryWithError フック:**
+
+```ts
+const { data, error, isLoading } = useQueryWithError(
+  ['answers', topicId],
+  () => getAnswers(topicId),
+  { enabled: !!topicId }
+);
+```
+
+**useMutationWithError フック:**
+
+```ts
+const voteMutation = useMutationWithError(
+  (variables: { answerId: number; level: number }) =>
+    voteAnswer(variables.answerId, variables.level)
+);
+```
+
+### エラーレスポンスの標準化
+
+```ts
+export function createErrorResponse(
+  status: number,
+  message: string,
+  code?: string
+) {
+  throw new Response(JSON.stringify({ error: message, code }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+```
+
+### エラーハンドリングの流れ
+
+1. **DB 層**: エラーが発生したら `throw`
+2. **Loader/Action**: try-catch なしでエラーを伝播
+3. **Query/Mutation**: `useQueryWithError` / `useMutationWithError` で自動処理
+4. **UI**: ErrorBoundary でキャッチ、トーストで通知
 
 **原則: エラーを握りつぶさず、適切に伝播・解決する。エラーの抑制ではなく根本原因を修正。早期検出と明確なメッセージ**
 
-禁止: try-catch でエラーを無視、空配列/デフォルト値を返す。
+禁止: try-catch でエラーを無視、空配列/デフォルト値を返す、console.error だけのエラーハンドリング。
 
 ⸻
 
@@ -150,10 +283,11 @@ localStorage は最小限に使用。サーバー同期が必要なデータ（�
 
 1. 新規エンティティ: `schemas/xxx.ts` に zod スキーマ & 型 export
 2. ルートファイル: `loader` で取得 / `action` で mutate
-3. 必要なら `useQuery` を補助的に追加（キー命名: `['entity', id]`）
+3. 必要なら `useQueryWithError` を補助的に追加（キー命名: `['entity', id]`）
 4. UI コンポーネントは props 経由
-5. TanStack Query: loaderデータから初期状態を取得し、useQuery/useMutationを使用
-6. ESLint / TypeScript エラー 0 を確認
+5. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
+6. エラーハンドリング: `lib/errors.ts` のクラスを使用し、適切なエラーレスポンスを throw
+7. ESLint / TypeScript エラー 0 を確認
 
 ⸻
 
@@ -171,8 +305,9 @@ localStorage は最小限に使用。サーバー同期が必要なデータ（�
 
 1. Supabase 直呼び禁止 → 100% `lib/db.ts` 経由
 2. **Loader**: 初回/SSRデータ取得 / **TanStack Query**: クライアント更新/キャッシュ / **Action**: 書き込み処理
-3. TanStack Query: loaderデータから初期状態を取得し、useQuery/useMutationを使用
-4. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
+3. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
+4. エラーハンドリング: `lib/errors.ts` のクラスを使用し、エラーを握りつぶさず適切に伝播
+5. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
 
 ⸻
 
