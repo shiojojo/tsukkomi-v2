@@ -3,7 +3,21 @@ import { consumeToken } from '~/lib/rateLimiter';
 import { logger } from '~/lib/logger';
 
 /**
- * 概要: 回答関連アクション（お気に入り、投票、コメント）の共通処理ハンドラー。
+ * 概要: 回答関連アクション（お気に入り  const { addComment } = await import('~/lib/db');
+  try {
+    const comment = await addComment({
+      answerId: String(answerId),
+      text,
+      profileId,
+    });
+    return { comment };
+  } catch (e: any) {
+    logger.error('addComment failed', String(e?.message ?? e));
+    throw new Response(
+      JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
+    );
+  }ー。
  * Contract:
  *   - Input: ActionFunctionArgs (request)
  *   - Output: Response (JSON)
@@ -39,10 +53,7 @@ export async function handleAnswerActions({ request }: ActionFunctionArgs) {
     (answerIdRaw && commentTextRaw);
 
   if (!hasMeaningfulIntent) {
-    return new Response(JSON.stringify({ ok: true, ignored: true }), {
-      status: 204,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return { ok: true, ignored: true };
   }
 
   // Rate limiting
@@ -64,7 +75,7 @@ export async function handleAnswerActions({ request }: ActionFunctionArgs) {
     }
   } catch {}
   if (!consumeToken(rateKey, 1)) {
-    return new Response(
+    throw new Response(
       JSON.stringify({ ok: false, error: 'Too Many Requests', rateKey }),
       {
         status: 429,
@@ -122,13 +133,10 @@ async function handleToggleFavorite(form: FormData) {
       answerId: Number(answerId),
       profileId,
     });
-    return new Response(JSON.stringify(res), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return res;
   } catch (e: any) {
     logger.error('toggleFavorite failed', String(e?.message ?? e));
-    return new Response(
+    throw new Response(
       JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
@@ -147,31 +155,22 @@ async function handleFavoriteStatus(form: FormData) {
     const now = Date.now();
     const prev = (_recentPostGuard as Map<string, number>).get(key) ?? 0;
     if (now - prev < 800) {
-      return new Response(
-        JSON.stringify({ favorited: false, deduped: true }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }
-      );
+      return { favorited: false, deduped: true };
     }
     (_recentPostGuard as Map<string, number>).set(key, now);
   } catch {}
 
   if (!answerId || !profileId) {
-    return new Response('Invalid', { status: 400 });
+    throw new Response('Invalid', { status: 400 });
   }
 
   const { getFavoritesForProfile } = await import('~/lib/db');
   try {
     const list = await getFavoritesForProfile(profileId, [Number(answerId)]);
     const favorited = (list || []).map(Number).includes(Number(answerId));
-    return new Response(JSON.stringify({ favorited }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return { favorited };
   } catch (e: any) {
-    return new Response(
+    throw new Response(
       JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
@@ -195,12 +194,9 @@ async function handleVote(form: FormData) {
       level,
       userId,
     });
-    return new Response(JSON.stringify({ answer: updated }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return { answer: updated };
   } catch (e: any) {
-    return new Response(
+    throw new Response(
       JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );

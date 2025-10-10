@@ -540,7 +540,7 @@ export async function voteAnswer({
     id: Number(answerRow.id),
     text: answerRow.text,
     profileId: answerRow.profile_id ?? undefined,
-    topicId: answerRow.topic_id ?? undefined,
+    topicId: answerRow.topic_id || undefined,
     created_at: answerRow.created_at,
     votes: votesObj,
     votesBy: votesByObj,

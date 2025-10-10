@@ -50,16 +50,12 @@ export function NumericVoteButtons({
   // Mutation for voting
   const voteMutation = useMutation({
     mutationFn: async ({ level }: { level: number }) => {
-      return new Promise<any>((resolve, reject) => {
+      return new Promise<void>((resolve, reject) => {
         performAction({ answerId, level, userId: effectiveId });
-        // Wait for fetcher to complete and return response
+        // Wait for fetcher to complete
         const checkComplete = () => {
           if (fetcher.state === 'idle') {
-            if (fetcher.data) {
-              resolve(fetcher.data);
-            } else {
-              reject(new Error('Vote failed'));
-            }
+            resolve();
           } else {
             setTimeout(checkComplete, 100);
           }
@@ -67,22 +63,67 @@ export function NumericVoteButtons({
         checkComplete();
       });
     },
-    onSuccess: response => {
-      const voteLevel = response?.answer ? response.answer.level || null : null;
-      // Update user vote with server response
-      queryClient.setQueryData(['user-vote', answerId, effectiveId], voteLevel);
-      onSelectionChange?.(voteLevel);
-      // Update vote counts with server response
-      if (response?.answer?.votes) {
-        queryClient.setQueryData(['vote-counts', answerId], {
-          level1: response.answer.votes.level1 || 0,
-          level2: response.answer.votes.level2 || 0,
-          level3: response.answer.votes.level3 || 0,
-        });
+    onMutate: async ({ level }) => {
+      // Optimistic update
+      const previousUserVote = queryClient.getQueryData([
+        'user-vote',
+        answerId,
+        effectiveId,
+      ]);
+      const previousVoteCounts = queryClient.getQueryData([
+        'vote-counts',
+        answerId,
+      ]);
+
+      // Update user vote
+      queryClient.setQueryData(['user-vote', answerId, effectiveId], level);
+
+      // Update vote counts
+      if (previousVoteCounts) {
+        const newCounts = { ...previousVoteCounts } as {
+          level1: number;
+          level2: number;
+          level3: number;
+        };
+        // Adjust counts based on previous vote
+        const prevLevel = previousUserVote as number | null;
+        if (prevLevel && prevLevel >= 1 && prevLevel <= 3) {
+          newCounts[`level${prevLevel}` as keyof typeof newCounts] -= 1;
+        }
+        if (level >= 1 && level <= 3) {
+          newCounts[`level${level}` as keyof typeof newCounts] += 1;
+        }
+        queryClient.setQueryData(['vote-counts', answerId], newCounts);
       }
-      // Invalidate other queries
+
+      onSelectionChange?.(level);
+
+      return { previousUserVote, previousVoteCounts };
+    },
+    onSuccess: () => {
+      // Invalidate to refetch from server
+      queryClient.invalidateQueries({
+        queryKey: ['user-vote', answerId, effectiveId],
+      });
+      queryClient.invalidateQueries({ queryKey: ['vote-counts', answerId] });
       queryClient.invalidateQueries({ queryKey: ['user-data'], exact: false });
       queryClient.invalidateQueries({ queryKey: ['answers'], exact: false });
+    },
+    onError: (error, { level }, context) => {
+      // Rollback on error
+      if (context?.previousUserVote !== undefined) {
+        queryClient.setQueryData(
+          ['user-vote', answerId, effectiveId],
+          context.previousUserVote
+        );
+      }
+      if (context?.previousVoteCounts) {
+        queryClient.setQueryData(
+          ['vote-counts', answerId],
+          context.previousVoteCounts
+        );
+      }
+      onSelectionChange?.((context?.previousUserVote as number | null) || null);
     },
   });
 
