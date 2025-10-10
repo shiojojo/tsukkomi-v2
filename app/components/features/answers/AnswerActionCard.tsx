@@ -3,6 +3,7 @@ import { useFetcher } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import FavoriteButton from '~/components/common/FavoriteButton';
 import NumericVoteButtons from '~/components/common/NumericVoteButtons';
+import { useNumericVoteButtons } from '~/hooks/useNumericVoteButtons';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
@@ -150,6 +151,14 @@ export function AnswerActionCard({
     return { votesCounts: counts, score: computedScore };
   }, [answer, votesBy]);
 
+  const { selection, counts, handleVote } = useNumericVoteButtons({
+    answerId: answer.id,
+    initialVotes: votesCounts,
+    votesBy,
+    actionPath,
+    onSelectionChange: setCurrentUserVote,
+  });
+
   const voteEntries = useMemo(() => {
     if (!votesBy)
       return [] as Array<{
@@ -247,20 +256,18 @@ export function AnswerActionCard({
           <div className="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-4">
             <div className="space-y-2">
               <NumericVoteButtons
-                answerId={answer.id}
-                initialVotes={votesCounts}
-                votesBy={votesBy}
-                actionPath={actionPath}
-                onSelectionChange={setCurrentUserVote}
+                selection={selection}
+                counts={counts}
+                onVote={handleVote}
               />
               <div className="text-[11px] text-gray-400 dark:text-gray-500">
                 1〜3
                 のボタンで採点できます。選択済みのボタンを再度押すと取り消せます。
               </div>
               <div className="flex gap-3 text-xs text-gray-500 dark:text-gray-400">
-                <span>👍1:{votesCounts.level1}</span>
-                <span>😂2:{votesCounts.level2}</span>
-                <span>🤣3:{votesCounts.level3}</span>
+                <span>👍1:{counts.level1}</span>
+                <span>😂2:{counts.level2}</span>
+                <span>🤣3:{counts.level3}</span>
               </div>
             </div>
 
