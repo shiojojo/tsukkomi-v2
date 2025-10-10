@@ -54,12 +54,18 @@ describe('db functions', () => {
   });
 
   describe('getAnswers', () => {
-    it('should return empty array on connection failure', async () => {
-      const { ensureConnection } = await import('~/lib/supabase');
-      vi.mocked(ensureConnection).mockRejectedValueOnce(new Error('Connection failed'));
+    it('should throw ServerError on connection failure', async () => {
+      const { supabase } = await import('~/lib/supabase');
+      vi.mocked(supabase.from).mockReturnValueOnce({
+        select: vi.fn().mockReturnValueOnce({
+          order: vi.fn().mockResolvedValueOnce({
+            data: null,
+            error: { message: 'Connection failed' },
+          }),
+        }),
+      } as any);
 
-      const result = await getAnswers();
-      expect(result).toEqual([]);
+      await expect(getAnswers()).rejects.toThrow('Failed to fetch answers');
     });
   });
 
@@ -80,12 +86,18 @@ describe('db functions', () => {
   });
 
   describe('getTopics', () => {
-    it('should return empty array on connection failure', async () => {
-      const { ensureConnection } = await import('~/lib/supabase');
-      vi.mocked(ensureConnection).mockRejectedValueOnce(new Error('Connection failed'));
+    it('should throw ServerError on connection failure', async () => {
+      const { supabase } = await import('~/lib/supabase');
+      vi.mocked(supabase.from).mockReturnValueOnce({
+        select: vi.fn().mockReturnValueOnce({
+          order: vi.fn().mockResolvedValueOnce({
+            data: null,
+            error: { message: 'Connection failed' },
+          }),
+        }),
+      } as any);
 
-      const result = await getTopics();
-      expect(result).toEqual([]);
+      await expect(getTopics()).rejects.toThrow('Failed to fetch topics');
     });
   });
 
@@ -138,7 +150,7 @@ describe('db functions', () => {
 
   describe('addComment', () => {
     it('should add comment successfully', async () => {
-      const mockData = { id: 1, answer_id: 1, text: 'comment', profile_id: null, created_at: '2023-01-01' };
+      const mockData = { id: 1, answer_id: 1, text: 'comment', profile_id: 'profile-1', created_at: '2023-01-01' };
       const { supabaseAdmin } = await import('~/lib/supabase');
       vi.mocked(supabaseAdmin!.from).mockReturnValueOnce({
         insert: vi.fn().mockReturnValueOnce({
@@ -151,7 +163,7 @@ describe('db functions', () => {
         }),
       } as any);
 
-      const result = await addComment({ answerId: 1, text: 'comment' });
+      const result = await addComment({ answerId: 1, text: 'comment', profileId: 'profile-1' });
       expect(result.text).toBe('comment');
     });
   });
