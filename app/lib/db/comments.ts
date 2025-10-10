@@ -74,17 +74,15 @@ export async function addComment(input: { answerId: string | number; text: strin
     .select('id, answer_id, text, profile_id, created_at')
     .single();
   if (error) throw error;
-  const d = data as any;
 
-  // Reuse the same mapping logic used by getCommentsForAnswers
+  // Map Supabase response fields to schema fields
   const mapped = {
-    id: typeof d.id === 'string' ? Number(d.id) : d.id,
-    answerId: d.answer_id ?? d.answerId,
-    text: d.text,
-  profileId: d.profile_id ?? d.profileId,
-    created_at: d.created_at ?? d.createdAt,
+    id: data.id,
+    answerId: data.answer_id,
+    text: data.text,
+    profileId: data.profile_id,
+    created_at: data.created_at,
   };
 
-  const row = mapped;
-  return CommentSchema.parse(row as any);
+  return CommentSchema.parse(mapped);
 }

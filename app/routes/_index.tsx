@@ -10,6 +10,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function loader(_args: LoaderFunctionArgs) {
+  // Handle potential database errors gracefully to prevent app crashes
   try {
     const { getLatestTopic } = await import('~/lib/db');
     const latest = await getLatestTopic();
