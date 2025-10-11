@@ -8,4 +8,12 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ["sharp"],
   },
+  build: {
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        sourcemapExcludeSources: true,
+      },
+    },
+  },
 });
