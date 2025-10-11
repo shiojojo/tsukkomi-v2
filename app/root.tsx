@@ -6,22 +6,24 @@ import {
   Scripts,
   ScrollRestoration,
   useNavigation,
-  type Navigation,
 } from 'react-router';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState, useEffect } from 'react';
 import { Toaster } from '~/components/ui/toaster';
 import {
   GenericErrorPage,
   NotFoundPage,
   ServerErrorPage,
 } from '~/components/common/ErrorPages';
-import { TOAST_BLACK, TOAST_SLATE, TOAST_BLUE } from '~/styles/commonStyles';
+import { TOAST_SLATE, TOAST_BLUE } from '~/styles/commonStyles';
 
 import type { Route } from './+types/root';
 import './app.css';
 import ResponsiveNav from './components/layout/ResponsiveNav';
+import { useLoadingState } from './hooks/useLoadingState';
+import { useViewportHeight } from './hooks/useViewportHeight';
+import { useQueryClientConfig } from './hooks/useQueryClientConfig';
+import { useClientOnlyDebugInfo } from './hooks/useClientOnlyDebugInfo';
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
@@ -76,173 +78,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Client-only component to avoid hydration mismatches
-function ClientOnlyDebugInfo({
-  navigation,
-  isLoading,
-  loadingTimeout,
-}: {
-  navigation: Navigation;
-  isLoading: boolean;
-  loadingTimeout: boolean;
-}) {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient || !import.meta.env.DEV) {
-    return null;
-  }
-
-  return (
-    <div className={TOAST_BLACK}>
-      <div>Nav: {navigation.state}</div>
-      <div>Loading: {isLoading ? 'YES' : 'NO'}</div>
-      <div>Timeout: {loadingTimeout ? 'YES' : 'NO'}</div>
-      {navigation.location && <div>To: {navigation.location.pathname}</div>}
-    </div>
-  );
-}
-
 export default function App() {
   // useNavigation is only available inside the Router context (client-side)
   const navigation = useNavigation();
-  const isLoading = navigation.state !== 'idle';
-  const [loadingTimeout, setLoadingTimeout] = useState(false);
-  const navigationPathname = navigation.location?.pathname ?? null;
-  const navigationSearch = navigation.location?.search ?? '';
-  const navigationFormMethod = navigation.formMethod
-    ? navigation.formMethod.toUpperCase()
-    : null;
+  const { isLoading, loadingTimeout } = useLoadingState(navigation);
+  const qc = useQueryClientConfig();
 
-  // Debug navigation state - client-side only
-  useEffect(() => {
-    console.log('Navigation state:', navigation.state, 'isLoading:', isLoading);
-  }, [navigation.state, isLoading]);
-
-  // Add timeout for loading state to prevent permanent loading overlay.
-  // Answer searches can take longer due to keyword and score filters, so we
-  // allow additional time before falling back to the non-blocking indicator.
-  useEffect(() => {
-    if (!isLoading) {
-      setLoadingTimeout(false);
-      return;
-    }
-
-    if (typeof window === 'undefined') {
-      setLoadingTimeout(false);
-      return;
-    }
-
-    setLoadingTimeout(false);
-
-    const hasQueryString = navigationSearch.length > 0;
-    const isAnswerSearchNavigation =
-      navigationPathname === '/answers' && hasQueryString;
-
-    const baseTimeout =
-      navigationFormMethod && navigationFormMethod !== 'GET' ? 7000 : 5000;
-
-    const timeoutMs = (() => {
-      if (isAnswerSearchNavigation) return 15000;
-      if (navigationFormMethod === 'GET' && hasQueryString) return 10000;
-      return baseTimeout;
-    })();
-
-    const timer = window.setTimeout(() => {
-      console.warn(
-        `Loading state timeout (${timeoutMs}ms) - switching to non-blocking indicator`
-      );
-      setLoadingTimeout(true);
-    }, timeoutMs);
-
-    return () => window.clearTimeout(timer);
-  }, [isLoading, navigationFormMethod, navigationPathname, navigationSearch]);
-
-  // QueryClient per app instance (client-side). Keep it lazy so SSR doesn't create one.
-  const [qc] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            retry: (failureCount, error) => {
-              // 認証エラーはリトライしない
-              if (error instanceof Response && error.status === 401)
-                return false;
-              // サーバーエラーは3回までリトライ
-              return failureCount < 3;
-            },
-            staleTime: 5 * 60 * 1000, // 5分
-          },
-          mutations: {
-            onError: error => {
-              // グローバルエラーハンドリング
-              console.error('Mutation error:', error);
-              // トースト表示（後述）
-            },
-          },
-        },
-      })
-  );
-
-  // Set CSS --vh to handle mobile browser UI changes (iOS address bar, safe
-  // viewport). This ensures containers using `calc(var(--vh,1vh) * 100)` map
-  // to the true visual viewport height and prevents outer page scrolling on
-  // small devices like iPhone SE.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // Debounced setter to avoid thrash during scroll/resize.
-    let rafId: number | null = null;
-    const setVh = () => {
-      try {
-        const vv = window.visualViewport;
-        const vh =
-          vv && typeof vv.height === 'number' ? vv.height : window.innerHeight;
-        document.documentElement.style.setProperty(
-          '--vh',
-          String(vh / 100) + 'px'
-        );
-      } catch {}
-    };
-
-    const schedule = () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        setVh();
-        rafId = null;
-      });
-    };
-
-    // Initial set
-    setVh();
-
-    // Common events that may change viewport height on mobile
-    window.addEventListener('resize', schedule);
-    window.addEventListener('orientationchange', schedule);
-    window.addEventListener('pageshow', schedule);
-    window.addEventListener('visibilitychange', schedule);
-
-    const vv = window.visualViewport;
-    if (vv && typeof vv.addEventListener === 'function') {
-      vv.addEventListener('resize', schedule);
-      vv.addEventListener('scroll', schedule);
-    }
-
-    return () => {
-      window.removeEventListener('resize', schedule);
-      window.removeEventListener('orientationchange', schedule);
-      window.removeEventListener('pageshow', schedule);
-      window.removeEventListener('visibilitychange', schedule);
-      if (vv && typeof vv.removeEventListener === 'function') {
-        vv.removeEventListener('resize', schedule);
-        vv.removeEventListener('scroll', schedule);
-      }
-      if (rafId !== null) cancelAnimationFrame(rafId);
-    };
-  }, []);
+  // Set viewport height for mobile
+  useViewportHeight();
 
   return (
     <QueryClientProvider client={qc}>
@@ -276,11 +119,7 @@ export default function App() {
         )}
 
         {/* Debug info - only in development */}
-        <ClientOnlyDebugInfo
-          navigation={navigation}
-          isLoading={isLoading}
-          loadingTimeout={loadingTimeout}
-        />
+        {useClientOnlyDebugInfo(navigation, isLoading, loadingTimeout)}
       </Layout>
 
       {/* React Query DevTools - only in development */}
