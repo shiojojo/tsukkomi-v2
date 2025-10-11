@@ -1,64 +1,30 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Form, useNavigate } from 'react-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
-import { AnswersList } from '~/components/features/answers/AnswersList';
-import { useAnswerUserData } from '~/hooks/useAnswerUserData';
+import { AnswersPage } from '~/components/features/answers/AnswersPage';
 import { useIdentity } from '~/hooks/useIdentity';
 import { handleAnswerActions } from '~/lib/actionHandlers';
-import type { Answer } from '~/lib/schemas/answer';
-import type { Topic } from '~/lib/schemas/topic';
-import type { Comment } from '~/lib/schemas/comment';
-import type { User } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 import { HEADER_BASE } from '~/styles/headerStyles';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  try {
-    const url = new URL(request.url);
-    const profileId = url.searchParams.get('profileId') ?? undefined;
+  const url = new URL(request.url);
+  const profileId = url.searchParams.get('profileId') ?? undefined;
 
-    const base = {
-      answers: [] as Answer[],
-      topicsById: {} as Record<string, Topic>,
-      commentsByAnswer: {} as Record<string, Comment[]>,
-      users: [] as User[],
-      requiresProfileId: true,
-      profileId: profileId ?? null,
-    };
-
-    if (!profileId) {
-      return Response.json(base);
-    }
-
-    const {
-      getFavoriteAnswersForProfile,
-      getTopics,
-      getCommentsForAnswers,
-      getUsers,
-    } = await import('~/lib/db');
-
-    const answers = await getFavoriteAnswersForProfile(profileId);
-    const answerIds = answers.map(a => a.id);
-    const commentsByAnswer = answerIds.length
-      ? await getCommentsForAnswers(answerIds)
-      : {};
-    const topics = await getTopics();
-    const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
-    const users = await getUsers({ limit: 500 });
-
-    return Response.json({
-      answers,
-      topicsById,
-      commentsByAnswer,
-      users,
-      requiresProfileId: false,
-      profileId,
-    });
-  } catch (error) {
-    console.error('Failed to load favorites:', error);
+  if (!profileId) {
     return Response.json({
       answers: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      q: '',
+      author: '',
+      sortBy: 'newest',
+      minScore: 0,
+      hasComments: false,
+      fromDate: '',
+      toDate: '',
       topicsById: {},
       commentsByAnswer: {},
       users: [],
@@ -66,6 +32,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
       profileId: null,
     });
   }
+
+  const { createAnswersListLoader } = await import('~/lib/loaders');
+  const data = await createAnswersListLoader(request, {
+    favorite: true,
+    profileId,
+  });
+  const jsonData = await data.json();
+  return Response.json({ ...jsonData, requiresProfileId: false, profileId });
 }
 
 export async function action(args: ActionFunctionArgs) {
@@ -75,32 +49,26 @@ export async function action(args: ActionFunctionArgs) {
 export default function FavoriteAnswersRoute() {
   const data = useLoaderData() as {
     answers: any[];
+    total: number;
+    page: number;
+    pageSize: number;
+    q: string;
+    author: string;
+    sortBy: string;
+    minScore: number;
+    hasComments: boolean;
+    fromDate: string;
+    toDate: string;
     topicsById: Record<string, any>;
     commentsByAnswer: Record<string, any[]>;
     users: any[];
     requiresProfileId: boolean;
-    profileId: string | null;
+    profileId?: string;
   };
-  const answers = data.answers ?? [];
-  const topicsById = data.topicsById ?? {};
-  const commentsByAnswer = data.commentsByAnswer ?? {};
-  const users: User[] = data.users ?? [];
   const requiresProfileId = data.requiresProfileId;
-  const profileIdFromLoader = data.profileId ?? null;
+  const profileIdFromLoader = data.profileId;
 
-  const nameByProfileId = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const user of users) {
-      map[String(user.id)] = user.name;
-      for (const sub of user.subUsers ?? []) {
-        map[String(sub.id)] = sub.name;
-      }
-    }
-    return map;
-  }, [users]);
-
-  const { effectiveId: currentUserId, effectiveName: currentUserName } =
-    useIdentity();
+  const { effectiveId: currentUserId } = useIdentity();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -113,45 +81,17 @@ export default function FavoriteAnswersRoute() {
     } catch {}
   }, [requiresProfileId, currentUserId, navigate]);
 
-  const [visibleAnswers, setVisibleAnswers] = useState<Answer[]>(answers);
-  const [currentCommentsByAnswer, setCurrentCommentsByAnswer] =
-    useState<Record<string, Comment[]>>(commentsByAnswer);
-
-  useEffect(() => {
-    setVisibleAnswers(answers);
-  }, [answers]);
-
-  useEffect(() => {
-    setCurrentCommentsByAnswer(commentsByAnswer);
-  }, [commentsByAnswer]);
-
-  const answerIds = visibleAnswers.map((a: Answer) => a.id);
-  const { data: userAnswerData, markFavorite } = useAnswerUserData(
-    answerIds,
-    Boolean(currentUserId)
-  );
-
-  const getNameByProfileId = (pid?: string | null) => {
-    if (!pid) return undefined;
-    return nameByProfileId[String(pid)];
-  };
-
-  const headerNode = (
-    <div className={HEADER_BASE}>
-      <div className="p-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold">お気に入り</h1>
-        </div>
-        <p className="mt-2 text-xs text-gray-500 dark:text-gray-300">
-          保存した回答をまとめて採点・コメントできます。
-        </p>
-      </div>
-    </div>
-  );
-
   if (requiresProfileId && !currentUserId) {
     return (
-      <StickyHeaderLayout header={headerNode}>
+      <StickyHeaderLayout
+        header={
+          <div className={HEADER_BASE}>
+            <div className="p-4">
+              <h1 className="text-lg font-semibold">お気に入り</h1>
+            </div>
+          </div>
+        }
+      >
         <div className="px-4 py-8 space-y-4">
           <p className="text-sm text-gray-600">
             お気に入り一覧を表示するには、まずログインしてユーザーを選択してください。
@@ -166,53 +106,5 @@ export default function FavoriteAnswersRoute() {
     );
   }
 
-  if (!answers.length) {
-    return (
-      <StickyHeaderLayout header={headerNode}>
-        <div className="px-4 py-8 space-y-3">
-          <h2 className="text-lg font-semibold">お気に入りはまだありません</h2>
-          <p className="text-sm text-gray-600">
-            /answers
-            から気になる回答をお気に入り登録しておくと、ここでまとめて採点やコメントができます。
-          </p>
-          <Form method="get" action="/answers" className="inline">
-            <Button variant="small" active={false}>
-              回答一覧へ戻る
-            </Button>
-          </Form>
-        </div>
-      </StickyHeaderLayout>
-    );
-  }
-
-  return (
-    <StickyHeaderLayout header={headerNode}>
-      <div className="px-4 pb-20">
-        {visibleAnswers.length === 0 ? (
-          <div className="py-10 text-sm text-gray-500">
-            すべてのお気に入りが解除されました。新しいお気に入りを追加するとここに表示されます。
-          </div>
-        ) : (
-          <AnswersList
-            answers={visibleAnswers}
-            topicsById={topicsById}
-            commentsByAnswer={currentCommentsByAnswer}
-            getNameByProfileId={getNameByProfileId}
-            currentUserName={currentUserName}
-            currentUserId={currentUserId}
-            userAnswerData={userAnswerData}
-            onFavoriteUpdate={(id: number, favorited: boolean) => {
-              markFavorite(id, favorited);
-              if (!favorited) {
-                setVisibleAnswers(prev => prev.filter(a => a.id !== id));
-              }
-            }}
-            actionPath="/answers/favorites"
-            profileIdForVotes={profileIdFromLoader ?? currentUserId}
-            emptyMessage="すべてのお気に入りが解除されました。新しいお気に入りを追加するとここに表示されます。"
-          />
-        )}
-      </div>
-    </StickyHeaderLayout>
-  );
+  return <AnswersPage data={data} mode="favorites" />;
 }

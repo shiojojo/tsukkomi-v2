@@ -23,7 +23,7 @@ interface AnswersPageProps {
     users: any[];
     profileId?: string;
   };
-  mode: 'all' | 'topic';
+  mode: 'all' | 'topic' | 'favorites';
   topicId?: string;
   topic?: any;
 }
@@ -90,7 +90,13 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
       currentUserId={currentUserId}
       userAnswerData={userAnswerData}
       onFavoriteUpdate={markFavorite}
-      actionPath={mode === 'topic' ? `/topics/${topicId}` : '/answers'}
+      actionPath={
+        mode === 'topic'
+          ? `/topics/${topicId}`
+          : mode === 'favorites'
+            ? '/answers/favorites'
+            : '/answers'
+      }
       profileIdForVotes={profileId ?? currentUserId}
       emptyMessage={
         mode === 'topic' ? 'まだ回答が投稿されていません。' : undefined
@@ -103,10 +109,10 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
     />
   );
 
-  if (mode === 'all') {
+  if (mode === 'all' || mode === 'favorites') {
     return (
       <ListPageLayout
-        headerTitle="大喜利 - 回答一覧"
+        headerTitle={mode === 'favorites' ? 'お気に入り' : '大喜利 - 回答一覧'}
         filters={filtersComponent}
         list={answersListComponent}
         contentRef={answersContainerRef}

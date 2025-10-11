@@ -132,21 +132,23 @@ export async function getFavoritesForProfile(profileId: string, answerIds?: Arra
  * Errors: Supabase エラー / zod 失敗はそのまま throw。profileId 未指定はエラー扱い。
  * SideEffects: なし（読み取り専用）。
  */
-export async function getFavoriteAnswersForProfile(profileId: string): Promise<Answer[]> {
+export async function getFavoriteAnswersForProfile(profileId: string, opts?: { page?: number; pageSize?: number }): Promise<{ answers: Answer[]; total: number }> {
   if (!profileId) {
     throw new Error('getFavoriteAnswersForProfile: profileId is required');
   }
 
+  const { page = 1, pageSize = 20 } = opts ?? {};
   await ensureConnection();
-  const { data: favRows, error: favError } = await supabase
+  const { data: favRows, error: favError, count } = await supabase
     .from('favorites')
-    .select('answer_id, created_at')
+    .select('answer_id, created_at', { count: 'exact' })
     .eq('profile_id', profileId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range((page - 1) * pageSize, page * pageSize - 1);
   if (favError) throw favError;
 
   const orderedIds = (favRows ?? []).map((row: any) => Number(row.answer_id)).filter(Number.isFinite);
-  if (!orderedIds.length) return [];
+  if (!orderedIds.length) return { answers: [], total: count ?? 0 };
 
   const idOrder = new Map<number, number>();
   orderedIds.forEach((id, index) => {
@@ -200,5 +202,5 @@ export async function getFavoriteAnswersForProfile(profileId: string): Promise<A
       return ai - bi;
     });
 
-  return AnswerSchema.array().parse(normalized as any);
+  return { answers: AnswerSchema.array().parse(normalized as any), total: count ?? 0 };
 }

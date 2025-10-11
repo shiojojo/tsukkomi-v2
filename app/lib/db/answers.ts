@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { AnswerSchema } from '~/lib/schemas/answer';
 import type { Answer } from '~/lib/schemas/answer';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
-import { getFavoritesForProfile } from './favorites';
+import { getFavoritesForProfile, getFavoriteAnswersForProfile } from './favorites';
 import { ServerError } from '../errors';
 
 async function getVotesByForAnswers(
@@ -139,8 +139,15 @@ export async function searchAnswers(opts: {
   hasComments?: boolean;
   fromDate?: string | undefined;
   toDate?: string | undefined;
+  favorite?: boolean;
+  profileId?: string;
 }): Promise<{ answers: Answer[]; total: number }> {
-  const { q, author, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments, fromDate, toDate } = opts;
+  const { q, author, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments, fromDate, toDate, favorite, profileId } = opts;
+
+  if (favorite && profileId) {
+    return await getFavoriteAnswersForProfile(profileId, { page, pageSize });
+  }
+
   await ensureConnection();
   if (!supabaseAdmin) {
     throw new Error('Admin client required for search operations');
