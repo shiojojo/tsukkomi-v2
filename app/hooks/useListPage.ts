@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useFilters, type TopicsFilters, type AnswersFilters } from './useFilters';
+import { useScrollReset } from './useScrollReset';
 
 type FilterType = 'topics' | 'answers';
 
@@ -75,27 +76,10 @@ export function useListPage(
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
 
   // リストデータ
-  const listData = (loaderData as any)[entityKey] || [];
+  const listData = (entityKey === 'topics' ? (loaderData as TopicsLoaderData).topics : (loaderData as AnswersLoaderData).answers) || [];
 
   // スクロールリセット用 ref
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  // ページ変更時のスクロールリセット
-  useEffect(() => {
-    try {
-      const el = containerRef.current as HTMLDivElement | null;
-      if (el) {
-        el.scrollTop = 0;
-        try {
-          el.scrollTo?.({ top: 0, behavior: 'auto' } as any);
-        } catch {}
-      }
-
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-      }
-    } catch {}
-  }, [currentPage]);
+  const containerRef = useScrollReset(currentPage);
 
   return {
     filters,

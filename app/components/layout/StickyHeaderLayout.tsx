@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
+import { useBrowserDetection } from '~/hooks/useBrowserDetection';
 
 /**
  * StickyHeaderLayout
@@ -24,39 +25,7 @@ export default function StickyHeaderLayout({
   className?: string;
   contentRef?: RefObject<HTMLDivElement | null>;
 }) {
-  const [useDocumentScroll, setUseDocumentScroll] = useState(false);
-
-  useEffect(() => {
-    if (typeof navigator === 'undefined') return;
-
-    try {
-      const ua = navigator.userAgent ?? '';
-      const vendor = navigator.vendor ?? '';
-      const isAndroid = /Android/i.test(ua);
-      const isChrome = /Chrome\//i.test(ua) && /Google/i.test(vendor);
-      const isEdge = /Edg\//i.test(ua);
-      const isOpera = /OPR\//i.test(ua);
-      const isSamsung = /SamsungBrowser/i.test(ua);
-
-      const maxTouchPoints =
-        typeof navigator.maxTouchPoints === 'number'
-          ? navigator.maxTouchPoints
-          : 0;
-      const isiOSFamily =
-        /iP(hone|od|ad)/i.test(ua) ||
-        (ua.includes('Macintosh') && maxTouchPoints > 1);
-      const isCriOS = /CriOS/i.test(ua);
-      const isMobileSafari =
-        isiOSFamily && /Version\/\d+.*Safari/i.test(ua) && !isCriOS;
-
-      if (
-        (isAndroid && isChrome && !isEdge && !isOpera && !isSamsung) ||
-        (isiOSFamily && (isCriOS || isMobileSafari))
-      ) {
-        setUseDocumentScroll(true);
-      }
-    } catch {}
-  }, []);
+  const useDocumentScroll = useBrowserDetection();
 
   if (useDocumentScroll) {
     return (

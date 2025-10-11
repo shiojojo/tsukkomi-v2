@@ -1,4 +1,5 @@
 import { Form } from 'react-router';
+import { useNumericInput } from '~/hooks/useNumericInput';
 import { SearchInput } from '~/components/ui/SearchInput';
 import { DateRangeFilter } from './DateRangeFilter';
 import type { User } from '~/lib/schemas/user';
@@ -39,19 +40,12 @@ export function FilterForm(props: FilterFormProps) {
   const { type, query, setQuery, fromDate, setFromDate, toDate, setToDate } =
     props;
 
-  const incrementMinScore = () => {
-    if (type === 'answers') {
-      const n = Number(props.minScore || 0);
-      props.setMinScore(String(n + 1));
-    }
-  };
-
-  const decrementMinScore = () => {
-    if (type === 'answers') {
-      const n = Math.max(0, Number(props.minScore || 0) - 1);
-      props.setMinScore(String(n));
-    }
-  };
+  const { increment: incrementMinScore, decrement: decrementMinScore } =
+    useNumericInput(
+      type === 'answers' ? props.minScore : '0',
+      type === 'answers' ? props.setMinScore : () => {},
+      0
+    );
 
   const SubmitAndClearButtons = () => (
     <div className="flex items-center gap-2">

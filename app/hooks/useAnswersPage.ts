@@ -3,6 +3,7 @@ import { useAnswerUserData } from './useAnswerUserData';
 import { useIdentity } from './useIdentity';
 import { useNameByProfileId } from './useNameByProfileId';
 import { useFilters, type AnswersFilters } from './useFilters';
+import { useScrollReset } from './useScrollReset';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
@@ -111,23 +112,7 @@ export function useAnswersPage(data: LoaderData) {
   const answers = currentData.answers ?? [];
 
   // ref to the scrollable answers container
-  const answersContainerRef = useRef<HTMLDivElement | null>(null);
-
-  // Scroll to top when page changes
-  useEffect(() => {
-    try {
-      const el = answersContainerRef.current;
-      if (el) {
-        el.scrollTop = 0;
-        try {
-          el.scrollTo?.({ top: 0, behavior: 'auto' });
-        } catch {}
-      }
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-      }
-    } catch {}
-  }, [currentPage]);
+  const answersContainerRef = useScrollReset(currentPage);
 
   // helper to build href preserving current filters
   const buildHref = (p: number) => {
