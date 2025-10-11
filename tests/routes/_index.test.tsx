@@ -22,7 +22,9 @@ describe('_index route', () => {
       vi.mocked(getLatestTopic).mockResolvedValue(mockTopic);
 
       const result = await loader({} as any);
-      expect(result).toEqual({ latest: mockTopic });
+      expect(result).toBeInstanceOf(Response);
+      const resultData = await result.json();
+      expect(resultData).toEqual({ latest: mockTopic });
       expect(getLatestTopic).toHaveBeenCalled();
     });
 
@@ -31,7 +33,9 @@ describe('_index route', () => {
       vi.mocked(getLatestTopic).mockResolvedValue(null);
 
       const result = await loader({} as any);
-      expect(result).toEqual({ latest: null });
+      expect(result).toBeInstanceOf(Response);
+      const resultData = await result.json();
+      expect(resultData).toEqual({ latest: null });
     });
   });
 });

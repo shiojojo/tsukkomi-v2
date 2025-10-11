@@ -139,7 +139,10 @@ async function handleToggleFavorite(form: FormData) {
       answerId: Number(answerId),
       profileId,
     });
-    return res;
+    return new Response(JSON.stringify(res), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (e: any) {
     logger.error('toggleFavorite failed', String(e?.message ?? e));
     throw new Response(

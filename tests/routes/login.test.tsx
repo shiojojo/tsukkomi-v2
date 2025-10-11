@@ -19,7 +19,9 @@ describe('login route', () => {
       vi.mocked(getUsers).mockResolvedValue(mockUsers);
 
       const result = await loader({} as any);
-      expect(result).toEqual({ users: mockUsers });
+      expect(result).toBeInstanceOf(Response);
+      const resultData = await result.json();
+      expect(resultData).toEqual({ users: mockUsers });
       expect(getUsers).toHaveBeenCalled();
     });
   });

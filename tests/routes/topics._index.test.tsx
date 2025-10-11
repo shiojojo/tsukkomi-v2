@@ -34,7 +34,9 @@ describe('topics._index route', () => {
 
       const result = await loader({ request: mockRequest } as any);
       expect(createListLoader).toHaveBeenCalledWith('topics', mockRequest);
-      expect(result).toEqual(mockResponse);
+      expect(result).toBeInstanceOf(Response);
+      const resultData = await result.json();
+      expect(resultData).toEqual(mockData);
     });
   });
 });

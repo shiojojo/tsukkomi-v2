@@ -37,7 +37,9 @@ describe('loaders', () => {
       expect(parsePaginationParams).toHaveBeenCalledWith(mockRequest);
       expect(parseFilterParams).toHaveBeenCalledWith(mockRequest, 'topics');
       expect(getTopicsPaged).toHaveBeenCalledWith({ page: 1, pageSize: 10, q: 'test' });
-      expect(result).toEqual({ topics: [], total: 0, page: 1, pageSize: 10, q: 'test' });
+      expect(result).toBeInstanceOf(Response);
+      const resultData = await result.json();
+      expect(resultData).toEqual({ topics: [], total: 0, page: 1, pageSize: 10, q: 'test' });
     });
 
     it('should handle answers', async () => {
@@ -50,7 +52,9 @@ describe('loaders', () => {
 
       const result = await createListLoader('answers', mockRequest);
       expect(searchAnswers).toHaveBeenCalledWith({ page: 1, pageSize: 10, q: 'test', sortBy: 'newest' });
-      expect(result).toEqual({ answers: [], total: 0, page: 1, pageSize: 10, q: 'test', sortBy: 'newest' });
+      expect(result).toBeInstanceOf(Response);
+      const resultData = await result.json();
+      expect(resultData).toEqual({ answers: [], total: 0, page: 1, pageSize: 10, q: 'test', sortBy: 'newest' });
     });
   });
 
@@ -76,10 +80,12 @@ describe('loaders', () => {
       const result = await createAnswersListLoader(mockRequest);
       expect(getTopics).toHaveBeenCalled();
       expect(getUsers).toHaveBeenCalledWith({ limit: 200 });
-      expect(result).toHaveProperty('answers');
-      expect(result).toHaveProperty('topicsById');
-      expect(result).toHaveProperty('commentsByAnswer');
-      expect(result).toHaveProperty('users');
+      expect(result).toBeInstanceOf(Response);
+      const resultData = await result.json();
+      expect(resultData).toHaveProperty('answers');
+      expect(resultData).toHaveProperty('topicsById');
+      expect(resultData).toHaveProperty('commentsByAnswer');
+      expect(resultData).toHaveProperty('users');
     });
   });
 });
