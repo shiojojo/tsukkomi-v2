@@ -147,8 +147,7 @@ export function AnswerActionCard({
     actionPath,
     onSelectionChange: level => {
       setVotesBy(prev => {
-        if (!prev) return prev;
-        const newVotesBy = { ...prev };
+        const newVotesBy = { ...(prev || {}) };
         if (level === null) {
           delete newVotesBy[profileForVote!];
         } else {
