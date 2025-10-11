@@ -1,6 +1,10 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
 import { AnswersPage } from '~/components/features/answers/AnswersPage';
+import type { Answer } from '~/lib/schemas/answer';
+import type { Topic } from '~/lib/schemas/topic';
+import type { Comment } from '~/lib/schemas/comment';
+import type { User } from '~/lib/schemas/user';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 
@@ -19,7 +23,7 @@ export async function action(args: ActionFunctionArgs) {
 
 export default function AnswersRoute() {
   const data = useLoaderData() as {
-    answers: any[];
+    answers: Answer[];
     total: number;
     page: number;
     pageSize: number;
@@ -30,9 +34,9 @@ export default function AnswersRoute() {
     hasComments: boolean;
     fromDate: string;
     toDate: string;
-    topicsById: Record<string, any>;
-    commentsByAnswer: Record<string, any[]>;
-    users: any[];
+    topicsById: Record<string, Topic>;
+    commentsByAnswer: Record<string, Comment[]>;
+    users: User[];
     profileId?: string;
   };
 

@@ -6,6 +6,39 @@ import { getFavoritesForProfile, getFavoriteAnswersForProfile } from './favorite
 import { ServerError } from '../errors';
 import { DEFAULT_PAGE_SIZE } from '../constants';
 
+// Database row types for type safety
+interface DatabaseAnswerRow {
+  id: number;
+  text: string;
+  profile_id: string | null;
+  topic_id: number | null;
+  created_at: string;
+  score?: number;
+  has_comments?: boolean;
+}
+
+interface DatabaseVoteRow {
+  answer_id: number;
+  profile_id: string;
+  level: number;
+}
+
+// Search view row type (includes aggregated vote counts)
+interface SearchViewRow extends DatabaseAnswerRow {
+  level1: number;
+  level2: number;
+  level3: number;
+}
+
+// Partial answer type without votes
+interface PartialAnswer {
+  id: number;
+  text: string;
+  profileId?: string;
+  topicId?: number;
+  created_at: string;
+}
+
 async function getVotesByForAnswers(
   answerIds: Array<number | string>,
   client: SupabaseClient | null = supabase
@@ -49,16 +82,16 @@ export async function getAnswers(): Promise<Answer[]> {
     .order('created_at', { ascending: false });
   if (answerErr) throw new ServerError(`Failed to fetch answers: ${answerErr.message}`);
 
-  const answers = (answerRows ?? []).map((a: any) => ({
+  const answers = (answerRows ?? []).map((a: DatabaseAnswerRow) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
-  profileId: a.profile_id ?? undefined,
+    profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
-    created_at: a.created_at ?? a.createdAt,
+    created_at: a.created_at,
   }));
 
-  // collect ids and fetch aggregated counts using the view
-  const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
+    // collect ids and fetch aggregated counts using the view
+  const ids = (answerRows ?? []).map((r: DatabaseAnswerRow) => Number(r.id)).filter(Boolean);
   const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
   if (ids.length) {
     const { data: countsData, error: countsErr } = await supabase
@@ -77,7 +110,7 @@ export async function getAnswers(): Promise<Answer[]> {
 
   const votesByMap = await getVotesByForAnswers(ids);
 
-  const normalized = answers.map((a: any) => ({
+  const normalized = answers.map((a: PartialAnswer) => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
     votesBy: votesByMap[a.id] ?? {},
@@ -196,7 +229,7 @@ export async function searchAnswers(opts: {
   const { data, error, count: c } = await baseQuery.range(offset, offset + pageSize - 1);
   if (error) throw error;
 
-  const answers = (data ?? []).map((a: any) => ({
+  const answers = (data ?? []).map((a: SearchViewRow) => ({
     id: a.id,
     text: a.text,
     profileId: a.profile_id,
@@ -239,12 +272,12 @@ export async function getAnswersByTopic(topicId: string | number, profileId?: st
   const { data: answerRows, error: answerErr } = await query;
   if (answerErr) throw answerErr;
 
-  const answers = (answerRows ?? []).map((a: any) => ({
+  const answers = (answerRows ?? []).map((a: DatabaseAnswerRow) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
-  text: a.text,
-  profileId: a.profile_id ?? undefined,
+    text: a.text,
+    profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
-    created_at: a.created_at ?? a.createdAt,
+    created_at: a.created_at,
   }));
 
   const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
@@ -361,13 +394,13 @@ async function aggregateVoteCounts(answerIds: number[]): Promise<Record<number, 
 }
 
 async function normalizeAnswers(
-  rows: any[],
+  rows: PartialAnswer[],
   countsMap: Record<number, { level1: number; level2: number; level3: number }>,
   votesByMap: Record<number, Record<string, number>>,
   userFavorites: Set<number>,
   profileId?: string
 ) {
-  const normalizedRows = rows.map((a: any) => ({
+  const normalizedRows = rows.map((a: PartialAnswer) => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
     votesBy: votesByMap[a.id] ?? {},
@@ -405,15 +438,15 @@ export async function getAnswersPageByTopic({
   const { data, error } = await query;
   if (error) throw error;
 
-  const rows = (data ?? []).map((a: any) => ({
+  const rows = (data ?? []).map((a: DatabaseAnswerRow) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
     profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
-    created_at: a.created_at ?? a.createdAt,
+    created_at: a.created_at,
   }));
 
-  const ids = rows.map((r: any) => Number(r.id)).filter(Boolean);
+  const ids = rows.map((r: PartialAnswer) => Number(r.id)).filter(Boolean);
   const countsMap = await aggregateVoteCounts(ids);
 
   let userFavorites: Set<number> = new Set();

@@ -1,7 +1,24 @@
 import { UserSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { IdentitySchema } from '~/lib/schemas/identity';
+import type { Identity } from '~/lib/schemas/identity';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
+
+// Database row types
+interface DatabaseProfileRow {
+  id: number;
+  parent_id: number | null;
+  name: string;
+  line_id: string | null;
+  created_at: string;
+}
+
+interface DatabaseSubProfileRow {
+  id: number;
+  parent_id: number | null;
+  name: string;
+  line_id: string | null;
+}
 
 export async function getUsers(opts?: { limit?: number; onlyMain?: boolean }): Promise<User[]> {
   // fetch profiles and attach sub_users
@@ -15,7 +32,7 @@ export async function getUsers(opts?: { limit?: number; onlyMain?: boolean }): P
     // original full-fetch behavior
     const { data, error } = await supabase.from('profiles').select('id, parent_id, name, line_id, created_at');
     if (error) throw error;
-    const identitiesTmp = (data ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+    const identitiesTmp = (data ?? []).map((r: DatabaseProfileRow) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
     const mains = identitiesTmp.filter(i => i.parentId == null);
     const rows = mains.map(m => ({ id: m.id, name: m.name, line_id: m.line_id, subUsers: identitiesTmp.filter(c => c.parentId === m.id).map(c => ({ id: c.id, name: c.name, line_id: c.line_id })) }));
     return UserSchema.array().parse(rows as any);
@@ -29,27 +46,27 @@ export async function getUsers(opts?: { limit?: number; onlyMain?: boolean }): P
     .order('created_at', { ascending: false })
     .range(0, limit - 1);
   if (errLimited) throw errLimited;
-  const fetched = (dataLimited ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+  const fetched = (dataLimited ?? []).map((r: DatabaseProfileRow) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
 
   const mains = fetched.filter(i => i.parentId == null);
   const mainIds = mains.map(m => m.id).filter(Boolean);
 
   // fetch sub-users belonging to these mains (if any)
-  let subs: any[] = [];
+  let subs: Identity[] = [];
   if (mainIds.length) {
     const { data: subData, error: subErr } = await supabase
       .from('profiles')
       .select('id, parent_id, name, line_id')
       .in('parent_id', mainIds);
     if (subErr) throw subErr;
-    subs = (subData ?? []).map((r: any) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined, created_at: r.created_at }));
+    subs = (subData ?? []).map((r: DatabaseSubProfileRow) => IdentitySchema.parse({ id: String(r.id), parentId: r.parent_id ? String(r.parent_id) : null, name: r.name, line_id: r.line_id ?? undefined }));
   }
 
   const rows = mains.map(m => ({
     id: m.id,
     name: m.name,
     line_id: m.line_id,
-    subUsers: subs.filter((c: any) => c.parentId === m.id).map((c: any) => ({ id: c.id, name: c.name, line_id: c.line_id })),
+    subUsers: subs.filter((c: Identity) => c.parentId === m.id).map((c: Identity) => ({ id: c.id, name: c.name, line_id: c.line_id })),
   }));
 
   return UserSchema.array().parse(rows as any);
