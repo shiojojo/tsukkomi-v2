@@ -11,21 +11,7 @@ import { createListLoader } from '~/lib/loaders';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  try {
-    return createListLoader('topics', request);
-  } catch (error) {
-    console.error('Failed to load topics:', error);
-    // Return a safe fallback response
-    return Response.json({
-      topics: [],
-      total: 0,
-      page: 1,
-      pageSize: DEFAULT_PAGE_SIZE,
-      q: '',
-      fromDate: '',
-      toDate: '',
-    });
-  }
+  return createListLoader('topics', request);
 }
 
 export default function TopicsRoute() {

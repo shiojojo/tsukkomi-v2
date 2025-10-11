@@ -18,14 +18,9 @@ import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/Err
  * Errors: バリデーション失敗時は { ok:false, errors }。DB エラーは 500 例外 -> ルートエラー境界へ。
  */
 export async function loader(_args: LoaderFunctionArgs) {
-  try {
-    const { getUsers } = await import('~/lib/db');
-    const users = await getUsers();
-    return Response.json({ users });
-  } catch (error) {
-    console.error('Failed to load users:', error);
-    return Response.json({ users: [] });
-  }
+  const { getUsers } = await import('~/lib/db');
+  const users = await getUsers();
+  return Response.json({ users });
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -48,10 +43,7 @@ export async function action({ request }: ActionFunctionArgs) {
     return Response.json({ ok: false }, { status: 400 });
   } catch (error) {
     console.error('Failed to handle login action:', error);
-    return Response.json(
-      { ok: false, error: 'Internal server error' },
-      { status: 500 }
-    );
+    throw new Response('Internal server error', { status: 500 });
   }
 }
 

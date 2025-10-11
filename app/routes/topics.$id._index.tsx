@@ -6,28 +6,9 @@ import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
-  try {
-    const topicId = params.id ? String(params.id) : undefined;
-    const { createAnswersListLoader } = await import('~/lib/loaders');
-    return await createAnswersListLoader(request, { topicId });
-  } catch (error) {
-    console.error('Failed to load topic answers:', error);
-    // Return a safe fallback response
-    return Response.json({
-      answers: [],
-      total: 0,
-      page: 1,
-      pageSize: DEFAULT_PAGE_SIZE,
-      q: '',
-      author: '',
-      sortBy: 'created_at',
-      fromDate: '',
-      toDate: '',
-      topicsById: {},
-      commentsByAnswer: {},
-      users: [],
-    });
-  }
+  const topicId = params.id ? String(params.id) : undefined;
+  const { createAnswersListLoader } = await import('~/lib/loaders');
+  return await createAnswersListLoader(request, { topicId });
 }
 
 import { handleAnswerActions } from '~/lib/actionHandlers';

@@ -13,14 +13,9 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export async function loader(_args: LoaderFunctionArgs) {
-  try {
-    const { getLatestTopic } = await import('~/lib/db');
-    const latest = await getLatestTopic();
-    return Response.json({ latest });
-  } catch (error) {
-    console.error('Failed to load latest topic:', error);
-    return Response.json({ latest: null });
-  }
+  const { getLatestTopic } = await import('~/lib/db');
+  const latest = await getLatestTopic();
+  return Response.json({ latest });
 }
 
 export default function Home() {
