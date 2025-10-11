@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import sharp from 'sharp';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { LineAnswerIngestRequestSchema, type LineAnswerIngestRequest } from '~/lib/schemas/line-sync';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
@@ -72,9 +71,7 @@ function buildStoragePath(sourceUrl: string, extension: string) {
   return `${folder}/${hash}.${sanitizedExt}`;
 }
 
-const THUMBNAIL_MAX_DIMENSION = 1024;
-const JPEG_QUALITY = 80;
-const WEBP_QUALITY = 75;
+
 
 async function uploadImageToSupabaseStorage(sourceUrl: string) {
   const response = await fetch(sourceUrl);
@@ -91,17 +88,8 @@ async function uploadImageToSupabaseStorage(sourceUrl: string) {
   // Resize image if needed
   let processedBuffer: Buffer = buffer;
   try {
-    const metadata = await sharp(buffer as any).metadata();
-    if (metadata.width && metadata.width > THUMBNAIL_MAX_DIMENSION) {
-      processedBuffer = await sharp(buffer as any)
-        .resize(THUMBNAIL_MAX_DIMENSION, null, { withoutEnlargement: true })
-        .jpeg({ quality: JPEG_QUALITY })
-        .toBuffer() as Buffer;
-    } else if (extension === 'webp') {
-      processedBuffer = await sharp(buffer as any)
-        .webp({ quality: WEBP_QUALITY })
-        .toBuffer() as Buffer;
-    }
+    const { processImageBuffer } = await import('../imageProcessor');
+    processedBuffer = await processImageBuffer(buffer, extension);
   } catch (error) {
     console.warn('Image processing failed, using original:', error);
   }
