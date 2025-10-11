@@ -95,7 +95,8 @@ async function uploadImageToSupabaseStorage(sourceUrl: string) {
   }
 
   const bucket = resolveStorageBucket();
-  const { data, error } = await supabase.storage
+  const storageClient = supabaseAdmin?.storage ?? supabase.storage;
+  const { data, error } = await storageClient
     .from(bucket)
     .upload(storagePath, processedBuffer, {
       contentType: `image/${extension}`,
