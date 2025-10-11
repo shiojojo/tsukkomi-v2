@@ -19,8 +19,10 @@ export function useQueryWithError<T>(
         // グローバルエラーハンドリング
         if (error instanceof Response) {
           if (error.status === 401) {
-            // 認証エラー: ログインページへ
-            window.location.href = '/login';
+            // 認証エラー: ログインページへ（クライアントサイドのみ）
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
             throw error;
           } else if (error.status >= 500) {
             // サーバーエラー: ErrorBoundary に委譲
@@ -28,13 +30,15 @@ export function useQueryWithError<T>(
           }
         }
 
-        // クライアントエラーはトースト表示
-        const message = getUserFriendlyErrorMessage(error);
-        toast({
-          title: 'エラー',
-          description: message,
-          variant: 'destructive',
-        });
+        // クライアントエラーはトースト表示（クライアントサイドのみ）
+        if (typeof window !== 'undefined') {
+          const message = getUserFriendlyErrorMessage(error);
+          toast({
+            title: 'エラー',
+            description: message,
+            variant: 'destructive',
+          });
+        }
 
         throw error;
       }

@@ -1,5 +1,4 @@
 import { useRef, useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useAnswerUserData } from './useAnswerUserData';
 import { useIdentity } from './useIdentity';
 import { useNameByProfileId } from './useNameByProfileId';
@@ -52,21 +51,8 @@ export function useAnswersPage(data: LoaderData) {
   const answerIds = data.answers?.map((a: Answer) => a.id) ?? [];
   const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);
 
-  // Use React Query for answers list with loader data as placeholder
-  const query = useQuery({
-    queryKey: ['answers', data.page, data.pageSize, data.q, data.author, data.sortBy, data.minScore, data.hasComments, data.fromDate, data.toDate],
-    queryFn: async () => {
-      const { createAnswersListLoader } = await import('~/lib/loaders');
-      const request = new Request(window.location.href);
-      const response = await createAnswersListLoader(request, { topicId: data.profileId });
-      return await response.json();
-    },
-    placeholderData: data,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  // Use query data if available, otherwise fallback to loader data
-  const currentData = query.data ?? data;
+  // Use loader data directly (no need for client-side refetch)
+  const currentData = data;
 
   // Filter UI state (server-driven via GET form)
   const initialFilters: AnswersFilters = {
