@@ -1,4 +1,3 @@
-import 'server-only';
 import { createHash } from 'node:crypto';
 import sharp from 'sharp';
 import type { SupabaseClient } from '@supabase/supabase-js';
