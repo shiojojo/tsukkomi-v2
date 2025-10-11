@@ -27,17 +27,15 @@ export default function Home() {
   const data = useLoaderData() as { latest: Topic | null };
   const latest: Topic | null = data?.latest ?? null;
 
-  const current: Topic | null = latest;
-
   return (
     <main className="p-4">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-extrabold mb-6">Tsukkomi — 今日のお題</h1>
 
-        {current ? (
+        {latest ? (
           <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-lg p-6">
             <div>
-              <TopicCard topic={current} />
+              <TopicCard topic={latest} />
             </div>
           </section>
         ) : (
