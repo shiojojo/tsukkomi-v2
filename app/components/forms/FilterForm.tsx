@@ -1,9 +1,6 @@
-import { Form } from 'react-router';
-import { useNumericInput } from '~/hooks/useNumericInput';
-import { SearchInput } from '~/components/ui/SearchInput';
-import { DateRangeFilter } from './DateRangeFilter';
+import { AnswersFilterForm } from './AnswersFilterForm';
+import { TopicsFilterForm } from './TopicsFilterForm';
 import type { User } from '~/lib/schemas/user';
-import { Button } from '~/components/ui/Button';
 
 interface BaseFilterProps {
   query: string;
@@ -37,173 +34,41 @@ interface TopicsFilterProps extends BaseFilterProps {
 type FilterFormProps = AnswersFilterProps | TopicsFilterProps;
 
 export function FilterForm(props: FilterFormProps) {
-  const { type, query, setQuery, fromDate, setFromDate, toDate, setToDate } =
-    props;
-
-  const { increment: incrementMinScore, decrement: decrementMinScore } =
-    useNumericInput(
-      type === 'answers' ? props.minScore : '0',
-      type === 'answers' ? props.setMinScore : () => {},
-      0
-    );
-
-  const SubmitAndClearButtons = () => (
-    <div className="flex items-center gap-2">
-      <Button variant="smallSecondary" type="submit">
-        検索
-      </Button>
-    </div>
-  );
-
-  if (type === 'topics') {
+  if (props.type === 'answers') {
+    const {
+      users,
+      authorQuery,
+      setAuthorQuery,
+      sortBy,
+      setSortBy,
+      minScore,
+      setMinScore,
+      hasComments,
+      setHasComments,
+      showAdvancedFilters,
+      toggleAdvancedFilters,
+      onSubmit,
+      ...baseProps
+    } = props;
     return (
-      <Form method="get" className="space-y-2">
-        <SearchInput value={query} onChange={setQuery} />
-
-        <div className="mt-2 flex flex-wrap gap-2 items-center">
-          <DateRangeFilter
-            fromDate={fromDate}
-            toDate={toDate}
-            onFromDateChange={setFromDate}
-            onToDateChange={setToDate}
-          />
-          <SubmitAndClearButtons />
-        </div>
-      </Form>
+      <AnswersFilterForm
+        {...baseProps}
+        users={users}
+        authorQuery={authorQuery}
+        setAuthorQuery={setAuthorQuery}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        minScore={minScore}
+        setMinScore={setMinScore}
+        hasComments={hasComments}
+        setHasComments={setHasComments}
+        showAdvancedFilters={showAdvancedFilters}
+        toggleAdvancedFilters={toggleAdvancedFilters}
+        onSubmit={onSubmit}
+      />
     );
+  } else {
+    const { ...baseProps } = props;
+    return <TopicsFilterForm {...baseProps} />;
   }
-
-  // type === 'answers'
-  const {
-    users,
-    authorQuery,
-    setAuthorQuery,
-    sortBy,
-    setSortBy,
-    minScore,
-    setMinScore,
-    hasComments,
-    setHasComments,
-    showAdvancedFilters,
-    toggleAdvancedFilters,
-    onSubmit,
-  } = props;
-
-  return (
-    <Form
-      method="get"
-      className="flex flex-wrap gap-2 items-start md:items-center"
-      onSubmit={onSubmit}
-    >
-      {/* Group: author, sortBy, advanced toggle — keep single-line on small screens */}
-      <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <div>
-            <select
-              id="authorName"
-              name="authorName"
-              value={authorQuery}
-              onChange={e => setAuthorQuery(e.target.value)}
-              className="form-select w-full text-sm"
-            >
-              <option value="">全員</option>
-              {users.map(u => (
-                <option key={u.id} value={u.name}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="flex-shrink-0">
-          <select
-            name="sortBy"
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value as any)}
-            className="form-select w-full text-sm"
-          >
-            <option value="newest">新着</option>
-            <option value="oldest">古い順</option>
-            <option value="scoreDesc">スコア順</option>
-          </select>
-        </div>
-
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <Button
-            variant="smallSecondary"
-            type="button"
-            onClick={toggleAdvancedFilters}
-          >
-            {showAdvancedFilters ? '詳細を閉じる' : '詳細フィルタ'}
-          </Button>
-        </div>
-      </div>
-
-      {showAdvancedFilters && (
-        <div className="flex flex-col gap-3 w-full mt-2">
-          <div className="w-full">
-            <SearchInput value={query} onChange={setQuery} />
-          </div>
-          <div className="flex flex-nowrap items-center gap-2">
-            <div className="flex items-center gap-2">
-              <label className="text-xs">最小スコア: </label>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={decrementMinScore}
-                  className="px-2 py-1 border rounded"
-                >
-                  -
-                </button>
-                <input
-                  name="minScore"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  min={0}
-                  placeholder=""
-                  value={minScore}
-                  onChange={e =>
-                    setMinScore(e.target.value.replace(/[^0-9]/g, ''))
-                  }
-                  className="form-input w-12 text-sm text-center"
-                />
-                <button
-                  type="button"
-                  onClick={incrementMinScore}
-                  className="px-2 py-1 border rounded"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                name="hasComments"
-                type="checkbox"
-                checked={hasComments}
-                onChange={e => setHasComments(e.target.checked)}
-                value="1"
-                className="w-4 h-4"
-              />
-              <span className="text-xs">has comments</span>
-            </label>
-          </div>
-
-          <div className="w-full">
-            <DateRangeFilter
-              fromDate={fromDate}
-              toDate={toDate}
-              onFromDateChange={setFromDate}
-              onToDateChange={setToDate}
-            />
-          </div>
-        </div>
-      )}
-
-      <SubmitAndClearButtons />
-    </Form>
-  );
 }
