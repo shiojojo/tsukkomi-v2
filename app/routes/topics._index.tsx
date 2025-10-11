@@ -15,21 +15,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
   } catch (error) {
     console.error('Failed to load topics:', error);
     // Return a safe fallback response
-    return new Response(
-      JSON.stringify({
-        topics: [],
-        total: 0,
-        page: 1,
-        pageSize: 20,
-        q: '',
-        fromDate: '',
-        toDate: '',
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return Response.json({
+      topics: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      q: '',
+      fromDate: '',
+      toDate: '',
+    });
   }
 }
 

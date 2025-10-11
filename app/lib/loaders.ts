@@ -22,10 +22,7 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
     ? await getTopicsPaged({ page, pageSize, ...filters })
     : await searchAnswers({ page, pageSize, ...filters, ...extraParams });
 
-  return new Response(JSON.stringify({ ...data, page, pageSize, ...filters }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return Response.json({ ...data, page, pageSize, ...filters });
 }
 
 /**

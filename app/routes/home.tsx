@@ -16,16 +16,10 @@ export async function loader(_args: LoaderFunctionArgs) {
   try {
     const { getLatestTopic } = await import('~/lib/db');
     const latest = await getLatestTopic();
-    return new Response(JSON.stringify({ latest }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ latest });
   } catch (error) {
     console.error('Failed to load latest topic:', error);
-    return new Response(JSON.stringify({ latest: null }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ latest: null });
   }
 }
 

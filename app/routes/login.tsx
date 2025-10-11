@@ -21,16 +21,10 @@ export async function loader(_args: LoaderFunctionArgs) {
   try {
     const { getUsers } = await import('~/lib/db');
     const users = await getUsers();
-    return new Response(JSON.stringify({ users }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ users });
   } catch (error) {
     console.error('Failed to load users:', error);
-    return new Response(JSON.stringify({ users: [] }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ users: [] });
   }
 }
 
@@ -49,23 +43,14 @@ export async function action({ request }: ActionFunctionArgs) {
         );
       const { addSubUser } = await import('~/lib/db');
       const sub = await addSubUser(parsed.data);
-      return new Response(JSON.stringify({ ok: true, sub, parentId }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return Response.json({ ok: true, sub, parentId });
     }
-    return new Response(JSON.stringify({ ok: false }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ ok: false }, { status: 400 });
   } catch (error) {
     console.error('Failed to handle login action:', error);
-    return new Response(
-      JSON.stringify({ ok: false, error: 'Internal server error' }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' },
-      }
+    return Response.json(
+      { ok: false, error: 'Internal server error' },
+      { status: 500 }
     );
   }
 }

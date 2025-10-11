@@ -10,16 +10,10 @@ import { logger } from '~/lib/logger';
       text,
       profileId,
     });
-    return new Response(JSON.stringify({ comment }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ comment });
   } catch (e: any) {
     logger.error('addComment failed', String(e?.message ?? e));
-    throw new Response(
-      JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    throw Response.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
   }ー。
  * Contract:
  *   - Input: ActionFunctionArgs (request)
@@ -56,10 +50,7 @@ export async function handleAnswerActions({ request }: ActionFunctionArgs) {
     (answerIdRaw && commentTextRaw);
 
   if (!hasMeaningfulIntent) {
-    return new Response(JSON.stringify({ ok: true, ignored: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ ok: true, ignored: true });
   }
 
   // Rate limiting
@@ -121,10 +112,7 @@ async function handleToggleFavorite(form: FormData) {
     const now = Date.now();
     const prev = (_recentPostGuard as Map<string, number>).get(key) ?? 0;
     if (now - prev < 800) {
-      return new Response(JSON.stringify({ ok: true, deduped: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return Response.json({ ok: true, deduped: true });
     }
     (_recentPostGuard as Map<string, number>).set(key, now);
   } catch {}
@@ -139,16 +127,10 @@ async function handleToggleFavorite(form: FormData) {
       answerId: Number(answerId),
       profileId,
     });
-    return new Response(JSON.stringify(res), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json(res);
   } catch (e: any) {
     logger.error('toggleFavorite failed', String(e?.message ?? e));
-    throw new Response(
-      JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    throw Response.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
   }
 }
 
@@ -164,10 +146,7 @@ async function handleFavoriteStatus(form: FormData) {
     const now = Date.now();
     const prev = (_recentPostGuard as Map<string, number>).get(key) ?? 0;
     if (now - prev < 800) {
-      return new Response(JSON.stringify({ favorited: false, deduped: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return Response.json({ favorited: false, deduped: true });
     }
     (_recentPostGuard as Map<string, number>).set(key, now);
   } catch {}
@@ -180,15 +159,9 @@ async function handleFavoriteStatus(form: FormData) {
   try {
     const list = await getFavoritesForProfile(profileId, [Number(answerId)]);
     const favorited = (list || []).map(Number).includes(Number(answerId));
-    return new Response(JSON.stringify({ favorited }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ favorited });
   } catch (e: any) {
-    throw new Response(
-      JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    throw Response.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
   }
 }
 
@@ -209,10 +182,7 @@ async function handleVote(form: FormData) {
       level,
       userId,
     });
-    return new Response(JSON.stringify({ answer: updated }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ answer: updated });
   } catch (e: any) {
     throw new Response(
       JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
@@ -242,10 +212,7 @@ async function handleAddComment(form: FormData) {
       text,
       profileId,
     });
-    return new Response(JSON.stringify({ comment }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ comment });
   } catch (e: any) {
     logger.error('addComment failed', String(e?.message ?? e));
     return new Response(

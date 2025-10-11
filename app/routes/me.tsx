@@ -23,16 +23,10 @@ export async function loader({}: LoaderFunctionArgs) {
   try {
     const { getUsers } = await import('~/lib/db');
     const users = await getUsers();
-    return new Response(JSON.stringify({ users }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ users });
   } catch (error) {
     console.error('Failed to load users:', error);
-    return new Response(JSON.stringify({ users: [] }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ users: [] });
   }
 }
 
@@ -79,10 +73,7 @@ export async function action({ request }: ActionFunctionArgs) {
       );
     const { addSubUser } = await import('~/lib/db');
     const sub = await addSubUser(parsed.data);
-    return new Response(JSON.stringify({ ok: true, sub, parentId }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ ok: true, sub, parentId });
   }
 
   if (intent === 'remove-subuser') {
@@ -90,16 +81,10 @@ export async function action({ request }: ActionFunctionArgs) {
     const subId = String(form.get('subId') || '');
     const { removeSubUser } = await import('~/lib/db');
     const ok = await removeSubUser(parentId, subId);
-    return new Response(JSON.stringify({ ok, parentId, subId }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ ok, parentId, subId });
   }
 
-  return new Response(JSON.stringify({ ok: false }), {
-    status: 400,
-    headers: { 'Content-Type': 'application/json' },
-  });
+  return Response.json({ ok: false }, { status: 400 });
 }
 
 export default function MeRoute() {

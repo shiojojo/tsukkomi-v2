@@ -23,26 +23,20 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   } catch (error) {
     console.error('Failed to load topic answers:', error);
     // Return a safe fallback response
-    return new Response(
-      JSON.stringify({
-        answers: [],
-        total: 0,
-        page: 1,
-        pageSize: 20,
-        q: '',
-        author: '',
-        sortBy: 'created_at',
-        fromDate: '',
-        toDate: '',
-        topicsById: {},
-        commentsByAnswer: {},
-        users: [],
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return Response.json({
+      answers: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      q: '',
+      author: '',
+      sortBy: 'created_at',
+      fromDate: '',
+      toDate: '',
+      topicsById: {},
+      commentsByAnswer: {},
+      users: [],
+    });
   }
 }
 

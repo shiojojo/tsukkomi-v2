@@ -28,10 +28,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     };
 
     if (!profileId) {
-      return new Response(JSON.stringify(base), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return Response.json(base);
     }
 
     const {
@@ -50,36 +47,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
     const users = await getUsers({ limit: 500 });
 
-    return new Response(
-      JSON.stringify({
-        answers,
-        topicsById,
-        commentsByAnswer,
-        users,
-        requiresProfileId: false,
-        profileId,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return Response.json({
+      answers,
+      topicsById,
+      commentsByAnswer,
+      users,
+      requiresProfileId: false,
+      profileId,
+    });
   } catch (error) {
     console.error('Failed to load favorites:', error);
-    return new Response(
-      JSON.stringify({
-        answers: [],
-        topicsById: {},
-        commentsByAnswer: {},
-        users: [],
-        requiresProfileId: true,
-        profileId: null,
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
-    );
+    return Response.json({
+      answers: [],
+      topicsById: {},
+      commentsByAnswer: {},
+      users: [],
+      requiresProfileId: true,
+      profileId: null,
+    });
   }
 }
 
