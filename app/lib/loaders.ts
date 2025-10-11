@@ -14,30 +14,7 @@ import type { User } from '~/lib/schemas/user';
  * Environment: サーバーサイドのみ。db.ts 関数を呼び出す。
  * Errors: DBエラー時は throw（呼び出し側 loader が捕捉）。
  */
-export async function createListLoader(entityType: 'topics' | 'answers', request: Request, extraParams?: Record<string, any>): Promise<
-  | {
-      answers?: Answer[];
-      total: number;
-      page: number;
-      pageSize: number;
-      q?: string;
-      fromDate?: string;
-      toDate?: string;
-    }
-  | {
-      answers?: Answer[];
-      total: number;
-      page: number;
-      pageSize: number;
-      q?: string;
-      author?: string;
-      sortBy: string;
-      minScore?: number;
-      hasComments?: boolean;
-      fromDate?: string;
-      toDate?: string;
-    }
-> {
+export async function createListLoader(entityType: 'topics' | 'answers', request: Request, extraParams?: Record<string, any>): Promise<Response> {
   const { page, pageSize } = parsePaginationParams(request);
   const filters = parseFilterParams(request, entityType);
 
@@ -45,7 +22,10 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
     ? await getTopicsPaged({ page, pageSize, ...filters })
     : await searchAnswers({ page, pageSize, ...filters, ...extraParams });
 
-  return { ...data, page, pageSize, ...filters };
+  return new Response(JSON.stringify({ ...data, page, pageSize, ...filters }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 /**
@@ -56,23 +36,7 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
  * Environment: サーバーサイドのみ。
  * Errors: DBエラー時は throw。
  */
-export async function createAnswersListLoader(request: Request, extraParams?: Record<string, any>): Promise<{
-  answers: Answer[];
-  total: number;
-  page: number;
-  pageSize: number;
-  q?: string;
-  author?: string;
-  sortBy: string;
-  minScore?: number;
-  hasComments?: boolean;
-  fromDate?: string;
-  toDate?: string;
-  topicsById: Record<string, Topic>;
-  commentsByAnswer: Record<string, Comment[]>;
-  users: User[];
-  profileId?: string;
-}> {
+export async function createAnswersListLoader(request: Request, extraParams?: Record<string, any>): Promise<Response> {
   const url = new URL(request.url);
   const profileIdQuery = url.searchParams.get('profileId') ?? undefined;
 
@@ -83,7 +47,8 @@ export async function createAnswersListLoader(request: Request, extraParams?: Re
   const users = await getUsers({ limit: 200 });
 
   // answersリストデータ
-  const listData = await createListLoader('answers', request, extraParams) as {
+  const listResponse = await createListLoader('answers', request, extraParams);
+  const listData = await listResponse.json() as {
     answers: Answer[];
     total: number;
     page: number;
@@ -110,12 +75,15 @@ export async function createAnswersListLoader(request: Request, extraParams?: Re
   // データマージ
   const answersWithUserData = mergeUserDataIntoAnswers(answers, userAnswerData, favCounts, profileIdQuery);
 
-  return {
+  return new Response(JSON.stringify({
     ...listData,
     answers: answersWithUserData,
     topicsById,
     commentsByAnswer,
     users,
     profileId: profileIdQuery,
-  };
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }

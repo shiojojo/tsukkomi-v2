@@ -10,7 +10,10 @@ import { logger } from '~/lib/logger';
       text,
       profileId,
     });
-    return { comment };
+    return new Response(JSON.stringify({ comment }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (e: any) {
     logger.error('addComment failed', String(e?.message ?? e));
     throw new Response(
@@ -53,7 +56,10 @@ export async function handleAnswerActions({ request }: ActionFunctionArgs) {
     (answerIdRaw && commentTextRaw);
 
   if (!hasMeaningfulIntent) {
-    return { ok: true, ignored: true };
+    return new Response(JSON.stringify({ ok: true, ignored: true }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   // Rate limiting
@@ -155,7 +161,10 @@ async function handleFavoriteStatus(form: FormData) {
     const now = Date.now();
     const prev = (_recentPostGuard as Map<string, number>).get(key) ?? 0;
     if (now - prev < 800) {
-      return { favorited: false, deduped: true };
+      return new Response(JSON.stringify({ favorited: false, deduped: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
     (_recentPostGuard as Map<string, number>).set(key, now);
   } catch {}
@@ -168,7 +177,10 @@ async function handleFavoriteStatus(form: FormData) {
   try {
     const list = await getFavoritesForProfile(profileId, [Number(answerId)]);
     const favorited = (list || []).map(Number).includes(Number(answerId));
-    return { favorited };
+    return new Response(JSON.stringify({ favorited }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (e: any) {
     throw new Response(
       JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
@@ -194,7 +206,10 @@ async function handleVote(form: FormData) {
       level,
       userId,
     });
-    return { answer: updated };
+    return new Response(JSON.stringify({ answer: updated }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (e: any) {
     throw new Response(
       JSON.stringify({ ok: false, error: String(e?.message ?? e) }),

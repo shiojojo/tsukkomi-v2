@@ -22,8 +22,23 @@ export async function action(args: ActionFunctionArgs) {
 }
 
 export default function AnswersRoute() {
-  type LoaderData = Awaited<ReturnType<typeof loader>>;
-  const data = useLoaderData() as LoaderData;
+  const data = useLoaderData() as {
+    answers: any[];
+    total: number;
+    page: number;
+    pageSize: number;
+    q: string;
+    author: string;
+    sortBy: string;
+    minScore: number;
+    hasComments: boolean;
+    fromDate: string;
+    toDate: string;
+    topicsById: Record<string, any>;
+    commentsByAnswer: Record<string, any[]>;
+    users: any[];
+    profileId?: string;
+  };
 
   const {
     topicsById,

@@ -21,10 +21,16 @@ export async function loader(_args: LoaderFunctionArgs) {
   try {
     const { getUsers } = await import('~/lib/db');
     const users = await getUsers();
-    return { users };
+    return new Response(JSON.stringify({ users }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Failed to load users:', error);
-    return { users: [] };
+    return new Response(JSON.stringify({ users: [] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
@@ -65,7 +71,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function LoginRoute() {
-  const data = useLoaderData() as Awaited<ReturnType<typeof loader>>;
+  const data = useLoaderData() as { users: any[] };
   const users = data.users;
   const createFetcher = useFetcher();
 

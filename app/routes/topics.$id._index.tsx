@@ -23,20 +23,26 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   } catch (error) {
     console.error('Failed to load topic answers:', error);
     // Return a safe fallback response
-    return {
-      answers: [],
-      total: 0,
-      page: 1,
-      pageSize: 20,
-      q: '',
-      author: '',
-      sortBy: 'created_at',
-      fromDate: '',
-      toDate: '',
-      topicsById: {},
-      commentsByAnswer: {},
-      users: [],
-    };
+    return new Response(
+      JSON.stringify({
+        answers: [],
+        total: 0,
+        page: 1,
+        pageSize: 20,
+        q: '',
+        author: '',
+        sortBy: 'created_at',
+        fromDate: '',
+        toDate: '',
+        topicsById: {},
+        commentsByAnswer: {},
+        users: [],
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 }
 
@@ -47,8 +53,20 @@ export async function action(args: ActionFunctionArgs) {
 }
 
 export default function TopicDetailRoute() {
-  type LoaderData = Awaited<ReturnType<typeof loader>>;
-  const data = useLoaderData() as LoaderData;
+  const data = useLoaderData() as {
+    answers: any[];
+    total: number;
+    page: number;
+    pageSize: number;
+    q: string;
+    author: string;
+    sortBy: string;
+    fromDate: string;
+    toDate: string;
+    topicsById: Record<string, any>;
+    commentsByAnswer: Record<string, any[]>;
+    users: any[];
+  };
   const params = useParams();
 
   const {

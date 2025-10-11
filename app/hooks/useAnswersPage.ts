@@ -58,7 +58,8 @@ export function useAnswersPage(data: LoaderData) {
     queryFn: async () => {
       const { createAnswersListLoader } = await import('~/lib/loaders');
       const request = new Request(window.location.href);
-      return await createAnswersListLoader(request, { topicId: data.profileId });
+      const response = await createAnswersListLoader(request, { topicId: data.profileId });
+      return await response.json();
     },
     placeholderData: data,
     staleTime: 5 * 60 * 1000, // 5 minutes

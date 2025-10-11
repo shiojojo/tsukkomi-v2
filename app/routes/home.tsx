@@ -16,16 +16,21 @@ export async function loader(_args: LoaderFunctionArgs) {
   try {
     const { getLatestTopic } = await import('~/lib/db');
     const latest = await getLatestTopic();
-    return { latest };
+    return new Response(JSON.stringify({ latest }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Failed to load latest topic:', error);
-    return { latest: null };
+    return new Response(JSON.stringify({ latest: null }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
 export default function Home() {
-  type LoaderData = Awaited<ReturnType<typeof loader>>;
-  const data = useLoaderData() as LoaderData;
+  const data = useLoaderData() as { latest: Topic | null };
   const latest: Topic | null = data?.latest ?? null;
 
   const current: Topic | null = latest;

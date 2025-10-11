@@ -26,11 +26,15 @@ describe('topics._index route', () => {
         toDate: undefined,
       };
       const { createListLoader } = await import('~/lib/loaders');
-      vi.mocked(createListLoader).mockResolvedValue(mockData);
+      const mockResponse = new Response(JSON.stringify(mockData), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+      vi.mocked(createListLoader).mockResolvedValue(mockResponse);
 
       const result = await loader({ request: mockRequest } as any);
       expect(createListLoader).toHaveBeenCalledWith('topics', mockRequest);
-      expect(result).toEqual(mockData);
+      expect(result).toEqual(mockResponse);
     });
   });
 });

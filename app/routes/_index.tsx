@@ -12,7 +12,10 @@ export function meta({}: Route.MetaArgs) {
 export async function loader(_args: LoaderFunctionArgs) {
   const { getLatestTopic } = await import('~/lib/db');
   const latest = await getLatestTopic();
-  return { latest };
+  return new Response(JSON.stringify({ latest }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 
 export default function Index() {

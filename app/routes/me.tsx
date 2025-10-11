@@ -23,10 +23,16 @@ export async function loader({}: LoaderFunctionArgs) {
   try {
     const { getUsers } = await import('~/lib/db');
     const users = await getUsers();
-    return { users };
+    return new Response(JSON.stringify({ users }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('Failed to load users:', error);
-    return { users: [] };
+    return new Response(JSON.stringify({ users: [] }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
@@ -63,10 +69,20 @@ export async function action({ request }: ActionFunctionArgs) {
     const name = String(form.get('name') || '');
     const parentId = String(form.get('parentId') || '');
     const parsed = SubUserCreateSchema.safeParse({ name, parentId });
-    if (!parsed.success) return { ok: false, errors: parsed.error.format() };
+    if (!parsed.success)
+      return new Response(
+        JSON.stringify({ ok: false, errors: parsed.error.format() }),
+        {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
     const { addSubUser } = await import('~/lib/db');
     const sub = await addSubUser(parsed.data);
-    return { ok: true, sub, parentId };
+    return new Response(JSON.stringify({ ok: true, sub, parentId }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   if (intent === 'remove-subuser') {
@@ -74,7 +90,10 @@ export async function action({ request }: ActionFunctionArgs) {
     const subId = String(form.get('subId') || '');
     const { removeSubUser } = await import('~/lib/db');
     const ok = await removeSubUser(parentId, subId);
-    return { ok, parentId, subId };
+    return new Response(JSON.stringify({ ok, parentId, subId }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
   return new Response(JSON.stringify({ ok: false }), {
@@ -84,7 +103,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function MeRoute() {
-  const data = useLoaderData() as Awaited<ReturnType<typeof loader>>;
+  const data = useLoaderData() as { users: any[] };
   const users = data.users;
 
   const {

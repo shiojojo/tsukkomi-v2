@@ -28,7 +28,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
     };
 
     if (!profileId) {
-      return base;
+      return new Response(JSON.stringify(base), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     const {
@@ -47,24 +50,36 @@ export async function loader({ request }: LoaderFunctionArgs) {
     const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
     const users = await getUsers({ limit: 500 });
 
-    return {
-      answers,
-      topicsById,
-      commentsByAnswer,
-      users,
-      requiresProfileId: false,
-      profileId,
-    };
+    return new Response(
+      JSON.stringify({
+        answers,
+        topicsById,
+        commentsByAnswer,
+        users,
+        requiresProfileId: false,
+        profileId,
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   } catch (error) {
     console.error('Failed to load favorites:', error);
-    return {
-      answers: [],
-      topicsById: {},
-      commentsByAnswer: {},
-      users: [],
-      requiresProfileId: true,
-      profileId: null,
-    };
+    return new Response(
+      JSON.stringify({
+        answers: [],
+        topicsById: {},
+        commentsByAnswer: {},
+        users: [],
+        requiresProfileId: true,
+        profileId: null,
+      }),
+      {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
   }
 }
 
@@ -73,8 +88,14 @@ export async function action(args: ActionFunctionArgs) {
 }
 
 export default function FavoriteAnswersRoute() {
-  type LoaderData = Awaited<ReturnType<typeof loader>>;
-  const data = useLoaderData() as LoaderData;
+  const data = useLoaderData() as {
+    answers: any[];
+    topicsById: Record<string, any>;
+    commentsByAnswer: Record<string, any[]>;
+    users: any[];
+    requiresProfileId: boolean;
+    profileId: string | null;
+  };
   const answers = data.answers ?? [];
   const topicsById = data.topicsById ?? {};
   const commentsByAnswer = data.commentsByAnswer ?? {};
