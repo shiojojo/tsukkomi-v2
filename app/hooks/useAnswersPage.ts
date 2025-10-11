@@ -8,6 +8,7 @@ import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
+import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
 type LoaderData = {
   answers: Answer[];
@@ -105,7 +106,7 @@ export function useAnswersPage(data: LoaderData) {
 
   // Server-driven pagination
   const serverPage = currentData.page ?? 1;
-  const serverPageSize = currentData.pageSize ?? 20;
+  const serverPageSize = currentData.pageSize ?? DEFAULT_PAGE_SIZE;
   const total = currentData.total ?? 0;
   const pageCount = Math.max(1, Math.ceil(total / serverPageSize));
   const currentPage = Math.min(Math.max(1, serverPage), pageCount);

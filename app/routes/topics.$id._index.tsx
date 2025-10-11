@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useParams } from 'react-router';
 import { AnswersPage } from '~/components/features/answers/AnswersPage';
+import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 
@@ -16,7 +17,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       answers: [],
       total: 0,
       page: 1,
-      pageSize: 20,
+      pageSize: DEFAULT_PAGE_SIZE,
       q: '',
       author: '',
       sortBy: 'created_at',

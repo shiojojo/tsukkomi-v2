@@ -2,6 +2,7 @@ import { FavoriteSchema } from '~/lib/schemas/favorite';
 import { AnswerSchema } from '~/lib/schemas/answer';
 import type { Answer } from '~/lib/schemas/answer';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
+import { DEFAULT_PAGE_SIZE } from '../constants';
 
 async function getVotesByForAnswers(
   answerIds: Array<number | string>,
@@ -137,7 +138,7 @@ export async function getFavoriteAnswersForProfile(profileId: string, opts?: { p
     throw new Error('getFavoriteAnswersForProfile: profileId is required');
   }
 
-  const { page = 1, pageSize = 20 } = opts ?? {};
+  const { page = 1, pageSize = DEFAULT_PAGE_SIZE } = opts ?? {};
   await ensureConnection();
   const { data: favRows, error: favError, count } = await supabase
     .from('favorites')

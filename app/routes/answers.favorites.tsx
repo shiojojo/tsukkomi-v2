@@ -7,6 +7,7 @@ import { useIdentity } from '~/hooks/useIdentity';
 import { handleAnswerActions } from '~/lib/actionHandlers';
 import { Button } from '~/components/ui/Button';
 import { HEADER_BASE } from '~/styles/headerStyles';
+import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -17,7 +18,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       answers: [],
       total: 0,
       page: 1,
-      pageSize: 20,
+      pageSize: DEFAULT_PAGE_SIZE,
       q: '',
       author: '',
       sortBy: 'newest',

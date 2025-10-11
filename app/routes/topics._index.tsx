@@ -8,6 +8,7 @@ import { useListPage } from '~/hooks/useListPage';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 import { createListLoader } from '~/lib/loaders';
+import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   try {
@@ -19,7 +20,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
       topics: [],
       total: 0,
       page: 1,
-      pageSize: 20,
+      pageSize: DEFAULT_PAGE_SIZE,
       q: '',
       fromDate: '',
       toDate: '',

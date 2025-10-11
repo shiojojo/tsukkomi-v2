@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs } from 'react-router';
+import { DEFAULT_PAGE_SIZE } from './constants';
 
 export interface PaginationParams {
   page: number;
@@ -16,7 +17,7 @@ export function parsePaginationParams(request: LoaderFunctionArgs['request']): P
   const params = url.searchParams;
   return {
     page: Number(params.get('page') ?? '1'),
-    pageSize: Number(params.get('pageSize') ?? '20'),
+    pageSize: Number(params.get('pageSize') ?? String(DEFAULT_PAGE_SIZE)),
   };
 }
 

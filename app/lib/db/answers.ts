@@ -4,6 +4,7 @@ import type { Answer } from '~/lib/schemas/answer';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 import { getFavoritesForProfile, getFavoriteAnswersForProfile } from './favorites';
 import { ServerError } from '../errors';
+import { DEFAULT_PAGE_SIZE } from '../constants';
 
 async function getVotesByForAnswers(
   answerIds: Array<number | string>,
@@ -142,7 +143,7 @@ export async function searchAnswers(opts: {
   favorite?: boolean;
   profileId?: string;
 }): Promise<{ answers: Answer[]; total: number }> {
-  const { q, author, topicId, page = 1, pageSize = 20, sortBy = 'newest', minScore, hasComments, fromDate, toDate, favorite, profileId } = opts;
+  const { q, author, topicId, page = 1, pageSize = DEFAULT_PAGE_SIZE, sortBy = 'newest', minScore, hasComments, fromDate, toDate, favorite, profileId } = opts;
 
   if (favorite && profileId) {
     return await getFavoriteAnswersForProfile(profileId, { page, pageSize });
@@ -379,7 +380,7 @@ async function normalizeAnswers(
 export async function getAnswersPageByTopic({
   topicId,
   cursor,
-  pageSize = 20,
+  pageSize = DEFAULT_PAGE_SIZE,
   profileId,
 }: {
   topicId: string | number;
