@@ -946,3 +946,135 @@ test('favorites page interactions', async ({ page }) => {
     console.log('No answers found on answers page');
   }
 });
+
+test('comment input character limit', async ({ page }) => {
+  // Switch to test user first
+  await page.goto('/login');
+  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  await selectButton.click();
+  await page.goto('/login');
+  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  await hsDetailsButton.click();
+  await page.locator('text=test').locator('xpath=following-sibling::button').click();
+  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+
+  // Go to answers page
+  await page.goto('/answers');
+  await expect(page).toHaveTitle(/Tsukkomi V2/);
+
+  // Wait for answers to load
+  await page.waitForTimeout(2000);
+
+  // Find the first answer with a comment section
+  const firstAnswer = page.locator('[data-testid="answer-card"]').first();
+  if (await firstAnswer.isVisible()) {
+    // Find the comment textarea within the first answer
+    const commentTextarea = firstAnswer.locator('textarea[placeholder="コメントを追加"]');
+
+    if (await commentTextarea.isVisible()) {
+      // Test 1: Character counter shows 0/500 initially
+      const charCounter = firstAnswer.locator('text=/0\\/500/');
+      await expect(charCounter).toBeVisible();
+
+      // Test 2: Try to input more than 500 characters
+      const longText = 'a'.repeat(600); // 600 characters
+      await commentTextarea.fill(longText);
+
+      // Check that only 500 characters are actually in the textarea
+      const textareaValue = await commentTextarea.inputValue();
+      expect(textareaValue.length).toBe(500);
+
+      // Check that character counter shows 500/500
+      const charCounter500 = firstAnswer.locator('text=/500\\/500/');
+      await expect(charCounter500).toBeVisible();
+
+      // Test 3: Input exactly 500 characters and verify counter
+      const exact500Text = 'a'.repeat(500);
+      await commentTextarea.fill(exact500Text);
+      const textareaValue500 = await commentTextarea.inputValue();
+      expect(textareaValue500.length).toBe(500);
+      await expect(charCounter500).toBeVisible();
+
+      // Test 4: Try to paste more than 500 characters
+      const pasteText = 'b'.repeat(600);
+      await commentTextarea.fill(''); // Clear first
+      await commentTextarea.fill('a'.repeat(100)); // Add 100 chars first
+      await page.evaluate((text) => {
+        const textarea = document.querySelector('textarea[placeholder="コメントを追加"]') as HTMLTextAreaElement;
+        const event = new ClipboardEvent('paste', { clipboardData: new DataTransfer() });
+        if (event.clipboardData) {
+          event.clipboardData.setData('text', text);
+        }
+        textarea.dispatchEvent(event);
+      }, pasteText);
+
+      // Wait a bit for the paste to be processed
+      await page.waitForTimeout(100);
+
+      // Check that total length is still 500 or less
+      const finalValue = await commentTextarea.inputValue();
+      expect(finalValue.length).toBeLessThanOrEqual(500);
+
+      console.log('Comment character limit test passed');
+    } else {
+      console.log('No comment textarea found in first answer - this may be expected if no answers exist');
+    }
+  } else {
+    console.log('No answers found on answers page - skipping comment test as no data available');
+  }
+});
+
+test('comment submission with valid length', async ({ page }) => {
+  // Switch to test user first
+  await page.goto('/login');
+  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  await selectButton.click();
+  await page.goto('/login');
+  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  await hsDetailsButton.click();
+  await page.locator('text=test').locator('xpath=following-sibling::button').click();
+  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+
+  // Go to answers page
+  await page.goto('/answers');
+  await expect(page).toHaveTitle(/Tsukkomi V2/);
+
+  // Wait for answers to load
+  await page.waitForTimeout(2000);
+
+  // Find the first answer with a comment section
+  const firstAnswer = page.locator('[data-testid="answer-card"]').first();
+  if (await firstAnswer.isVisible()) {
+    // Find the comment textarea within the first answer
+    const commentTextarea = firstAnswer.locator('textarea[placeholder="コメントを追加"]');
+
+    if (await commentTextarea.isVisible()) {
+      // Input a valid comment (under 500 characters)
+      const validComment = 'これはテストコメントです。500文字以内の有効なコメントです。';
+      await commentTextarea.fill(validComment);
+
+      // Check character counter
+      const charCounter = firstAnswer.locator(`text=/${validComment.length}\\/500/`);
+      await expect(charCounter).toBeVisible();
+
+      // Submit the comment
+      const submitButton = firstAnswer.locator('button:has-text("送信")');
+      await submitButton.click();
+
+      // Wait for submission to complete
+      await page.waitForTimeout(2000);
+
+      // Check that the comment appears in the list
+      const commentText = firstAnswer.locator(`text=${validComment}`);
+      await expect(commentText).toBeVisible();
+
+      console.log('Comment submission test passed');
+    } else {
+      console.log('No comment textarea found in first answer - this may be expected if no answers exist');
+    }
+  } else {
+    console.log('No answers found on answers page - skipping comment submission test as no data available');
+  }
+});

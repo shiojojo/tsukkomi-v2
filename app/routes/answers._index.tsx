@@ -1,4 +1,8 @@
-import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
+import type {
+  LoaderFunctionArgs,
+  ActionFunctionArgs,
+  MetaFunction,
+} from 'react-router';
 import { useLoaderData } from 'react-router';
 import { AnswersPage } from '~/components/features/answers/AnswersPage';
 import type { Answer } from '~/lib/schemas/answer';
@@ -7,6 +11,10 @@ import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
+
+export const meta: MetaFunction = () => {
+  return [{ title: 'Tsukkomi V2' }];
+};
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
