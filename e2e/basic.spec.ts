@@ -128,23 +128,26 @@ test('search and open topic', async ({ page }) => {
       
       // Find the favorite button within the first answer
       const favoriteButton = firstAnswer.locator('button[aria-pressed]').first();
-      const wasActive = await favoriteButton.getAttribute('aria-pressed') === 'true';
-      console.log('Favorite button found, was active:', wasActive);
+      const initialState = await favoriteButton.getAttribute('aria-pressed') === 'true';
+      console.log('Favorite button found, initial state:', initialState);
       
-      // Click the favorite button
+      // If already active, click to deactivate first
+      if (initialState) {
+        console.log('Button is active, clicking to deactivate');
+        await favoriteButton.click();
+        await page.waitForTimeout(1000);
+        await expect(favoriteButton).toHaveAttribute('aria-pressed', 'false');
+        console.log('Button deactivated');
+      }
+      
+      // Now click to activate (whether it was initially active or not)
+      console.log('Clicking to activate favorite button');
       await favoriteButton.click();
-      console.log('Clicked favorite button');
-      
-      // Wait for the state to update
       await page.waitForTimeout(1000);
       
-      // Check that the button is now active (if it wasn't before)
-      if (!wasActive) {
-        await expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
-        console.log('Button became active');
-      } else {
-        console.log('Button was already active');
-      }
+      // Verify it's now active
+      await expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
+      console.log('Button is now active');
       
       // Check for success toast
       await expect(page.locator('text=成功')).toBeVisible();
