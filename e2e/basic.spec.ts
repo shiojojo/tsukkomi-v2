@@ -58,6 +58,17 @@ test('open topics page', async ({ page }) => {
 });
 
 test('search topics', async ({ page }) => {
+  // Switch to test user first
+  await page.goto('/login');
+  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  await selectButton.click();
+  await page.goto('/login');
+  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  await hsDetailsButton.click();
+  await page.locator('text=test').locator('xpath=following-sibling::button').click();
+  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+
   await page.goto('/topics');
   
   // Check that search form is present
