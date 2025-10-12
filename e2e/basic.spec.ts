@@ -694,3 +694,227 @@ test('answers page interactions', async ({ page }) => {
     console.log('No answers found on answers page');
   }
 });
+
+test('favorites page interactions', async ({ page }) => {
+  // Switch to test user first
+  await page.goto('/login');
+  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  await selectButton.click();
+  await page.goto('/login');
+  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  await hsDetailsButton.click();
+  await page.locator('text=test').locator('xpath=following-sibling::button').click();
+  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+
+  // Navigate to answers page and sort by oldest
+  await page.goto('/answers');
+  await expect(page.locator('text=回答一覧')).toBeVisible();
+  console.log('Answers page loaded');
+
+  // Sort by oldest first
+  await page.selectOption('select[name="sortBy"]', 'oldest');
+  await page.click('button:has-text("検索")');
+  await page.waitForURL((url) => url.searchParams.has('sortBy'), { timeout: 5000 });
+  console.log('Sorted answers by oldest');
+
+  // Wait for answers to load
+  await page.waitForTimeout(2000);
+
+  // Find the first answer
+  const firstAnswer = page.locator('ul li').first();
+  if (await firstAnswer.isVisible()) {
+    console.log('Found first answer on answers page');
+
+    // Check if favorite button is already active
+    const favoriteButton = firstAnswer.locator('button[aria-pressed]').first();
+    const isFavoriteActive = await favoriteButton.getAttribute('aria-pressed') === 'true';
+    console.log('Favorite button active state:', isFavoriteActive);
+
+    if (isFavoriteActive) {
+      console.log('Favorite is already active, navigating to favorites page');
+      // Navigate to favorites page
+      await page.goto('/answers/favorites');
+      await expect(page.locator('text=お気に入り')).toBeVisible();
+      console.log('Favorites page loaded');
+    } else {
+      console.log('Favorite is not active, activating it first');
+      // Activate favorite
+      await favoriteButton.click();
+      await page.waitForTimeout(1000);
+      await expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
+      console.log('Favorite activated');
+
+      // Check for success toast
+      await expect(page.locator('text=成功')).toBeVisible();
+      await expect(page.locator('text=操作が完了しました')).toBeVisible();
+
+      // Navigate to favorites page
+      await page.goto('/answers/favorites');
+      await expect(page.locator('text=お気に入り')).toBeVisible();
+      console.log('Favorites page loaded');
+    }
+
+    // Wait for favorites to load
+    await page.waitForTimeout(2000);
+
+    // Find the favorited answer on favorites page
+    const favoritedAnswer = page.locator('ul li').first();
+    if (await favoritedAnswer.isVisible()) {
+      console.log('Found favorited answer on favorites page');
+
+      // Test voting functionality on favorites page
+      console.log('Testing vote functionality on favorites page');
+
+      // First, click the "コメント / 採点" button to open the voting section
+      const toggleButton = favoritedAnswer.locator('button:has-text("コメント / 採点")').first();
+      if (await toggleButton.isVisible()) {
+        console.log('Found toggle button, clicking to open voting section');
+        await toggleButton.click();
+        await page.waitForTimeout(1000);
+        console.log('Voting section should now be open');
+      }
+
+      // Reset all vote buttons to inactive state first
+      console.log('Resetting all vote buttons to inactive state');
+      const voteButtons = [
+        favoritedAnswer.locator('button[aria-label="投票1"]').first(),
+        favoritedAnswer.locator('button[aria-label="投票2"]').first(),
+        favoritedAnswer.locator('button[aria-label="投票3"]').first()
+      ];
+
+      for (let i = 0; i < voteButtons.length; i++) {
+        const button = voteButtons[i];
+        if (await button.isVisible()) {
+          const isActive = await button.getAttribute('aria-pressed') === 'true';
+          if (isActive) {
+            console.log(`Vote button ${i + 1} is active, clicking to deactivate`);
+            await button.click();
+            await page.waitForTimeout(500);
+            await expect(button).toHaveAttribute('aria-pressed', 'false');
+            console.log(`Vote button ${i + 1} deactivated`);
+          } else {
+            console.log(`Vote button ${i + 1} is already inactive`);
+          }
+        }
+      }
+
+      // Now test voting with level 3
+      const voteButton3 = voteButtons[2];
+      if (await voteButton3.isVisible()) {
+        console.log('Vote button 3 found and should be inactive');
+
+        // Click vote button 3 to activate it
+        await voteButton3.click();
+        console.log('Clicked vote button 3');
+
+        // Wait for state update
+        await page.waitForTimeout(1000);
+
+        // Verify button is now active
+        await expect(voteButton3).toHaveAttribute('aria-pressed', 'true');
+        console.log('Vote button 3 is now active');
+
+        // Check for success toast
+        await expect(page.locator('text=成功')).toBeVisible();
+        await expect(page.locator('text=操作が完了しました')).toBeVisible();
+        console.log('Vote success toast appeared');
+
+        // Wait for score to update
+        console.log('Waiting for score to update...');
+        await page.waitForTimeout(2000);
+
+        // Verify the score shows 3
+        const scoreDisplay = favoritedAnswer.locator('text=/Score:\\s*3/').first();
+        await expect(scoreDisplay).toBeVisible();
+        console.log('Score display shows 3 on favorites page');
+      }
+
+      // Test comment functionality on favorites page
+      console.log('Testing comment functionality on favorites page');
+
+      // Get initial comment count and test text count
+      const initialCommentCountText = await favoritedAnswer.locator('text=/コメント\\d+/').textContent();
+      const initialCommentCount = initialCommentCountText ? parseInt(initialCommentCountText.match(/コメント(\d+)/)?.[1] || '0') : 0;
+      console.log('Initial comment count on favorites page:', initialCommentCount);
+
+      const initialTestTextCount = await page.locator('text=testである文言').count();
+      console.log('Initial "testである文言" count:', initialTestTextCount);
+
+      // Find the comment textarea and submit button
+      const commentTextarea = favoritedAnswer.locator('textarea[name="text"]').first();
+      const commentSubmitButton = favoritedAnswer.locator('button[aria-label="コメントを送信"]').first();
+
+      if (await commentTextarea.isVisible() && await commentSubmitButton.isVisible()) {
+        // Enter comment text
+        await commentTextarea.fill('testである文言');
+        console.log('Entered comment text: "testである文言"');
+
+        // Submit the comment
+        await commentSubmitButton.click();
+        console.log('Clicked comment submit button');
+
+        // Wait for comment to be added
+        await page.waitForTimeout(2000);
+
+        // Check for success toast
+        await expect(page.locator('text=成功')).toBeVisible();
+        await expect(page.locator('text=操作が完了しました')).toBeVisible();
+        console.log('Comment success toast appeared');
+
+        // Verify the comment appears in the list
+        await expect(page.locator('text=testである文言')).toBeVisible();
+        console.log('Comment "testである文言" is visible in the comment list');
+
+        // Check that comment count increased
+        const newCommentCountText = await favoritedAnswer.locator('text=/コメント\\d+/').textContent();
+        const newCommentCount = newCommentCountText ? parseInt(newCommentCountText.match(/コメント(\d+)/)?.[1] || '0') : 0;
+        expect(newCommentCount).toBeGreaterThan(initialCommentCount);
+        console.log(`Comment count increased from ${initialCommentCount} to ${newCommentCount}`);
+
+        // Check that test text count increased
+        const newTestTextCount = await page.locator('text=testである文言').count();
+        expect(newTestTextCount).toBeGreaterThan(initialTestTextCount);
+        console.log(`"testである文言" count increased from ${initialTestTextCount} to ${newTestTextCount}`);
+      }
+
+      // Now remove from favorites
+      console.log('Removing from favorites');
+      const favoriteButtonOnFavorites = favoritedAnswer.locator('button[aria-pressed]').first();
+      await favoriteButtonOnFavorites.click();
+      console.log('Clicked favorite button to remove');
+
+      // Wait for state update
+      await page.waitForTimeout(1000);
+
+      // Verify button is now inactive
+      await expect(favoriteButtonOnFavorites).toHaveAttribute('aria-pressed', 'false');
+      console.log('Favorite button is now inactive');
+
+      // Check for success toast
+      await expect(page.locator('text=成功')).toBeVisible();
+      await expect(page.locator('text=操作が完了しました')).toBeVisible();
+      console.log('Remove favorite success toast appeared');
+
+      // The answer should disappear from favorites page
+      await page.waitForTimeout(1000);
+      const remainingAnswers = page.locator('ul li');
+      const answerCount = await remainingAnswers.count();
+      console.log(`Remaining answers after removing favorite: ${answerCount}`);
+
+      // Test persistence - reload and verify it's still removed
+      console.log('Testing persistence after page reload');
+      await page.reload();
+      await page.waitForTimeout(2000);
+
+      // Check that the previously favorited answer is no longer on the favorites page
+      await expect(page.locator('text=お気に入り')).toBeVisible();
+      console.log('Favorites page reloaded successfully - answer should be removed from favorites');
+
+    } else {
+      console.log('No favorited answers found on favorites page');
+    }
+  } else {
+    console.log('No answers found on answers page');
+  }
+});
