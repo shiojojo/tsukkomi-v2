@@ -303,8 +303,8 @@ test('search and open topic', async ({ page }) => {
         const initialCommentCount = initialCommentCountText ? parseInt(initialCommentCountText.match(/コメント(\d+)/)?.[1] || '0') : 0;
         console.log('Initial comment count:', initialCommentCount);
         
-        const initialTestTextCount = await page.locator('text=testである文言').count();
-        console.log('Initial "testである文言" count:', initialTestTextCount);
+        const initialTestTextCount = await page.locator('text=test_comment_topic').count();
+        console.log('Initial "test_comment_topic" count:', initialTestTextCount);
         
         // Find the comment textarea and submit button
         const commentTextarea = page.locator('ul li').first().locator('textarea[name="text"]').first();
@@ -312,37 +312,35 @@ test('search and open topic', async ({ page }) => {
         
         if (await commentTextarea.isVisible() && await commentSubmitButton.isVisible()) {
           // Enter comment text
-          await commentTextarea.fill('testである文言');
-          console.log('Entered comment text: "testである文言"');
-          
+          await commentTextarea.fill('test_comment_topic');
+          console.log('Entered comment text: "test_comment_topic"');
+
           // Submit the comment
           await commentSubmitButton.click();
           console.log('Clicked comment submit button');
-          
+
           // Wait for comment to be added
           await page.waitForTimeout(2000);
-          
+
           // Check for success toast
           await expect(page.locator('text=成功')).toBeVisible();
           await expect(page.locator('text=操作が完了しました')).toBeVisible();
           console.log('Comment success toast appeared');
-          
+
           // Verify the comment appears in the list
-          await expect(page.locator('text=testである文言')).toBeVisible();
-          console.log('Comment "testである文言" is visible in the comment list');
-          
+          await expect(page.locator('text=test_comment_topic')).toBeVisible();
+          console.log('Comment "test_comment_topic" is visible in the comment list');
+
           // Check that comment count increased
           const newCommentCountText = await page.locator('ul li').first().locator('text=/コメント\\d+/').textContent();
           const newCommentCount = newCommentCountText ? parseInt(newCommentCountText.match(/コメント(\d+)/)?.[1] || '0') : 0;
           expect(newCommentCount).toBeGreaterThan(initialCommentCount);
           console.log(`Comment count increased from ${initialCommentCount} to ${newCommentCount}`);
-          
+
           // Check that test text count increased
-          const newTestTextCount = await page.locator('text=testである文言').count();
+          const newTestTextCount = await page.locator('text=test_comment_topic').count();
           expect(newTestTextCount).toBeGreaterThan(initialTestTextCount);
-          console.log(`"testである文言" count increased from ${initialTestTextCount} to ${newTestTextCount}`);
-          
-          // Test persistence after page reload
+          console.log(`"test_comment_topic" count increased from ${initialTestTextCount} to ${newTestTextCount}`);          // Test persistence after page reload
           console.log('Testing comment persistence after page reload');
           await page.reload();
           await page.waitForTimeout(2000);
@@ -362,9 +360,9 @@ test('search and open topic', async ({ page }) => {
           console.log(`Comment count still increased after reload: ${reloadCommentCount}`);
           
           // Verify test text count is still increased after reload
-          const reloadTestTextCount = await page.locator('text=testである文言').count();
+          const reloadTestTextCount = await page.locator('text=test_comment_topic').count();
           expect(reloadTestTextCount).toBeGreaterThan(initialTestTextCount);
-          console.log(`"testである文言" count still increased after reload: ${reloadTestTextCount}`);
+          console.log(`"test_comment_topic" count still increased after reload: ${reloadTestTextCount}`);
           
         } else {
           console.log('Comment textarea or submit button not found');
@@ -621,8 +619,8 @@ test('answers page interactions', async ({ page }) => {
       const initialCommentCount = initialCommentCountText ? parseInt(initialCommentCountText.match(/コメント(\d+)/)?.[1] || '0') : 0;
       console.log('Initial comment count:', initialCommentCount);
 
-      const initialTestTextCount = await page.locator('text=testである文言').count();
-      console.log('Initial "testである文言" count:', initialTestTextCount);
+      const initialTestTextCount = await page.locator('text=test_comment_answers').count();
+      console.log('Initial "test_comment_answers" count:', initialTestTextCount);
 
       // Find the comment textarea and submit button
       const commentTextarea = page.locator('ul li').first().locator('textarea[name="text"]').first();
@@ -630,8 +628,8 @@ test('answers page interactions', async ({ page }) => {
 
       if (await commentTextarea.isVisible() && await commentSubmitButton.isVisible()) {
         // Enter comment text
-        await commentTextarea.fill('testである文言');
-        console.log('Entered comment text: "testである文言"');
+        await commentTextarea.fill('test_comment_answers');
+        console.log('Entered comment text: "test_comment_answers"');
 
         // Submit the comment
         await commentSubmitButton.click();
@@ -646,8 +644,8 @@ test('answers page interactions', async ({ page }) => {
         console.log('Comment success toast appeared');
 
         // Verify the comment appears in the list
-        await expect(page.locator('text=testである文言')).toBeVisible();
-        console.log('Comment "testである文言" is visible in the comment list');
+        await expect(page.locator('text=test_comment_answers')).toBeVisible();
+        console.log('Comment "test_comment_answers" is visible in the comment list');
 
         // Check that comment count increased
         const newCommentCountText = await page.locator('ul li').first().locator('text=/コメント\\d+/').textContent();
@@ -656,9 +654,9 @@ test('answers page interactions', async ({ page }) => {
         console.log(`Comment count increased from ${initialCommentCount} to ${newCommentCount}`);
 
         // Check that test text count increased
-        const newTestTextCount = await page.locator('text=testである文言').count();
+        const newTestTextCount = await page.locator('text=test_comment_answers').count();
         expect(newTestTextCount).toBeGreaterThan(initialTestTextCount);
-        console.log(`"testである文言" count increased from ${initialTestTextCount} to ${newTestTextCount}`);
+        console.log(`"test_comment_answers" count increased from ${initialTestTextCount} to ${newTestTextCount}`);
 
         // Test persistence after page reload
         console.log('Testing comment persistence after page reload');
@@ -680,9 +678,9 @@ test('answers page interactions', async ({ page }) => {
         console.log(`Comment count still increased after reload: ${reloadCommentCount}`);
 
         // Verify test text count is still increased after reload
-        const reloadTestTextCount = await page.locator('text=testである文言').count();
+        const reloadTestTextCount = await page.locator('text=test_comment_answers').count();
         expect(reloadTestTextCount).toBeGreaterThan(initialTestTextCount);
-        console.log(`"testである文言" count still increased after reload: ${reloadTestTextCount}`);
+        console.log(`"test_comment_answers" count still increased after reload: ${reloadTestTextCount}`);
 
       } else {
         console.log('Comment textarea or submit button not found');
@@ -838,8 +836,8 @@ test('favorites page interactions', async ({ page }) => {
       const initialCommentCount = initialCommentCountText ? parseInt(initialCommentCountText.match(/コメント(\d+)/)?.[1] || '0') : 0;
       console.log('Initial comment count on favorites page:', initialCommentCount);
 
-      const initialTestTextCount = await page.locator('text=testである文言').count();
-      console.log('Initial "testである文言" count:', initialTestTextCount);
+      const initialTestTextCount = await page.locator('text=test_comment_favorites').count();
+      console.log('Initial "test_comment_favorites" count:', initialTestTextCount);
 
       // Find the comment textarea and submit button
       const commentTextarea = favoritedAnswer.locator('textarea[name="text"]').first();
@@ -847,8 +845,8 @@ test('favorites page interactions', async ({ page }) => {
 
       if (await commentTextarea.isVisible() && await commentSubmitButton.isVisible()) {
         // Enter comment text
-        await commentTextarea.fill('testである文言');
-        console.log('Entered comment text: "testである文言"');
+        await commentTextarea.fill('test_comment_favorites');
+        console.log('Entered comment text: "test_comment_favorites"');
 
         // Submit the comment
         await commentSubmitButton.click();
@@ -863,8 +861,8 @@ test('favorites page interactions', async ({ page }) => {
         console.log('Comment success toast appeared');
 
         // Verify the comment appears in the list
-        await expect(page.locator('text=testである文言')).toBeVisible();
-        console.log('Comment "testである文言" is visible in the comment list');
+        await expect(page.locator('text=test_comment_favorites')).toBeVisible();
+        console.log('Comment "test_comment_favorites" is visible in the comment list');
 
         // Check that comment count increased
         const newCommentCountText = await favoritedAnswer.locator('text=/コメント\\d+/').textContent();
@@ -873,9 +871,9 @@ test('favorites page interactions', async ({ page }) => {
         console.log(`Comment count increased from ${initialCommentCount} to ${newCommentCount}`);
 
         // Check that test text count increased
-        const newTestTextCount = await page.locator('text=testである文言').count();
+        const newTestTextCount = await page.locator('text=test_comment_favorites').count();
         expect(newTestTextCount).toBeGreaterThan(initialTestTextCount);
-        console.log(`"testである文言" count increased from ${initialTestTextCount} to ${newTestTextCount}`);
+        console.log(`"test_comment_favorites" count increased from ${initialTestTextCount} to ${newTestTextCount}`);
       }
 
       // Now remove from favorites
