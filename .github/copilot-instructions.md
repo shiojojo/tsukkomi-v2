@@ -208,11 +208,18 @@ const voteMutation = useMutationWithError(..., {
 // Hook: useCommentSection
 const commentsQuery = useQuery(['comments', answerId], ...)
 const addCommentMutation = useMutationWithError(..., {
-  onSuccess: () => { /* invalidateQueries で同期 */ },
+  onSuccess: () => {
+    // DB遅延を考慮し、500ms待ってから同期
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['comments', answerId] });
+    }, 500);
+  },
   onError: (error, variables) => { /* フォーム復元 */ }
 })
 // 戻り値: isLoadingComments, isRefetchingComments
 ```
+
+**DB同期の考慮**: Comment追加成功時は、DB反映完了を待ってからinvalidateQueriesを実行。目安として500msの待機時間を推奨（DBレイテンシによる調整が必要）。
 
 #### ⚡ 楽観的更新 vs DB同期
 
@@ -391,6 +398,7 @@ export function createErrorResponse(
 - プロジェクト全体で一貫したコーディングスタイルを維持
 - 小さな問題も放置せず、発見次第修正
 - コメントは「なぜ」を説明し、「何を」はコードで表現
+- **デバッグログ**: 開発時の動作確認目的でconsole.logを使用可。本番デプロイ前に必ず削除。ログは`[DEBUG]`プレフィックスを使用し、重要な状態遷移を記録
 
 ⸻
 

@@ -48,12 +48,6 @@ export function CommentSection({
 
   // Notify parent of comment count changes
   useEffect(() => {
-    console.log(
-      '[DEBUG] Comment count changed for answerId:',
-      answerId,
-      'new count:',
-      comments.length
-    );
     onCommentCountChange?.(comments.length);
   }, [comments.length, onCommentCountChange]);
 

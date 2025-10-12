@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { VoteSection } from './VoteSection';
 import { CommentSection } from './CommentSection';
 import { FavoriteSection } from './FavoriteSection';
@@ -46,16 +46,6 @@ export function AnswerActionCard({
   const [realTimeCommentCount, setRealTimeCommentCount] = useState(
     comments.length
   );
-
-  // Debug logging for comment count changes
-  useEffect(() => {
-    console.log(
-      '[DEBUG] AnswerActionCard realTimeCommentCount changed for answerId:',
-      answer.id,
-      'new count:',
-      realTimeCommentCount
-    );
-  }, [realTimeCommentCount, answer.id]);
 
   // Calculate score from answer.votes
   const score = (() => {
