@@ -9,6 +9,7 @@ export type UseCommentSectionProps = {
   initialComments: Comment[];
   actionPath?: string;
   loginRedirectPath?: string;
+  onError?: (error: Error, text: string) => void;
 };
 
 export function useCommentSection({
@@ -16,6 +17,7 @@ export function useCommentSection({
   initialComments,
   actionPath,
   loginRedirectPath = '/login',
+  onError,
 }: UseCommentSectionProps) {
   const { effectiveId } = useIdentity();
   const { fetcher, performAction } = useOptimisticAction(
@@ -82,6 +84,8 @@ export function useCommentSection({
         // On error, rollback to previous comments (no optimistic update, so no need to do anything)
         // Invalidate to ensure fresh data from server
         queryClient.invalidateQueries({ queryKey: ['comments', answerId] });
+        // Call onError callback with the error and the text that failed to send
+        onError?.(error, variables.text);
       },
     }
   );

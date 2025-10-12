@@ -32,6 +32,12 @@ export function CommentSection({
     answerId,
     initialComments,
     actionPath,
+    onError: (error, text) => {
+      // Restore the failed comment text to the textarea
+      if (commentInputRef.current) {
+        commentInputRef.current.value = text;
+      }
+    },
   });
 
   // Notify parent of comment count changes
