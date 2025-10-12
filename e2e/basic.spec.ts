@@ -245,6 +245,55 @@ test('search and open topic', async ({ page }) => {
         const scoreDisplayAfterReload = page.locator('ul li').first().locator('text=/Score:\\s*3/').first();
         await expect(scoreDisplayAfterReload).toBeVisible();
         console.log('Score is still 3 after reload');
+        
+        // Test toggling vote off - click vote button 3 again to deactivate
+        console.log('Testing vote toggle off - clicking vote button 3 again');
+        await voteButton3AfterReload.click();
+        console.log('Clicked vote button 3 again');
+        
+        // Wait for state update
+        await page.waitForTimeout(1000);
+        
+        // Verify button is now inactive
+        await expect(voteButton3AfterReload).toHaveAttribute('aria-pressed', 'false');
+        console.log('Vote button 3 is now inactive');
+        
+        // Check for success toast
+        await expect(page.locator('text=成功')).toBeVisible();
+        await expect(page.locator('text=操作が完了しました')).toBeVisible();
+        console.log('Vote toggle off success toast appeared');
+        
+        // Wait for score to update to 0
+        console.log('Waiting for score to update to 0...');
+        await page.waitForTimeout(2000);
+        
+        // Verify the score shows 0
+        const scoreDisplayZero = page.locator('ul li').first().locator('text=/Score:\\s*0/').first();
+        await expect(scoreDisplayZero).toBeVisible();
+        console.log('Score display shows 0');
+        
+        // Test persistence of vote off state after page reload
+        console.log('Testing persistence of vote off state after page reload');
+        await page.reload();
+        await page.waitForTimeout(2000); // Wait for page to fully load
+        
+        // Re-open the voting section
+        const toggleButtonAfterReload2 = page.locator('ul li').first().locator('button:has-text("コメント / 採点")').first();
+        if (await toggleButtonAfterReload2.isVisible()) {
+          console.log('Re-opening voting section after second reload');
+          await toggleButtonAfterReload2.click();
+          await page.waitForTimeout(1000);
+        }
+        
+        // Check that vote button 3 is still inactive after reload
+        const voteButton3AfterReload2 = page.locator('ul li').first().locator('button[aria-label="投票3"]').first();
+        await expect(voteButton3AfterReload2).toHaveAttribute('aria-pressed', 'false');
+        console.log('Vote button 3 is still inactive after reload');
+        
+        // Check that score is still 0 after reload
+        const scoreDisplayZeroAfterReload = page.locator('ul li').first().locator('text=/Score:\\s*0/').first();
+        await expect(scoreDisplayZeroAfterReload).toBeVisible();
+        console.log('Score is still 0 after reload');
       } else {
         console.log('Vote button 3 not found after opening section');
         

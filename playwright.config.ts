@@ -10,4 +10,5 @@ export default defineConfig({
     port: 5173,
     reuseExistingServer: !process.env.CI,
   },
+  timeout: 60000, // 60 seconds for long-running tests
 });
