@@ -50,3 +50,30 @@ test('switch to test sub-user', async ({ page }) => {
   // Check that test is displayed in the header
   await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
 });
+
+test('open topics page', async ({ page }) => {
+  await page.goto('/topics');
+  await expect(page).toHaveTitle(/Tsukkomi V2/);
+  await expect(page.locator('text=お題一覧')).toBeVisible();
+});
+
+test('search topics', async ({ page }) => {
+  await page.goto('/topics');
+  
+  // Check that search form is present
+  await expect(page.locator('input[name="q"]')).toBeVisible();
+  await expect(page.locator('button:has-text("検索")')).toBeVisible();
+  
+  // Enter a search query
+  const searchQuery = '学生ロボットコンテストのテレビ欄。なんじゃそれ！何と書かれていた？';
+  await page.fill('input[name="q"]', searchQuery);
+  
+  // Click search button
+  await page.click('button:has-text("検索")');
+  
+  // Check that the page still loads (search executed)
+  await expect(page.locator('text=お題一覧')).toBeVisible();
+  
+  // Check that the search query is in the URL
+  await expect(page).toHaveURL(new RegExp(`q=${encodeURIComponent(searchQuery)}`));
+});

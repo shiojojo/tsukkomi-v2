@@ -10,6 +10,13 @@ import type { Topic } from '~/lib/schemas/topic';
 import { createListLoader } from '~/lib/loaders';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
+export function meta() {
+  return [
+    { title: 'Tsukkomi V2 - Topics' },
+    { name: 'description', content: 'Browse topics on Tsukkomi V2' },
+  ];
+}
+
 export async function loader({ request }: LoaderFunctionArgs) {
   return createListLoader('topics', request);
 }
