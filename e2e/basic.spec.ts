@@ -222,6 +222,29 @@ test('search and open topic', async ({ page }) => {
         const scoreDisplay = firstAnswer.locator('text=/Score:\\s*3/').first();
         await expect(scoreDisplay).toBeVisible();
         console.log('Score display shows 3');
+        
+        // Test persistence after page reload
+        console.log('Testing persistence after page reload');
+        await page.reload();
+        await page.waitForTimeout(2000); // Wait for page to fully load
+        
+        // Re-open the voting section (it will be closed after reload)
+        const toggleButtonAfterReload = page.locator('ul li').first().locator('button:has-text("コメント / 採点")').first();
+        if (await toggleButtonAfterReload.isVisible()) {
+          console.log('Re-opening voting section after reload');
+          await toggleButtonAfterReload.click();
+          await page.waitForTimeout(1000);
+        }
+        
+        // Check that vote button 3 is still active after reload
+        const voteButton3AfterReload = page.locator('ul li').first().locator('button[aria-label="投票3"]').first();
+        await expect(voteButton3AfterReload).toHaveAttribute('aria-pressed', 'true');
+        console.log('Vote button 3 is still active after reload');
+        
+        // Check that score is still 3 after reload
+        const scoreDisplayAfterReload = page.locator('ul li').first().locator('text=/Score:\\s*3/').first();
+        await expect(scoreDisplayAfterReload).toBeVisible();
+        console.log('Score is still 3 after reload');
       } else {
         console.log('Vote button 3 not found after opening section');
         
