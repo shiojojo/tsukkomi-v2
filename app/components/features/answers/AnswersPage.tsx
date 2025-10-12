@@ -39,7 +39,6 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
     currentUserId,
     currentUserName,
     userAnswerData,
-    markFavorite,
     profileId,
     filters,
     updateFilter,
@@ -89,7 +88,6 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
       currentUserName={currentUserName}
       currentUserId={currentUserId}
       userAnswerData={userAnswerData}
-      onFavoriteUpdate={markFavorite}
       actionPath={
         mode === 'topic'
           ? `/topics/${topicId}`

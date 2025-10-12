@@ -7,14 +7,12 @@ import { useMutationWithError } from './useMutationWithError';
 
 export interface AnswerUserData {
   votes: Record<number, number>;
-  favorites: Set<number>;
 }
 
 interface UseAnswerUserDataState {
   data: AnswerUserData;
   userId: string | null;
   refetch: () => Promise<void>;
-  markFavorite: (answerId: number, favorited: boolean) => void;
 }
 
 /**
@@ -42,7 +40,7 @@ export function useAnswerUserData(
     ['user-data', userId || 'anonymous', normalized.key],
     async () => {
       if (!userId || !normalized.key) {
-        return { votes: {}, favorites: [] };
+        return { votes: {} };
       }
       const params = new URLSearchParams();
       params.set('profileId', userId);
@@ -57,35 +55,18 @@ export function useAnswerUserData(
       const payload = await response.json();
       return {
         votes: payload?.votes ?? {},
-        favorites: (payload?.favorites ?? []).map((v: number) => Number(v)),
       };
     },
     {
       enabled: enabled && !!userId && !!normalized.key,
-      placeholderData: { votes: {}, favorites: [] },
+      placeholderData: { votes: {} },
       staleTime: 5 * 60 * 1000, // 5 minutes
     }
   );
 
   const data = useMemo(() => ({
     votes: query.data?.votes ?? {},
-    favorites: new Set<number>(query.data?.favorites ?? []),
   }), [query.data]);
-
-  const markFavorite = useCallback((answerId: number, favorited: boolean) => {
-    // Optimistic update
-    queryClient.setQueryData(['user-data', userId, normalized.key], (old: any) => {
-      if (!old) return old;
-      const nextFavorites = [...old.favorites];
-      if (favorited) {
-        if (!nextFavorites.includes(answerId)) nextFavorites.push(answerId);
-      } else {
-        const idx = nextFavorites.indexOf(answerId);
-        if (idx >= 0) nextFavorites.splice(idx, 1);
-      }
-      return { ...old, favorites: nextFavorites };
-    });
-  }, [queryClient, userId, normalized.key]);
 
   const refetch = useCallback(async () => {
     await query.refetch();
@@ -95,6 +76,5 @@ export function useAnswerUserData(
     data,
     userId,
     refetch,
-    markFavorite,
   };
 }

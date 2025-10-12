@@ -51,7 +51,7 @@ export function useAnswersPage(data: LoaderData) {
 
   // Client-side user data sync for answers
   const answerIds = data.answers?.map((a: Answer) => a.id) ?? [];
-  const { data: userAnswerData, markFavorite } = useAnswerUserData(answerIds);
+  const { data: userAnswerData } = useAnswerUserData(answerIds);
 
   // Use loader data directly (no need for client-side refetch)
   const currentData = data;
@@ -142,7 +142,6 @@ export function useAnswersPage(data: LoaderData) {
     currentUserId,
     currentUserName,
     userAnswerData,
-    markFavorite,
     profileId: currentData.profileId,
     // Filters
     filters,

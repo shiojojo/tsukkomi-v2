@@ -2,9 +2,9 @@ import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/
 import { getUserFriendlyErrorMessage } from '~/lib/errors';
 import { useToast } from '~/hooks/useToast';
 
-export function useMutationWithError<TData, TVariables>(
+export function useMutationWithError<TData = unknown, TVariables = void, TContext = unknown>(
   mutationFn: (variables: TVariables) => Promise<TData>,
-  options?: UseMutationOptions<TData, Error, TVariables>
+  options?: UseMutationOptions<TData, Error, TVariables, TContext>
 ) {
   const queryClient = useQueryClient();
   const { toast } = useToast();

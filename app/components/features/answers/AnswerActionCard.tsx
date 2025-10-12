@@ -14,8 +14,7 @@ export interface AnswerActionCardProps {
   currentUserId: string | null;
   currentUserName: string | null;
   getNameByProfileId: (pid?: string | null) => string | undefined;
-  userAnswerData: { votes: Record<number, number>; favorites: Set<number> };
-  onFavoriteUpdate?: (answerId: number, favorited: boolean) => void;
+  userAnswerData: { votes: Record<number, number> };
   actionPath: string;
   profileIdForVotes?: string | null;
 }
@@ -40,7 +39,6 @@ export function AnswerActionCard({
   currentUserName,
   getNameByProfileId,
   userAnswerData,
-  onFavoriteUpdate,
   actionPath,
   profileIdForVotes,
 }: AnswerActionCardProps) {
@@ -104,11 +102,7 @@ export function AnswerActionCard({
                 コメント{comments.length}
               </div>
               <div className="flex items-center gap-2">
-                <FavoriteSection
-                  answer={answer}
-                  userAnswerData={userAnswerData}
-                  onFavoriteUpdate={onFavoriteUpdate}
-                />
+                <FavoriteSection answer={answer} />
                 <Button
                   variant="secondary"
                   type="button"

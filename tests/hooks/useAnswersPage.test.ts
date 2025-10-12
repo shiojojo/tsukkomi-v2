@@ -96,7 +96,6 @@ describe('useAnswersPage', () => {
     expect(result.current).toHaveProperty('currentUserId');
     expect(result.current).toHaveProperty('currentUserName');
     expect(result.current).toHaveProperty('userAnswerData');
-    expect(result.current).toHaveProperty('markFavorite');
     expect(result.current).toHaveProperty('profileId');
     expect(result.current).toHaveProperty('filters');
     expect(result.current).toHaveProperty('updateFilter');

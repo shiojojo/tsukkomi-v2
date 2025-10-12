@@ -4,25 +4,20 @@ import type { Answer } from '~/lib/schemas/answer';
 
 interface FavoriteSectionProps {
   answer: Answer;
-  userAnswerData: { favorites: Set<number> };
-  onFavoriteUpdate?: (answerId: number, favorited: boolean) => void;
 }
 
-export function FavoriteSection({
-  answer,
-  userAnswerData,
-  onFavoriteUpdate,
-}: FavoriteSectionProps) {
-  const initialFavorited = useMemo(() => {
-    if (userAnswerData.favorites.has(answer.id)) return true;
-    return Boolean(answer.favorited);
-  }, [answer, userAnswerData.favorites]);
+export function FavoriteSection({ answer }: FavoriteSectionProps) {
+  const initialFavorited = false; // Will be fetched by useFavoriteButton
+
+  const initialCount = useMemo(() => {
+    return (answer as any).favCount ?? 0;
+  }, [answer]);
 
   return (
     <FavoriteButton
       answerId={answer.id}
       initialFavorited={initialFavorited}
-      onServerFavorited={onFavoriteUpdate}
+      initialCount={initialCount}
     />
   );
 }

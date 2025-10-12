@@ -12,8 +12,7 @@ interface AnswersListProps {
   getNameByProfileId: (pid?: string | null) => string | undefined;
   currentUserName: string | null;
   currentUserId: string | null;
-  userAnswerData: { votes: Record<number, number>; favorites: Set<number> };
-  onFavoriteUpdate: (id: number, favorited: boolean) => void;
+  userAnswerData: { votes: Record<number, number> };
   actionPath: string;
   profileIdForVotes?: string | null;
   pagination?: {
@@ -33,7 +32,6 @@ export function AnswersList({
   currentUserName,
   currentUserId,
   userAnswerData,
-  onFavoriteUpdate,
   actionPath,
   profileIdForVotes,
   pagination,
@@ -63,13 +61,15 @@ export function AnswersList({
               <AnswerActionCard
                 key={answer.id}
                 answer={answer}
-                topic={answerTopic}
-                comments={commentsByAnswer[String(answer.id)] || []}
-                getNameByProfileId={getNameByProfileId}
-                currentUserName={currentUserName}
+                topic={
+                  topic ||
+                  (topicsById ? topicsById[answer.topicId || ''] : null)
+                }
+                comments={commentsByAnswer[answer.id] || []}
                 currentUserId={currentUserId}
+                currentUserName={currentUserName}
+                getNameByProfileId={getNameByProfileId}
                 userAnswerData={userAnswerData}
-                onFavoriteUpdate={onFavoriteUpdate}
                 actionPath={actionPath}
                 profileIdForVotes={profileIdForVotes}
               />

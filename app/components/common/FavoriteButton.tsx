@@ -1,110 +1,52 @@
-import { memo, useEffect, useRef, useState } from 'react';
-import { logger } from '~/lib/logger';
-import { useIdentity } from '~/hooks/useIdentity';
-import { useOptimisticAction } from '~/hooks/useOptimisticAction';
+import { useFavoriteButton } from '~/hooks/useFavoriteButton';
 import { Button } from '~/components/ui/Button';
 
-export type FavoriteButtonProps = {
-  answerId: number;
-  initialFavorited?: boolean;
-  onServerFavorited?: (answerId: number, favorited: boolean) => void;
-  loginRedirectPath?: string;
-  actionPath?: string;
-};
-
-/**
- * 概要: 回答に対するお気に入りトグルボタン。クリックで即座に UI を更新しつつ、サーバー action へ POST する。
- * Intent: routes から共通ロジックを切り出し、/answers や /topics など複数画面で一貫した挙動を提供する。
- * Contract:
- *   - Props.initialFavorited で初期状態を指定。サーバー応答 (favorited:boolean) が来た場合 onServerFavorited を通知。
- *   - useIdentity から effectiveId を取得し、未ログイン時は loginRedirectPath へ遷移。
- * Environment: ブラウザ限定。fetcher を利用するため routes 側で action を実装していることが前提。
- * Errors: fetcher.error は握りつぶしつつコンソールにログ。致命的エラーは UI を既存状態にロールバック。
- */
-const FavoriteButton = memo(function FavoriteButton({
-  answerId,
-  initialFavorited,
-  onServerFavorited,
-  loginRedirectPath = '/login',
-  actionPath,
-}: FavoriteButtonProps) {
-  const { fetcher, performAction } = useOptimisticAction(
-    actionPath ||
-      (typeof window !== 'undefined' ? window.location.pathname : '/'),
-    loginRedirectPath
-  );
-  const { effectiveId } = useIdentity();
-  const [fav, setFav] = useState<boolean>(() => Boolean(initialFavorited));
-  const lastProcessedResponseRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (fetcher.state === 'submitting') {
-      lastProcessedResponseRef.current = null;
+export type FavoriteButtonProps =
+  | {
+      answerId: number;
+      initialFavorited: boolean;
+      initialCount: number;
+      actionPath?: string;
+      loginRedirectPath?: string;
+      onFavoritedChange?: (favorited: boolean) => void;
     }
-  }, [fetcher.state]);
+  | {
+      favorited: boolean;
+      count: number;
+      onToggle: () => void;
+    };
 
-  useEffect(() => {
-    logger.log(
-      `[FavoriteButton ${answerId}] initialFavorited changed:`,
-      initialFavorited
-    );
-    setFav(Boolean(initialFavorited));
-  }, [answerId, initialFavorited]);
+export function FavoriteButton(props: FavoriteButtonProps) {
+  let favorited: boolean;
+  let count: number;
+  let handleToggle: () => void;
 
-  useEffect(() => {
-    if (!fetcher.data || fetcher.state !== 'idle') return;
-
-    const rawPayload =
-      typeof fetcher.data === 'string'
-        ? fetcher.data
-        : JSON.stringify(fetcher.data);
-
-    if (lastProcessedResponseRef.current === rawPayload) return;
-    lastProcessedResponseRef.current = rawPayload;
-
-    try {
-      const parsed =
-        typeof fetcher.data === 'string'
-          ? JSON.parse(fetcher.data)
-          : fetcher.data;
-      if (parsed && typeof parsed.favorited === 'boolean') {
-        const next = Boolean(parsed.favorited);
-        setFav(next);
-        onServerFavorited?.(answerId, next);
-        return;
-      }
-      if (parsed && parsed.ok === false) {
-        setFav(s => !s);
-      }
-    } catch (error) {
-      logger.error(
-        `[FavoriteButton ${answerId}] Failed to parse fetcher response`,
-        error
-      );
-    }
-  }, [fetcher.data, fetcher.state, answerId, onServerFavorited]);
-
-  const handleClick = () => {
-    setFav(s => !s);
-    performAction({ op: 'toggle', answerId, profileId: effectiveId });
-  };
+  if ('favorited' in props) {
+    // Controlled mode
+    ({ favorited, count, onToggle: handleToggle } = props);
+  } else {
+    // Hook mode
+    const hookResult = useFavoriteButton({
+      answerId: props.answerId,
+      initialFavorited: props.initialFavorited,
+      initialCount: props.initialCount,
+      actionPath: props.actionPath,
+      loginRedirectPath: props.loginRedirectPath,
+      onFavoritedChange: props.onFavoritedChange,
+    });
+    ({ favorited, count, handleToggle } = hookResult);
+  }
 
   return (
     <Button
       variant="icon"
-      active={fav}
+      active={favorited}
       type="button"
-      aria-pressed={fav}
-      onClick={handleClick}
-      title={
-        !effectiveId
-          ? 'ログインしてお気に入り登録'
-          : fav
-            ? 'お気に入り解除'
-            : 'お気に入り'
-      }
+      aria-pressed={favorited}
+      onClick={handleToggle}
+      title={favorited ? `お気に入り解除 (${count})` : `お気に入り (${count})`}
     >
-      {fav ? (
+      {favorited ? (
         <svg
           className="w-5 h-5"
           viewBox="0 0 24 24"
@@ -127,6 +69,6 @@ const FavoriteButton = memo(function FavoriteButton({
       )}
     </Button>
   );
-});
+}
 
 export default FavoriteButton;
