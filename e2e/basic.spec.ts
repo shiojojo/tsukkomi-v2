@@ -118,6 +118,12 @@ test('search and open topic', async ({ page }) => {
     // Expect sortBy=oldest to be in the URL after form submission
     expect(hasSortParam).toBe(true);
     
+    // Verify the first answer content when sorted by oldest
+    const firstAnswerForSortCheck = page.locator('ul li').first();
+    const answerText = await firstAnswerForSortCheck.locator('text=/chatGPTやAIが/').first().textContent();
+    expect(answerText).toContain('chatGPTやAIが');
+    console.log('Verified first answer starts with "chatGPTやAIが" when sorted by oldest');
+    
     // Wait for answers to load
     await page.waitForTimeout(2000);
     
@@ -327,9 +333,10 @@ test('search and open topic', async ({ page }) => {
           await expect(page.locator('text=操作が完了しました')).toBeVisible();
           console.log('Comment success toast appeared');
 
-          // Verify the comment appears in the list
-          await expect(page.locator('text=test_comment_topic')).toBeVisible();
-          console.log('Comment "test_comment_topic" is visible in the comment list');
+          // Verify the comment appears in the list (check that count increased instead of visibility due to multiple existing comments)
+          const finalTestTextCount = await page.locator('text=test_comment_topic').count();
+          expect(finalTestTextCount).toBeGreaterThan(initialTestTextCount);
+          console.log(`Comment "test_comment_topic" count increased from ${initialTestTextCount} to ${finalTestTextCount}`);
 
           // Check that comment count increased
           const newCommentCountText = await page.locator('ul li').first().locator('text=/コメント\\d+/').textContent();
