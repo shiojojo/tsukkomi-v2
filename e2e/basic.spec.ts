@@ -57,7 +57,7 @@ test('open topics page', async ({ page }) => {
   await expect(page.locator('text=お題一覧')).toBeVisible();
 });
 
-test('search topics', async ({ page }) => {
+test('search and open topic', async ({ page }) => {
   // Switch to test user first
   await page.goto('/login');
   const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
@@ -76,7 +76,7 @@ test('search topics', async ({ page }) => {
   await expect(page.locator('button:has-text("検索")')).toBeVisible();
   
   // Enter a search query
-  const searchQuery = '学生ロボットコンテストのテレビ欄。なんじゃそれ！何と書かれていた？';
+  const searchQuery = '「学生ロボットコンテスト」のテレビ欄。なんじゃそれ！何と書かれていた？';
   await page.fill('input[name="q"]', searchQuery);
   
   // Click search button
@@ -87,4 +87,37 @@ test('search topics', async ({ page }) => {
   
   // Check that the search query is in the URL
   await expect(page).toHaveURL(new RegExp(`q=${encodeURIComponent(searchQuery)}`));
+  
+  // Wait for search results to load
+  await page.waitForTimeout(1000);
+  
+  // Try to find and click the topic link
+  const topicLink = page.locator('a[aria-label*="お題"]').first();
+  if (await topicLink.isVisible()) {
+    await topicLink.click();
+    
+    // Check that we're on a topic detail page
+    await expect(page).toHaveURL(/\/topics\/\d+/);
+    
+    // Wait for the page to load
+    await page.waitForTimeout(1000);
+    
+    // Sort by oldest
+    await page.selectOption('select[name="sortBy"]', 'oldest');
+    
+    // Click search button to submit the form and apply sorting
+    await page.click('button:has-text("検索")');
+    
+    // Wait for URL to update with sortBy parameter
+    await page.waitForURL((url) => url.searchParams.has('sortBy'), { timeout: 5000 });
+    
+    // Check if sortBy parameter was added to URL
+    const finalURL = page.url();
+    const hasSortParam = finalURL.includes('sortBy=oldest');
+    
+    // Expect sortBy=oldest to be in the URL after form submission
+    expect(hasSortParam).toBe(true);
+  } else {
+    console.log('No topic found in search results');
+  }
 });
