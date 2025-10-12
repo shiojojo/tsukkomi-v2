@@ -767,6 +767,21 @@ test('favorites page interactions', async ({ page }) => {
       console.log('Favorites page loaded');
     }
 
+    // Verify the first answer content when sorted by oldest on favorites page
+    const firstAnswerOnFavoritesPage = page.locator('ul li').first();
+    const answerText = await firstAnswerOnFavoritesPage.locator('text=/chatGPTやAIが/').first().textContent();
+    expect(answerText).toContain('chatGPTやAIが');
+    console.log('Verified first answer starts with "chatGPTやAIが" when sorted by oldest on favorites page');
+
+    // Wait for favorite state to sync (favorites page may need more time to load states)
+    await page.waitForTimeout(3000);
+
+    // Verify the first answer is favorited
+    const favoriteButtonOnFavoritesPage = firstAnswerOnFavoritesPage.locator('button[aria-pressed]').first();
+    const isFavorited = await favoriteButtonOnFavoritesPage.getAttribute('aria-pressed') === 'true';
+    expect(isFavorited).toBe(true);
+    console.log('Verified first answer is favorited on favorites page');
+
     // Wait for favorites to load
     await page.waitForTimeout(2000);
 
@@ -874,9 +889,10 @@ test('favorites page interactions', async ({ page }) => {
         await expect(page.locator('text=操作が完了しました')).toBeVisible();
         console.log('Comment success toast appeared');
 
-        // Verify the comment appears in the list
-        await expect(page.locator('text=test_comment_favorites')).toBeVisible();
-        console.log('Comment "test_comment_favorites" is visible in the comment list');
+        // Verify the comment appears in the list (check that count increased instead of visibility due to multiple existing comments)
+        const finalTestTextCount = await page.locator('text=test_comment_favorites').count();
+        expect(finalTestTextCount).toBeGreaterThan(initialTestTextCount);
+        console.log(`Comment "test_comment_favorites" count increased from ${initialTestTextCount} to ${finalTestTextCount}`);
 
         // Check that comment count increased
         const newCommentCountText = await favoritedAnswer.locator('text=/コメント\\d+/').textContent();
