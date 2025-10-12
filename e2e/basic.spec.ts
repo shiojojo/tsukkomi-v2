@@ -22,4 +22,7 @@ test('select HS user', async ({ page }) => {
   await selectButton.click();
   
   await expect(page).toHaveURL('/');
+  
+  // Check that HS is displayed in the header
+  await expect(page.locator('nav[aria-label="Main"] span:has-text("HS")').first()).toBeVisible();
 });
