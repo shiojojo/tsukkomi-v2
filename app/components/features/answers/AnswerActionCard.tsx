@@ -43,6 +43,9 @@ export function AnswerActionCard({
   profileIdForVotes,
 }: AnswerActionCardProps) {
   const [open, setOpen] = useState(false);
+  const [realTimeCommentCount, setRealTimeCommentCount] = useState(
+    comments.length
+  );
 
   // Calculate score from answer.votes
   const score = (() => {
@@ -99,7 +102,7 @@ export function AnswerActionCard({
             </div>
             <div className="flex justify-between items-center">
               <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
-                コメント{comments.length}
+                コメント{realTimeCommentCount}
               </div>
               <div className="flex items-center gap-2">
                 <FavoriteSection answer={answer} />
@@ -135,6 +138,7 @@ export function AnswerActionCard({
               currentUserName={currentUserName}
               getNameByProfileId={getNameByProfileId}
               actionPath={actionPath}
+              onCommentCountChange={setRealTimeCommentCount}
             />
           </div>
         )}
