@@ -127,6 +127,99 @@ export default function Route() {
 
 localStorage は最小限に使用。サーバー同期が必要なデータ（投票、いいねなど）は loader/Action と TanStack Query で管理。
 
+### Favorite / Vote / Comment の設計パターン
+
+#### 🎯 共通アーキテクチャ原則
+
+- **Loader**: 初回データ取得（SSR対応）
+- **TanStack Query**: クライアント側データ管理・キャッシュ・同期
+- **useOptimisticAction**: 楽観的更新 + Action実行
+- **useMutationWithError**: エラーハンドリング付きミューテーション
+- **Query Key**: `['entity-type', entityId, userId]` の命名規則
+
+#### ⭐ Favorite 機能設計
+
+**意図**: ユーザーのお気に入り状態とカウントをリアルタイム管理。トグル操作で即時反映。
+
+**動作フロー**:
+
+1. **Loader**: 初期お気に入り状態とカウントを取得
+2. **Query**: ユーザーのお気に入り状態を管理 (`['user-favorite', answerId, userId]`)
+3. **Query**: お気に入りカウントを管理 (`['favorite-count', answerId]`)
+4. **Mutation**: トグル操作で楽観的更新（即時UI反映）
+5. **Action**: サーバーサイドで永続化
+6. **Error**: 失敗時はロールバック + 再フェッチ
+
+**実装パターン**:
+
+```ts
+// Hook: useFavoriteButton
+const favoriteQuery = useQuery(['user-favorite', answerId, userId], ...)
+const countQuery = useQuery(['favorite-count', answerId], ...)
+const toggleMutation = useMutationWithError(..., {
+  onMutate: () => { /* 楽観的更新 */ },
+  onError: () => { /* ロールバック */ }
+})
+```
+
+#### 🗳️ Vote 機能設計
+
+**意図**: 3段階投票システム。ユーザーの投票状態と各レベルの集計カウントを正確に管理。
+
+**動作フロー**:
+
+1. **Loader**: 初期投票状態とカウントを取得
+2. **Query**: ユーザーの投票状態を管理 (`['user-vote', answerId, userId]`)
+3. **Query**: 投票カウントを管理 (`['vote-counts', answerId]`)
+4. **Mutation**: 投票操作で楽観的更新（カウント増減計算）
+5. **Action**: サーバーサイドで永続化
+6. **Error**: 失敗時は再フェッチ
+
+**実装パターン**:
+
+```ts
+// Hook: useNumericVoteButtons
+const userVoteQuery = useQuery(['user-vote', answerId, userId], ...)
+const voteCountsQuery = useQuery(['vote-counts', answerId], ...)
+const voteMutation = useMutationWithError(..., {
+  onMutate: ({ level }) => {
+    // カウント増減計算: 前の投票を減らし、新しい投票を加算
+  },
+  onError: () => { /* 再フェッチ */ }
+})
+```
+
+#### 💬 Comment 機能設計
+
+**意図**: コメント一覧の取得・追加・同期。DB遅延を考慮した読み込み状態表示。
+
+**動作フロー**:
+
+1. **Loader**: 初期コメント一覧を取得
+2. **Query**: コメント一覧を管理 (`['comments', answerId]`)
+3. **Mutation**: コメント追加（楽観的更新なし、DB同期を待つ）
+4. **Action**: サーバーサイドで永続化
+5. **Error**: 失敗時はフォーム内容復元 + 再フェッチ
+6. **Loading**: DB同期中のスピナー表示
+
+**実装パターン**:
+
+```ts
+// Hook: useCommentSection
+const commentsQuery = useQuery(['comments', answerId], ...)
+const addCommentMutation = useMutationWithError(..., {
+  onSuccess: () => { /* invalidateQueries で同期 */ },
+  onError: (error, variables) => { /* フォーム復元 */ }
+})
+// 戻り値: isLoadingComments, isRefetchingComments
+```
+
+#### ⚡ 楽観的更新 vs DB同期
+
+- **Favorite/Vote**: 即時反映のため楽観的更新を使用
+- **Comment**: DB遅延を考慮し、成功後に同期（`invalidateQueries`）
+- **Error Handling**: 失敗時は適切なロールバック/再フェッチ
+
 ⸻
 
 ## コンポーネント / UI 規約
@@ -303,7 +396,7 @@ export function createErrorResponse(
 
 ## 🚀 最重要原則
 
-1. Supabase 直呼び禁止 → 100% `lib/db.ts` 経由
+1. Supabase 直呼び禁止 → 100% `lib/db/` ディレクトリ経由
 2. **Loader**: 初回/SSRデータ取得 / **TanStack Query**: クライアント更新/キャッシュ / **Action**: 書き込み処理
 3. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
 4. エラーハンドリング: `lib/errors.ts` のクラスを使用し、エラーを握りつぶさず適切に伝播
