@@ -17,6 +17,13 @@ import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/Err
  * Environment: prod/dev 共通で DB (profiles) を参照。書込みは Supabase 経由 (lib/db.ts 内部)。
  * Errors: バリデーション失敗時は { ok:false, errors }。DB エラーは 500 例外 -> ルートエラー境界へ。
  */
+
+export function meta() {
+  return [
+    { title: 'Tsukkomi V2 - Login' },
+    { name: 'description', content: 'Login to Tsukkomi V2' },
+  ];
+}
 export async function loader(_args: LoaderFunctionArgs) {
   const { getUsers } = await import('~/lib/db');
   const users = await getUsers();
