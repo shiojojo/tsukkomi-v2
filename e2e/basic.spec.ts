@@ -26,3 +26,27 @@ test('select HS user', async ({ page }) => {
   // Check that HS is displayed in the header
   await expect(page.locator('nav[aria-label="Main"] span:has-text("HS")').first()).toBeVisible();
 });
+
+test('switch to test sub-user', async ({ page }) => {
+  // First select HS user
+  await page.goto('/login');
+  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  await selectButton.click();
+  await expect(page).toHaveURL('/');
+
+  // Go back to login page and switch to test sub-user
+  await page.goto('/login');
+  
+  // Open HS user details
+  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  await hsDetailsButton.click();
+  
+  // Click on test sub-user switch button
+  await page.locator('text=test').locator('xpath=following-sibling::button').click();
+  
+  await expect(page).toHaveURL('/');
+  
+  // Check that test is displayed in the header
+  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+});
