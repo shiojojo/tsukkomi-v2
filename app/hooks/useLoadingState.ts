@@ -10,11 +10,6 @@ export function useLoadingState(navigation: Navigation) {
     ? navigation.formMethod.toUpperCase()
     : null;
 
-  // Debug navigation state - client-side only
-  useEffect(() => {
-    console.log('Navigation state:', navigation.state, 'isLoading:', isLoading);
-  }, [navigation.state, isLoading]);
-
   // Add timeout for loading state to prevent permanent loading overlay.
   // Answer searches can take longer due to keyword and score filters, so we
   // allow additional time before falling back to the non-blocking indicator.
