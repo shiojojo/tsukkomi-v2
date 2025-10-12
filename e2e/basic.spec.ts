@@ -294,6 +294,81 @@ test('search and open topic', async ({ page }) => {
         const scoreDisplayZeroAfterReload = page.locator('ul li').first().locator('text=/Score:\\s*0/').first();
         await expect(scoreDisplayZeroAfterReload).toBeVisible();
         console.log('Score is still 0 after reload');
+        
+        // Test comment functionality
+        console.log('Testing comment functionality');
+        
+        // Get initial comment count and test text count
+        const initialCommentCountText = await page.locator('ul li').first().locator('text=/コメント\\d+/').textContent();
+        const initialCommentCount = initialCommentCountText ? parseInt(initialCommentCountText.match(/コメント(\d+)/)?.[1] || '0') : 0;
+        console.log('Initial comment count:', initialCommentCount);
+        
+        const initialTestTextCount = await page.locator('text=testである文言').count();
+        console.log('Initial "testである文言" count:', initialTestTextCount);
+        
+        // Find the comment textarea and submit button
+        const commentTextarea = page.locator('ul li').first().locator('textarea[name="text"]').first();
+        const commentSubmitButton = page.locator('ul li').first().locator('button[aria-label="コメントを送信"]').first();
+        
+        if (await commentTextarea.isVisible() && await commentSubmitButton.isVisible()) {
+          // Enter comment text
+          await commentTextarea.fill('testである文言');
+          console.log('Entered comment text: "testである文言"');
+          
+          // Submit the comment
+          await commentSubmitButton.click();
+          console.log('Clicked comment submit button');
+          
+          // Wait for comment to be added
+          await page.waitForTimeout(2000);
+          
+          // Check for success toast
+          await expect(page.locator('text=成功')).toBeVisible();
+          await expect(page.locator('text=操作が完了しました')).toBeVisible();
+          console.log('Comment success toast appeared');
+          
+          // Verify the comment appears in the list
+          await expect(page.locator('text=testである文言')).toBeVisible();
+          console.log('Comment "testである文言" is visible in the comment list');
+          
+          // Check that comment count increased
+          const newCommentCountText = await page.locator('ul li').first().locator('text=/コメント\\d+/').textContent();
+          const newCommentCount = newCommentCountText ? parseInt(newCommentCountText.match(/コメント(\d+)/)?.[1] || '0') : 0;
+          expect(newCommentCount).toBeGreaterThan(initialCommentCount);
+          console.log(`Comment count increased from ${initialCommentCount} to ${newCommentCount}`);
+          
+          // Check that test text count increased
+          const newTestTextCount = await page.locator('text=testである文言').count();
+          expect(newTestTextCount).toBeGreaterThan(initialTestTextCount);
+          console.log(`"testである文言" count increased from ${initialTestTextCount} to ${newTestTextCount}`);
+          
+          // Test persistence after page reload
+          console.log('Testing comment persistence after page reload');
+          await page.reload();
+          await page.waitForTimeout(2000);
+          
+          // Re-open the voting section to access comments
+          const toggleButtonAfterCommentReload = page.locator('ul li').first().locator('button:has-text("コメント / 採点")').first();
+          if (await toggleButtonAfterCommentReload.isVisible()) {
+            console.log('Re-opening section after comment reload');
+            await toggleButtonAfterCommentReload.click();
+            await page.waitForTimeout(1000);
+          }
+          
+          // Verify comment count is still increased after reload
+          const reloadCommentCountText = await page.locator('ul li').first().locator('text=/コメント\\d+/').textContent();
+          const reloadCommentCount = reloadCommentCountText ? parseInt(reloadCommentCountText.match(/コメント(\d+)/)?.[1] || '0') : 0;
+          expect(reloadCommentCount).toBeGreaterThan(initialCommentCount);
+          console.log(`Comment count still increased after reload: ${reloadCommentCount}`);
+          
+          // Verify test text count is still increased after reload
+          const reloadTestTextCount = await page.locator('text=testである文言').count();
+          expect(reloadTestTextCount).toBeGreaterThan(initialTestTextCount);
+          console.log(`"testである文言" count still increased after reload: ${reloadTestTextCount}`);
+          
+        } else {
+          console.log('Comment textarea or submit button not found');
+        }
       } else {
         console.log('Vote button 3 not found after opening section');
         
