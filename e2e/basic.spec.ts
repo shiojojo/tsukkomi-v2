@@ -117,6 +117,51 @@ test('search and open topic', async ({ page }) => {
     
     // Expect sortBy=oldest to be in the URL after form submission
     expect(hasSortParam).toBe(true);
+    
+    // Wait for answers to load
+    await page.waitForTimeout(2000);
+    
+    // Find the first answer and click its favorite button
+    const firstAnswer = page.locator('ul li').first();
+    if (await firstAnswer.isVisible()) {
+      console.log('Found first answer');
+      
+      // Find the favorite button within the first answer
+      const favoriteButton = firstAnswer.locator('button[aria-pressed]').first();
+      const wasActive = await favoriteButton.getAttribute('aria-pressed') === 'true';
+      console.log('Favorite button found, was active:', wasActive);
+      
+      // Click the favorite button
+      await favoriteButton.click();
+      console.log('Clicked favorite button');
+      
+      // Wait for the state to update
+      await page.waitForTimeout(1000);
+      
+      // Check that the button is now active (if it wasn't before)
+      if (!wasActive) {
+        await expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
+        console.log('Button became active');
+      } else {
+        console.log('Button was already active');
+      }
+      
+      // Check for success toast
+      await expect(page.locator('text=成功')).toBeVisible();
+      await expect(page.locator('text=操作が完了しました')).toBeVisible();
+      console.log('Success toast appeared');
+    } else {
+      console.log('No answers found on the page');
+      // Debug: check what elements are on the page
+      const allLis = page.locator('li');
+      const liCount = await allLis.count();
+      console.log('Number of li elements:', liCount);
+      
+      if (liCount > 0) {
+        const firstLiClasses = await allLis.first().getAttribute('class');
+        console.log('First li classes:', firstLiClasses);
+      }
+    }
   } else {
     console.log('No topic found in search results');
   }
