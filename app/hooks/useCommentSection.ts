@@ -98,5 +98,7 @@ export function useCommentSection({
     comments,
     handleAddComment,
     isAddingComment: addCommentMutation.isPending,
+    isLoadingComments: commentsQuery.isLoading,
+    isRefetchingComments: commentsQuery.isRefetching,
   };
 }
