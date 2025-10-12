@@ -434,16 +434,22 @@ test('answers page interactions', async ({ page }) => {
   expect(hasSortParam).toBe(true);
   console.log('Confirmed sortBy=oldest in URL');
 
+  // Verify the first answer content when sorted by oldest
+  const firstAnswer = page.locator('ul li').first();
+  const answerText = await firstAnswer.locator('text=/chatGPTやAIが/').first().textContent();
+  expect(answerText).toContain('chatGPTやAIが');
+  console.log('Verified first answer starts with "chatGPTやAIが" when sorted by oldest');
+
   // Wait for answers to load
   await page.waitForTimeout(2000);
 
-  // Find the first answer
-  const firstAnswer = page.locator('ul li').first();
-  if (await firstAnswer.isVisible()) {
+  // Find the first answer (reuse the variable)
+  const firstAnswerForInteraction = page.locator('ul li').first();
+  if (await firstAnswerForInteraction.isVisible()) {
     console.log('Found first answer on answers page');
 
     // Find the favorite button within the first answer
-    const favoriteButton = firstAnswer.locator('button[aria-pressed]').first();
+    const favoriteButton = firstAnswerForInteraction.locator('button[aria-pressed]').first();
     const initialState = await favoriteButton.getAttribute('aria-pressed') === 'true';
     console.log('Favorite button found, initial state:', initialState);
 
@@ -474,7 +480,7 @@ test('answers page interactions', async ({ page }) => {
     console.log('Testing vote functionality on answers page');
 
     // First, click the "コメント / 採点" button to open the voting section
-    const toggleButton = firstAnswer.locator('button:has-text("コメント / 採点")').first();
+    const toggleButton = firstAnswerForInteraction.locator('button:has-text("コメント / 採点")').first();
     if (await toggleButton.isVisible()) {
       console.log('Found toggle button, clicking to open voting section');
       await toggleButton.click();
@@ -487,9 +493,9 @@ test('answers page interactions', async ({ page }) => {
     // Reset all vote buttons to inactive state first
     console.log('Resetting all vote buttons to inactive state');
     const voteButtons = [
-      firstAnswer.locator('button[aria-label="投票1"]').first(),
-      firstAnswer.locator('button[aria-label="投票2"]').first(),
-      firstAnswer.locator('button[aria-label="投票3"]').first()
+      firstAnswerForInteraction.locator('button[aria-label="投票1"]').first(),
+      firstAnswerForInteraction.locator('button[aria-label="投票2"]').first(),
+      firstAnswerForInteraction.locator('button[aria-label="投票3"]').first()
     ];
 
     for (let i = 0; i < voteButtons.length; i++) {
@@ -535,7 +541,7 @@ test('answers page interactions', async ({ page }) => {
 
       // Verify the score shows 3 (check if there's a score display)
       // Look for score display in the answer card
-      const scoreDisplay = firstAnswer.locator('text=/Score:\\s*3/').first();
+      const scoreDisplay = firstAnswerForInteraction.locator('text=/Score:\\s*3/').first();
       await expect(scoreDisplay).toBeVisible();
       console.log('Score display shows 3');
 
@@ -643,9 +649,10 @@ test('answers page interactions', async ({ page }) => {
         await expect(page.locator('text=操作が完了しました')).toBeVisible();
         console.log('Comment success toast appeared');
 
-        // Verify the comment appears in the list
-        await expect(page.locator('text=test_comment_answers')).toBeVisible();
-        console.log('Comment "test_comment_answers" is visible in the comment list');
+        // Verify the comment appears in the list (check that count increased instead of visibility due to multiple existing comments)
+        const finalTestTextCount = await page.locator('text=test_comment_answers').count();
+        expect(finalTestTextCount).toBeGreaterThan(initialTestTextCount);
+        console.log(`Comment "test_comment_answers" count increased from ${initialTestTextCount} to ${finalTestTextCount}`);
 
         // Check that comment count increased
         const newCommentCountText = await page.locator('ul li').first().locator('text=/コメント\\d+/').textContent();
@@ -720,12 +727,12 @@ test('favorites page interactions', async ({ page }) => {
   await page.waitForTimeout(2000);
 
   // Find the first answer
-  const firstAnswer = page.locator('ul li').first();
-  if (await firstAnswer.isVisible()) {
+  const firstAnswerOnFavorites = page.locator('ul li').first();
+  if (await firstAnswerOnFavorites.isVisible()) {
     console.log('Found first answer on answers page');
 
     // Check if favorite button is already active
-    const favoriteButton = firstAnswer.locator('button[aria-pressed]').first();
+    const favoriteButton = firstAnswerOnFavorites.locator('button[aria-pressed]').first();
     const isFavoriteActive = await favoriteButton.getAttribute('aria-pressed') === 'true';
     console.log('Favorite button active state:', isFavoriteActive);
 
