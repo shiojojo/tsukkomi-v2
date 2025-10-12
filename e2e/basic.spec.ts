@@ -168,16 +168,36 @@ test('search and open topic', async ({ page }) => {
         console.log('Toggle button not found');
       }
       
-      // Now look for the vote button 3
-      const voteButton3 = firstAnswer.locator('button[aria-label="投票3"]').first();
+      // Reset all vote buttons to inactive state first
+      console.log('Resetting all vote buttons to inactive state');
+      const voteButtons = [
+        firstAnswer.locator('button[aria-label="投票1"]').first(),
+        firstAnswer.locator('button[aria-label="投票2"]').first(),
+        firstAnswer.locator('button[aria-label="投票3"]').first()
+      ];
+      
+      for (let i = 0; i < voteButtons.length; i++) {
+        const button = voteButtons[i];
+        if (await button.isVisible()) {
+          const isActive = await button.getAttribute('aria-pressed') === 'true';
+          if (isActive) {
+            console.log(`Vote button ${i + 1} is active, clicking to deactivate`);
+            await button.click();
+            await page.waitForTimeout(500);
+            await expect(button).toHaveAttribute('aria-pressed', 'false');
+            console.log(`Vote button ${i + 1} deactivated`);
+          } else {
+            console.log(`Vote button ${i + 1} is already inactive`);
+          }
+        }
+      }
+      
+      // Now test voting with level 3
+      const voteButton3 = voteButtons[2]; // Index 2 is button 3
       if (await voteButton3.isVisible()) {
-        console.log('Vote button 3 found');
+        console.log('Vote button 3 found and should be inactive');
         
-        // Check initial state
-        const initialVoteState = await voteButton3.getAttribute('aria-pressed') === 'true';
-        console.log('Initial vote 3 state:', initialVoteState);
-        
-        // Click vote button 3
+        // Click vote button 3 to activate it
         await voteButton3.click();
         console.log('Clicked vote button 3');
         
@@ -193,14 +213,15 @@ test('search and open topic', async ({ page }) => {
         await expect(page.locator('text=操作が完了しました')).toBeVisible();
         console.log('Vote success toast appeared');
         
+        // Wait for score to update (DB sync may take time)
+        console.log('Waiting for score to update...');
+        await page.waitForTimeout(2000);
+        
         // Verify the score shows 3 (check if there's a score display)
         // Look for score display in the answer card
-        const scoreDisplay = firstAnswer.locator('text=/3点|3/').first();
-        if (await scoreDisplay.isVisible()) {
-          console.log('Score display found with 3');
-        } else {
-          console.log('Score display not found, but vote operation completed');
-        }
+        const scoreDisplay = firstAnswer.locator('text=/Score:\\s*3/').first();
+        await expect(scoreDisplay).toBeVisible();
+        console.log('Score display shows 3');
       } else {
         console.log('Vote button 3 not found after opening section');
         
