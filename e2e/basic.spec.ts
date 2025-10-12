@@ -153,6 +153,69 @@ test('search and open topic', async ({ page }) => {
       await expect(page.locator('text=成功')).toBeVisible();
       await expect(page.locator('text=操作が完了しました')).toBeVisible();
       console.log('Success toast appeared');
+      
+      // Test voting functionality - vote with level 3
+      console.log('Testing vote functionality');
+      
+      // First, click the "コメント / 採点" button to open the voting section
+      const toggleButton = firstAnswer.locator('button:has-text("コメント / 採点")').first();
+      if (await toggleButton.isVisible()) {
+        console.log('Found toggle button, clicking to open voting section');
+        await toggleButton.click();
+        await page.waitForTimeout(1000);
+        console.log('Voting section should now be open');
+      } else {
+        console.log('Toggle button not found');
+      }
+      
+      // Now look for the vote button 3
+      const voteButton3 = firstAnswer.locator('button[aria-label="投票3"]').first();
+      if (await voteButton3.isVisible()) {
+        console.log('Vote button 3 found');
+        
+        // Check initial state
+        const initialVoteState = await voteButton3.getAttribute('aria-pressed') === 'true';
+        console.log('Initial vote 3 state:', initialVoteState);
+        
+        // Click vote button 3
+        await voteButton3.click();
+        console.log('Clicked vote button 3');
+        
+        // Wait for state update
+        await page.waitForTimeout(1000);
+        
+        // Verify button is now active
+        await expect(voteButton3).toHaveAttribute('aria-pressed', 'true');
+        console.log('Vote button 3 is now active');
+        
+        // Check for success toast
+        await expect(page.locator('text=成功')).toBeVisible();
+        await expect(page.locator('text=操作が完了しました')).toBeVisible();
+        console.log('Vote success toast appeared');
+        
+        // Verify the score shows 3 (check if there's a score display)
+        // Look for score display in the answer card
+        const scoreDisplay = firstAnswer.locator('text=/3点|3/').first();
+        if (await scoreDisplay.isVisible()) {
+          console.log('Score display found with 3');
+        } else {
+          console.log('Score display not found, but vote operation completed');
+        }
+      } else {
+        console.log('Vote button 3 not found after opening section');
+        
+        // Debug: check what buttons are available after opening
+        const allButtonsAfter = firstAnswer.locator('button');
+        const buttonCountAfter = await allButtonsAfter.count();
+        console.log('Total buttons in answer after opening:', buttonCountAfter);
+        
+        for (let i = 0; i < buttonCountAfter; i++) {
+          const button = allButtonsAfter.nth(i);
+          const ariaLabel = await button.getAttribute('aria-label');
+          const text = await button.textContent();
+          console.log(`Button ${i}: aria-label="${ariaLabel}", text="${text}"`);
+        }
+      }
     } else {
       console.log('No answers found on the page');
       // Debug: check what elements are on the page
