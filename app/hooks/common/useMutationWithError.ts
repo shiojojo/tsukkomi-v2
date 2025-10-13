@@ -43,6 +43,7 @@ export function useMutationWithError<TData = unknown, TVariables = void, TContex
       toast({
         title: '成功',
         description: '操作が完了しました',
+        variant: 'success',
       });
 
       // ユーザーが指定した onSuccess を呼び出し
