@@ -1,37 +1,49 @@
 import { test, expect } from '@playwright/test';
 
+// Constants for UI text elements
+const APP_TITLE = 'Tsukkomi V2';
+const HOMEPAGE_TITLE = 'Tsukkomi — 今日のお題';
+const LOGIN_DEV_TEXT = 'ログイン（開発用）';
+const HS_USER = 'HS';
+const TEST_USER = 'test';
+const SELECT_BUTTON = '選択';
+const DETAILS_BUTTON = '詳細';
+const TOPIC_LIST = 'お題一覧';
+const ANSWER_LIST = '回答一覧';
+const FAVORITES = 'お気に入り';
+
 test('homepage loads', async ({ page }) => {
   await page.goto('/');
-  await expect(page).toHaveTitle(/Tsukkomi V2/);
-  await expect(page.locator('text=Tsukkomi — 今日のお題')).toBeVisible();
+  await expect(page).toHaveTitle(new RegExp(APP_TITLE));
+  await expect(page.locator(`text=${HOMEPAGE_TITLE}`)).toBeVisible();
 });
 
 test('login page loads', async ({ page }) => {
   await page.goto('/login');
-  await expect(page).toHaveTitle(/Tsukkomi V2/);
-  await expect(page.locator('text=ログイン（開発用）')).toBeVisible();
+  await expect(page).toHaveTitle(new RegExp(APP_TITLE));
+  await expect(page.locator(`text=${LOGIN_DEV_TEXT}`)).toBeVisible();
 });
 
 test('select HS user', async ({ page }) => {
   await page.goto('/login');
-  await expect(page.locator('text=HS')).toBeVisible();
+  await expect(page.locator(`text=${HS_USER}`)).toBeVisible();
   
   // Find the button next to HS user name
-  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
-  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  const hsUserContainer = page.locator(`text=${HS_USER}`).locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator(`button:has-text("${SELECT_BUTTON}")`);
   await selectButton.click();
   
   await expect(page).toHaveURL('/');
   
   // Check that HS is displayed in the header
-  await expect(page.locator('nav[aria-label="Main"] span:has-text("HS")').first()).toBeVisible();
+  await expect(page.locator(`nav[aria-label="Main"] span:has-text("${HS_USER}")`).first()).toBeVisible();
 });
 
 test('switch to test sub-user', async ({ page }) => {
   // First select HS user
   await page.goto('/login');
-  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
-  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  const hsUserContainer = page.locator(`text=${HS_USER}`).locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator(`button:has-text("${SELECT_BUTTON}")`);
   await selectButton.click();
   await expect(page).toHaveURL('/');
 
@@ -39,35 +51,35 @@ test('switch to test sub-user', async ({ page }) => {
   await page.goto('/login');
   
   // Open HS user details
-  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  const hsDetailsButton = hsUserContainer.locator(`button:has-text("${DETAILS_BUTTON}")`);
   await hsDetailsButton.click();
   
   // Click on test sub-user switch button
-  await page.locator('text=test').locator('xpath=following-sibling::button').click();
+  await page.locator(`text=${TEST_USER}`).locator('xpath=following-sibling::button').click();
   
   await expect(page).toHaveURL('/');
   
   // Check that test is displayed in the header
-  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+  await expect(page.locator(`nav[aria-label="Main"] span:has-text("${TEST_USER}")`).first()).toBeVisible();
 });
 
 test('open topics page', async ({ page }) => {
   await page.goto('/topics');
-  await expect(page).toHaveTitle(/Tsukkomi V2/);
-  await expect(page.locator('text=お題一覧')).toBeVisible();
+  await expect(page).toHaveTitle(new RegExp(APP_TITLE));
+  await expect(page.locator(`text=${TOPIC_LIST}`)).toBeVisible();
 });
 
 test('search and open topic', async ({ page }) => {
   // Switch to test user first
   await page.goto('/login');
-  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
-  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  const hsUserContainer = page.locator(`text=${HS_USER}`).locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator(`button:has-text("${SELECT_BUTTON}")`);
   await selectButton.click();
   await page.goto('/login');
-  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  const hsDetailsButton = hsUserContainer.locator(`button:has-text("${DETAILS_BUTTON}")`);
   await hsDetailsButton.click();
-  await page.locator('text=test').locator('xpath=following-sibling::button').click();
-  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+  await page.locator(`text=${TEST_USER}`).locator('xpath=following-sibling::button').click();
+  await expect(page.locator(`nav[aria-label="Main"] span:has-text("${TEST_USER}")`).first()).toBeVisible();
 
   await page.goto('/topics');
   
@@ -83,7 +95,7 @@ test('search and open topic', async ({ page }) => {
   await page.click('button:has-text("検索")');
   
   // Check that the page still loads (search executed)
-  await expect(page.locator('text=お題一覧')).toBeVisible();
+  await expect(page.locator(`text=${TOPIC_LIST}`)).toBeVisible();
   
   // Check that the search query is in the URL
   await expect(page).toHaveURL(new RegExp(`q=${encodeURIComponent(searchQuery)}`));
@@ -409,18 +421,18 @@ test('search and open topic', async ({ page }) => {
 test('answers page interactions', async ({ page }) => {
   // Switch to test user first
   await page.goto('/login');
-  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
-  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  const hsUserContainer = page.locator(`text=${HS_USER}`).locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator(`button:has-text("${SELECT_BUTTON}")`);
   await selectButton.click();
   await page.goto('/login');
-  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  const hsDetailsButton = hsUserContainer.locator(`button:has-text("${DETAILS_BUTTON}")`);
   await hsDetailsButton.click();
-  await page.locator('text=test').locator('xpath=following-sibling::button').click();
+  await page.locator(`text=${TEST_USER}`).locator('xpath=following-sibling::button').click();
   await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
 
   // Navigate to answers page
   await page.goto('/answers');
-  await expect(page.locator('text=回答一覧')).toBeVisible();
+  await expect(page.locator(`text=${ANSWER_LIST}`)).toBeVisible();
   console.log('Answers page loaded');
 
   // Sort by oldest first
@@ -710,18 +722,18 @@ test('answers page interactions', async ({ page }) => {
 test('favorites page interactions', async ({ page }) => {
   // Switch to test user first
   await page.goto('/login');
-  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
-  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  const hsUserContainer = page.locator(`text=${HS_USER}`).locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator(`button:has-text("${SELECT_BUTTON}")`);
   await selectButton.click();
   await page.goto('/login');
-  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  const hsDetailsButton = hsUserContainer.locator(`button:has-text("${DETAILS_BUTTON}")`);
   await hsDetailsButton.click();
-  await page.locator('text=test').locator('xpath=following-sibling::button').click();
-  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+  await page.locator(`text=${TEST_USER}`).locator('xpath=following-sibling::button').click();
+  await expect(page.locator(`nav[aria-label="Main"] span:has-text("${TEST_USER}")`).first()).toBeVisible();
 
   // Navigate to answers page and sort by oldest
   await page.goto('/answers');
-  await expect(page.locator('text=回答一覧')).toBeVisible();
+  await expect(page.locator(`text=${ANSWER_LIST}`)).toBeVisible();
   console.log('Answers page loaded');
 
   // Sort by oldest first
@@ -747,7 +759,7 @@ test('favorites page interactions', async ({ page }) => {
       console.log('Favorite is already active, navigating to favorites page');
       // Navigate to favorites page
       await page.goto('/answers/favorites');
-      await expect(page.locator('text=お気に入り')).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'お気に入り' })).toBeVisible();
       console.log('Favorites page loaded');
     } else {
       console.log('Favorite is not active, activating it first');
@@ -763,7 +775,7 @@ test('favorites page interactions', async ({ page }) => {
 
       // Navigate to favorites page
       await page.goto('/answers/favorites');
-      await expect(page.locator('text=お気に入り')).toBeVisible();
+      await expect(page.getByRole('heading', { name: FAVORITES })).toBeVisible();
       console.log('Favorites page loaded');
     }
 
@@ -936,7 +948,7 @@ test('favorites page interactions', async ({ page }) => {
       await page.waitForTimeout(2000);
 
       // Check that the previously favorited answer is no longer on the favorites page
-      await expect(page.locator('text=お気に入り')).toBeVisible();
+      await expect(page.getByRole('heading', { name: FAVORITES })).toBeVisible();
       console.log('Favorites page reloaded successfully - answer should be removed from favorites');
 
     } else {
@@ -950,14 +962,14 @@ test('favorites page interactions', async ({ page }) => {
 test('comment input character limit', async ({ page }) => {
   // Switch to test user first
   await page.goto('/login');
-  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
-  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  const hsUserContainer = page.locator(`text=${HS_USER}`).locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator(`button:has-text("${SELECT_BUTTON}")`);
   await selectButton.click();
   await page.goto('/login');
-  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  const hsDetailsButton = hsUserContainer.locator(`button:has-text("${DETAILS_BUTTON}")`);
   await hsDetailsButton.click();
-  await page.locator('text=test').locator('xpath=following-sibling::button').click();
-  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+  await page.locator(`text=${TEST_USER}`).locator('xpath=following-sibling::button').click();
+  await expect(page.locator(`nav[aria-label="Main"] span:has-text("${TEST_USER}")`).first()).toBeVisible();
 
   // Go to answers page
   await page.goto('/answers');
@@ -1028,14 +1040,14 @@ test('comment input character limit', async ({ page }) => {
 test('comment submission with valid length', async ({ page }) => {
   // Switch to test user first
   await page.goto('/login');
-  const hsUserContainer = page.locator('text=HS').locator('xpath=ancestor::li');
-  const selectButton = hsUserContainer.locator('button:has-text("選択")');
+  const hsUserContainer = page.locator(`text=${HS_USER}`).locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator(`button:has-text("${SELECT_BUTTON}")`);
   await selectButton.click();
   await page.goto('/login');
-  const hsDetailsButton = hsUserContainer.locator('button:has-text("詳細")');
+  const hsDetailsButton = hsUserContainer.locator(`button:has-text("${DETAILS_BUTTON}")`);
   await hsDetailsButton.click();
-  await page.locator('text=test').locator('xpath=following-sibling::button').click();
-  await expect(page.locator('nav[aria-label="Main"] span:has-text("test")').first()).toBeVisible();
+  await page.locator(`text=${TEST_USER}`).locator('xpath=following-sibling::button').click();
+  await expect(page.locator(`nav[aria-label="Main"] span:has-text("${TEST_USER}")`).first()).toBeVisible();
 
   // Go to answers page
   await page.goto('/answers');
