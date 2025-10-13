@@ -2,12 +2,12 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
-import { useMutationWithError } from '~/hooks/useMutationWithError';
+import { useMutationWithError } from '~/hooks/common/useMutationWithError';
 import { getUserFriendlyErrorMessage } from '~/lib/errors';
 
 // Mock useToast
 const mockToast = vi.fn();
-vi.mock('~/hooks/useToast', () => ({
+vi.mock('~/hooks/common/useToast', () => ({
   useToast: () => ({ toast: mockToast }),
 }));
 

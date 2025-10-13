@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useFetcher } from 'react-router';
 import { useEffect, useState } from 'react';
 import * as identityStorage from '~/lib/identityStorage';
-import { useIdentity } from '~/hooks/useIdentity';
+import { useIdentity } from '~/hooks/common/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';

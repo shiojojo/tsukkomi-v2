@@ -20,10 +20,10 @@ import { TOAST_SLATE, TOAST_BLUE } from '~/styles/commonStyles';
 import type { Route } from './+types/root';
 import './app.css';
 import ResponsiveNav from './components/layout/ResponsiveNav';
-import { useLoadingState } from './hooks/useLoadingState';
-import { useViewportHeight } from './hooks/useViewportHeight';
-import { useQueryClientConfig } from './hooks/useQueryClientConfig';
-import { useClientOnlyDebugInfo } from './hooks/useClientOnlyDebugInfo';
+import { useLoadingState } from './hooks/common/useLoadingState';
+import { useViewportHeight } from './hooks/common/useViewportHeight';
+import { useQueryClientConfig } from './hooks/common/useQueryClientConfig';
+import { useClientOnlyDebugInfo } from './hooks/common/useClientOnlyDebugInfo';
 
 export const links: Route.LinksFunction = () => [
   { rel: 'preconnect', href: 'https://fonts.googleapis.com' },

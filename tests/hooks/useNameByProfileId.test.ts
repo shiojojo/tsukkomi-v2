@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { useNameByProfileId } from '~/hooks/useNameByProfileId';
+import { useNameByProfileId } from '~/hooks/common/useNameByProfileId';
 import type { User } from '~/lib/schemas/user';
 
 describe('useNameByProfileId', () => {

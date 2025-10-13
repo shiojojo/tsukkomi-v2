@@ -1,29 +1,29 @@
 import { renderHook } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useAnswersPage } from '~/hooks/useAnswersPage';
+import { useAnswersPage } from '~/hooks/features/answers/useAnswersPage';
 
 // Mock dependencies
-vi.mock('~/hooks/useAnswerUserData', () => ({
+vi.mock('~/hooks/features/answers/useAnswerUserData', () => ({
   useAnswerUserData: vi.fn(() => ({
     userAnswerData: {},
     markFavorite: vi.fn(),
   })),
 }));
 
-vi.mock('~/hooks/useIdentity', () => ({
+vi.mock('~/hooks/common/useIdentity', () => ({
   useIdentity: vi.fn(() => ({
     effectiveId: 'test-user-id',
     effectiveName: 'Test User',
   })),
 }));
 
-vi.mock('~/hooks/useNameByProfileId', () => ({
+vi.mock('~/hooks/common/useNameByProfileId', () => ({
   useNameByProfileId: vi.fn(() => ({
     getNameByProfileId: vi.fn(() => 'Test User'),
   })),
 }));
 
-vi.mock('~/hooks/useFilters', () => ({
+vi.mock('~/hooks/common/useFilters', () => ({
   useFilters: vi.fn(() => ({
     filters: {
       q: '',
@@ -40,7 +40,7 @@ vi.mock('~/hooks/useFilters', () => ({
   })),
 }));
 
-vi.mock('~/hooks/useScrollReset', () => ({
+vi.mock('~/hooks/common/useScrollReset', () => ({
   useScrollReset: vi.fn(),
 }));
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import NumericVoteButtons from '~/components/common/NumericVoteButtons';
-import { useNumericVoteButtons } from '~/hooks/useNumericVoteButtons';
+import { useNumericVoteButtons } from '~/hooks/features/answers/useNumericVoteButtons';
 import type { Answer } from '~/lib/schemas/answer';
 import type { ReactNode } from 'react';
 

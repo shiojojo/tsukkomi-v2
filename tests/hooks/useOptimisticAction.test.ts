@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useOptimisticAction } from '~/hooks/useOptimisticAction';
+import { useOptimisticAction } from '~/hooks/common/useOptimisticAction';
 
 // useIdentity をモック
-vi.mock('~/hooks/useIdentity', () => ({
+vi.mock('~/hooks/common/useIdentity', () => ({
   useIdentity: vi.fn(),
 }));
 
@@ -12,7 +12,7 @@ vi.mock('react-router', () => ({
   useFetcher: vi.fn(),
 }));
 
-import { useIdentity } from '~/hooks/useIdentity';
+import { useIdentity } from '~/hooks/common/useIdentity';
 import { useFetcher } from 'react-router';
 
 describe('useOptimisticAction', () => {

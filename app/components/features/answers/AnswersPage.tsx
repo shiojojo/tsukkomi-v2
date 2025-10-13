@@ -1,4 +1,4 @@
-import { useAnswersPage } from '~/hooks/useAnswersPage';
+import { useAnswersPage } from '~/hooks/features/answers/useAnswersPage';
 import { FilterForm } from '~/components/forms/FilterForm';
 import { AnswersList } from '~/components/features/answers/AnswersList';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';

@@ -1,4 +1,4 @@
-import { useNumericVoteButtons } from '~/hooks/useNumericVoteButtons';
+import { useNumericVoteButtons } from '~/hooks/features/answers/useNumericVoteButtons';
 import { Button } from '~/components/ui/Button';
 
 export type NumericVoteButtonsProps =

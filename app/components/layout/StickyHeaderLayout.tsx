@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { useBrowserDetection } from '~/hooks/useBrowserDetection';
+import { useBrowserDetection } from '~/hooks/common/useBrowserDetection';
 
 /**
  * StickyHeaderLayout

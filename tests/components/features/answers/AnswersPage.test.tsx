@@ -1,9 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AnswersPage } from '~/components/features/answers/AnswersPage';
 
 // Mock the hooks
-vi.mock('~/hooks/useAnswersPage', () => ({
+vi.mock('~/hooks/features/answers/useAnswersPage', () => ({
   useAnswersPage: vi.fn(() => ({
     topicsById: {},
     commentsByAnswer: {},
@@ -80,6 +81,12 @@ vi.mock('~/components/features/topics/TopicOverviewCard', () => ({
 }));
 
 describe('AnswersPage', () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  });
+
   const mockData = {
     answers: [],
     total: 0,
@@ -99,7 +106,11 @@ describe('AnswersPage', () => {
   };
 
   it('renders correctly in all mode', () => {
-    render(<AnswersPage data={mockData} mode="all" />);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AnswersPage data={mockData} mode="all" />
+      </QueryClientProvider>
+    );
 
     expect(screen.getByTestId('filter-form')).toBeInTheDocument();
     expect(screen.getByTestId('answers-list')).toBeInTheDocument();
@@ -109,7 +120,14 @@ describe('AnswersPage', () => {
   it('renders correctly in topic mode with topic', () => {
     const mockTopic = { id: 1, title: 'Test Topic' };
     render(
-      <AnswersPage data={mockData} mode="topic" topicId="1" topic={mockTopic} />
+      <QueryClientProvider client={queryClient}>
+        <AnswersPage
+          data={mockData}
+          mode="topic"
+          topicId="1"
+          topic={mockTopic}
+        />
+      </QueryClientProvider>
     );
 
     expect(screen.getByTestId('filter-form')).toBeInTheDocument();
@@ -118,7 +136,11 @@ describe('AnswersPage', () => {
   });
 
   it('renders correctly in favorites mode', () => {
-    render(<AnswersPage data={mockData} mode="favorites" />);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AnswersPage data={mockData} mode="favorites" />
+      </QueryClientProvider>
+    );
 
     expect(screen.getByTestId('filter-form')).toBeInTheDocument();
     expect(screen.getByTestId('answers-list')).toBeInTheDocument();

@@ -1,6 +1,6 @@
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useFilters, type AnswersFilters, type TopicsFilters } from '~/hooks/useFilters';
+import { useFilters, type AnswersFilters, type TopicsFilters } from '~/hooks/common/useFilters';
 
 // Mock window.location
 const mockLocation = {

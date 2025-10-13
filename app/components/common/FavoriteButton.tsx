@@ -1,4 +1,4 @@
-import { useFavoriteButton } from '~/hooks/useFavoriteButton';
+import { useFavoriteButton } from '~/hooks/features/answers/useFavoriteButton';
 import { Button } from '~/components/ui/Button';
 
 export type FavoriteButtonProps =

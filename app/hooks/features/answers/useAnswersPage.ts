@@ -1,9 +1,9 @@
 import { useRef, useState, useEffect } from 'react';
 import { useAnswerUserData } from './useAnswerUserData';
-import { useIdentity } from './useIdentity';
-import { useNameByProfileId } from './useNameByProfileId';
-import { useFilters, type AnswersFilters } from './useFilters';
-import { useScrollReset } from './useScrollReset';
+import { useIdentity } from '../../common/useIdentity';
+import { useNameByProfileId } from '../../common/useNameByProfileId';
+import { useFilters, type AnswersFilters } from '../../common/useFilters';
+import { useScrollReset } from '../../common/useScrollReset';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { Comment } from '~/lib/schemas/comment';

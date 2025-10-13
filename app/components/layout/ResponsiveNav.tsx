@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router';
 import { useEffect, useRef } from 'react';
-import { useIdentity } from '~/hooks/useIdentity';
+import { useIdentity } from '~/hooks/common/useIdentity';
 
 /**
  * Responsive navigation component.

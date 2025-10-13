@@ -4,7 +4,7 @@ import { consumeToken } from '~/lib/rateLimiter';
 import { getItem, setItem, removeItem } from '~/lib/identityStorage';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import { useIdentity } from '~/hooks/useIdentity';
+import { useIdentity } from '~/hooks/common/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';

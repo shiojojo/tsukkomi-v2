@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useIdentity } from '~/hooks/useIdentity';
-import { useOptimisticAction } from '~/hooks/useOptimisticAction';
-import { useMutationWithError } from '~/hooks/useMutationWithError';
+import { useIdentity } from '~/hooks/common/useIdentity';
+import { useOptimisticAction } from '~/hooks/common/useOptimisticAction';
+import { useMutationWithError } from '~/hooks/common/useMutationWithError';
 
 export type UseFavoriteButtonProps = {
   answerId: number;

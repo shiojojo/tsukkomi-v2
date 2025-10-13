@@ -3,7 +3,7 @@ import { useLoaderData, Form, useNavigate } from 'react-router';
 import { useEffect } from 'react';
 import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
 import { AnswersPage } from '~/components/features/answers/AnswersPage';
-import { useIdentity } from '~/hooks/useIdentity';
+import { useIdentity } from '~/hooks/common/useIdentity';
 import { handleAnswerActions } from '~/lib/actionHandlers';
 import { Button } from '~/components/ui/Button';
 import { HEADER_BASE } from '~/styles/headerStyles';

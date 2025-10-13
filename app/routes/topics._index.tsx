@@ -4,7 +4,7 @@ import { Pagination } from '~/components/common/Pagination';
 import { FilterForm } from '~/components/forms/FilterForm';
 import { TopicCard } from '~/components/features/topics/TopicCard';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';
-import { useListPage } from '~/hooks/useListPage';
+import { useListPage } from '~/hooks/common/useListPage';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 import { createListLoader } from '~/lib/loaders';

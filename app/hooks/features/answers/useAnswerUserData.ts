@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { logger } from '~/lib/logger';
-import { useIdentity } from './useIdentity';
-import { useQueryWithError } from './useQueryWithError';
-import { useMutationWithError } from './useMutationWithError';
+import { useIdentity } from '../../common/useIdentity';
+import { useQueryWithError } from '../../common/useQueryWithError';
+import { useMutationWithError } from '../../common/useMutationWithError';
 
 export interface AnswerUserData {
   votes: Record<number, number>;

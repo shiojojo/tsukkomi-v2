@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
 import { getUserFriendlyErrorMessage } from '~/lib/errors';
-import { useToast } from '~/hooks/useToast';
+import { useToast } from '~/hooks/common/useToast';
 
 export function useQueryWithError<T>(
   key: string[],
