@@ -194,7 +194,7 @@ export default function MeRoute() {
   }
 
   return (
-    <div className="p-4 max-w-lg mx-auto">
+    <div className="p-4 max-w-lg mx-auto pb-24">
       <h1 className="text-xl font-bold mb-2">アカウント / サブユーザー</h1>
       <p className="text-sm text-gray-600 mb-4">
         サブユーザーの作成・削除・切替（開発用）
