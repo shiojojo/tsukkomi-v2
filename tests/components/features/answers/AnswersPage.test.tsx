@@ -48,12 +48,15 @@ vi.mock('~/components/layout/ListPageLayout', () => ({
   ListPageLayout: ({
     filters,
     list,
+    extraContent,
   }: {
     filters: React.ReactNode;
     list: React.ReactNode;
+    extraContent?: React.ReactNode;
   }) => (
     <div data-testid="list-page-layout">
       {filters}
+      {extraContent}
       {list}
     </div>
   ),

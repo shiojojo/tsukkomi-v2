@@ -63,6 +63,7 @@ describe('useMutationWithError', () => {
       expect(mockToast).toHaveBeenCalledWith({
         title: '成功',
         description: '操作が完了しました',
+        variant: 'success',
       });
     });
   });
