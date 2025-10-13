@@ -23,6 +23,7 @@
     "clsx": "^2.1.1",
     "csv-parse": "^6.1.0",
     "dotenv": "^17.2.2",
+    "framer-motion": "^12.23.24",
     "isbot": "^5.1.27",
     "lucide-react": "^0.545.0",
     "node-fetch": "^2.7.0",
