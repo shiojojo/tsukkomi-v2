@@ -107,7 +107,8 @@ export function AnswerActionCard({
               <div className="flex items-center gap-2">
                 <FavoriteSection answer={answer} />
                 <Button
-                  variant="secondary"
+                  variant="linkNoHover"
+                  style={{ color: 'hsl(var(--primary))' }}
                   type="button"
                   onClick={() => setOpen(prev => !prev)}
                   aria-expanded={open}

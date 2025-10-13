@@ -43,10 +43,12 @@ export function ListPageLayout({
   );
 
   return (
-    <StickyHeaderLayout header={header} contentRef={contentRef}>
-      {extraContent}
-      {list}
-      {pagination}
-    </StickyHeaderLayout>
+    <main id="main-content">
+      <StickyHeaderLayout header={header} contentRef={contentRef}>
+        {extraContent}
+        {list}
+        {pagination}
+      </StickyHeaderLayout>
+    </main>
   );
 }

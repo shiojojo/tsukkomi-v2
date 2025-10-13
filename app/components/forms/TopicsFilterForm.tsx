@@ -27,7 +27,7 @@ export function TopicsFilterForm(props: TopicsFilterProps) {
           onToDateChange={setToDate}
         />
         <div className="flex items-center gap-2">
-          <Button variant="smallSecondary" type="submit">
+          <Button variant="secondary" type="submit">
             検索
           </Button>
         </div>

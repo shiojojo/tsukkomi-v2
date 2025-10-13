@@ -92,7 +92,7 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
 
         <div className="flex items-center gap-2 flex-shrink-0">
           <Button
-            variant="smallSecondary"
+            variant="secondary"
             type="button"
             onClick={toggleAdvancedFilters}
           >
@@ -143,7 +143,6 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
               checked={hasComments}
               onChange={e => setHasComments(e.target.checked)}
               value="1"
-              className="w-4 h-4"
             />
             <span className="text-xs">has comments</span>
           </label>
@@ -160,7 +159,7 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
       )}
 
       <div className="flex items-center gap-2">
-        <Button variant="smallSecondary" type="submit">
+        <Button variant="secondary" type="submit">
           検索
         </Button>
       </div>

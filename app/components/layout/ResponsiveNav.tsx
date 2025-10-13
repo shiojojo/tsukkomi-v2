@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router';
 import { useEffect, useRef } from 'react';
 import { useIdentity } from '~/hooks/common/useIdentity';
+import { ThemeToggle } from '~/components/ui/ThemeToggle';
 
 /**
  * Responsive navigation component.
@@ -99,8 +100,9 @@ export default function ResponsiveNav() {
               <MobileUserButton />
             </li>
           </ul>
-          <div className="hidden md:flex items-center">
+          <div className="hidden md:flex items-center gap-4">
             <UserBadge />
+            <ThemeToggle />
           </div>
         </div>
       </div>

@@ -40,7 +40,6 @@ export function FavoriteButton(props: FavoriteButtonProps) {
   return (
     <Button
       variant="icon"
-      active={favorited}
       type="button"
       aria-pressed={favorited}
       onClick={handleToggle}

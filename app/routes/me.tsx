@@ -9,6 +9,7 @@ import { SubUserCreateSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
+import { useThemeStore } from '~/lib/store';
 
 /**
  * 概要: /me ページ - 開発向けにサブユーザーの作成 / 削除 / 切替 を提供する。
@@ -92,6 +93,24 @@ export default function MeRoute() {
     subId: currentSubUserId,
     subName: currentSubUserName,
   } = useIdentity();
+
+  const { theme, setTheme } = useThemeStore();
+
+  const toggleTheme = () => {
+    if (theme === 'light') {
+      setTheme('dark');
+    } else if (theme === 'dark') {
+      setTheme('system');
+    } else {
+      setTheme('light');
+    }
+  };
+
+  const getThemeLabel = () => {
+    if (theme === 'light') return 'ライト';
+    if (theme === 'dark') return 'ダーク';
+    return 'システム';
+  };
 
   // fetchers for mutate actions
   const add = useFetcher();
@@ -301,10 +320,15 @@ export default function MeRoute() {
         )}
       </section>
 
-      <div className="flex">
-        <Link to="/" className="text-gray-600">
-          ホームへ
-        </Link>
+      <div className="flex justify-between items-center">
+        <button
+          onClick={toggleTheme}
+          className="btn-inline flex items-center gap-2"
+          title={`テーマ切り替え (現在: ${getThemeLabel()})`}
+        >
+          {theme === 'light' ? '🌞' : theme === 'dark' ? '🌙' : '💻'}
+          <span className="text-sm">{getThemeLabel()}</span>
+        </button>
       </div>
     </div>
   );

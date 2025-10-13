@@ -23,7 +23,7 @@ export default function Home() {
   const latest: Topic | null = data?.latest ?? null;
 
   return (
-    <main className="p-4">
+    <main id="main-content" className="p-4">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-3xl font-extrabold mb-6">Tsukkomi — 今日のお題</h1>
 
