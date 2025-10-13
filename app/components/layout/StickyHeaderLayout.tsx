@@ -39,7 +39,7 @@ export default function StickyHeaderLayout({
             In that environment we let the page scroll normally and keep the header sticky
             instead of relying on an inner overflow container. */}
         <div
-          className="sticky"
+          className="sticky bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm"
           style={{
             top: 0,
             paddingTop: 'var(--app-header-height, 0px)',
@@ -77,7 +77,10 @@ export default function StickyHeaderLayout({
       className={`p-4 max-w-3xl mx-auto overflow-hidden overflow-x-hidden grid min-w-0 ${className}`}
     >
       {/* Header row (in normal flow) */}
-      <div style={{ paddingTop: 'var(--app-header-height, 0px)', zIndex: 30 }}>
+      <div
+        style={{ paddingTop: 'var(--app-header-height, 0px)', zIndex: 30 }}
+        className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm"
+      >
         {header}
       </div>
 

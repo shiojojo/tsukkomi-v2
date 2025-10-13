@@ -24,6 +24,7 @@ interface AnswersFilterProps {
   showAdvancedFilters: boolean;
   toggleAdvancedFilters: () => void;
   onSubmit?: () => void;
+  mode?: 'all' | 'topic' | 'favorites';
 }
 
 export function AnswersFilterForm(props: AnswersFilterProps) {
@@ -46,6 +47,7 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
     showAdvancedFilters,
     toggleAdvancedFilters,
     onSubmit,
+    mode,
   } = props;
 
   const { increment: incrementMinScore, decrement: decrementMinScore } =
@@ -66,7 +68,7 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
             onChange={e => setAuthorQuery(e.target.value)}
             className="form-select w-full text-sm"
           >
-            <option value="">全員</option>
+            <option value="">{mode === 'favorites' ? '回答' : '全員'}</option>
             {users.map(u => (
               <option key={u.id} value={u.name}>
                 {u.name}

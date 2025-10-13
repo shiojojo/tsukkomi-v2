@@ -74,6 +74,7 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
         showAdvancedFilters={showAdvancedFilters}
         toggleAdvancedFilters={toggleAdvancedFilters}
         onSubmit={() => toggleAdvancedFilters()}
+        mode={mode}
       />
       {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
     </div>

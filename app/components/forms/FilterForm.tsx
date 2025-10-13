@@ -25,6 +25,7 @@ interface AnswersFilterProps extends BaseFilterProps {
   showAdvancedFilters: boolean;
   toggleAdvancedFilters: () => void;
   onSubmit?: () => void;
+  mode?: 'all' | 'topic' | 'favorites';
 }
 
 interface TopicsFilterProps extends BaseFilterProps {
@@ -65,6 +66,7 @@ export function FilterForm(props: FilterFormProps) {
         showAdvancedFilters={showAdvancedFilters}
         toggleAdvancedFilters={toggleAdvancedFilters}
         onSubmit={onSubmit}
+        mode={props.mode}
       />
     );
   } else {
