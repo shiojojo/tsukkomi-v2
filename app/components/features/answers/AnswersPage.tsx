@@ -4,6 +4,8 @@ import { AnswersList } from '~/components/features/answers/AnswersList';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';
 import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
 import { TopicOverviewCard } from '~/components/features/topics/TopicOverviewCard';
+import { HEADER_BASE } from '~/styles/headerStyles';
+import type { ReactNode } from 'react';
 
 interface AnswersPageProps {
   data: {
@@ -108,24 +110,28 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
     />
   );
 
-  if (mode === 'all' || mode === 'favorites') {
-    return (
-      <ListPageLayout
-        headerTitle={mode === 'favorites' ? 'お気に入り' : '大喜利 - 回答一覧'}
-        filters={filtersComponent}
-        list={answersListComponent}
-        contentRef={answersContainerRef}
-      />
+  let headerTitle: string;
+  let extraContent: ReactNode = null;
+
+  if (mode === 'favorites') {
+    headerTitle = 'お気に入り';
+  } else if (mode === 'topic') {
+    headerTitle = `${topic?.id || 'トピック'} - 回答一覧`;
+    extraContent = topic && (
+      <TopicOverviewCard topic={topic} answerCount={total} />
     );
+  } else {
+    // mode === 'all'
+    headerTitle = '大喜利 - 回答一覧';
   }
 
   return (
-    <StickyHeaderLayout
-      header={filtersComponent}
+    <ListPageLayout
+      headerTitle={headerTitle}
+      filters={filtersComponent}
+      list={answersListComponent}
+      extraContent={extraContent}
       contentRef={answersContainerRef}
-    >
-      {topic && <TopicOverviewCard topic={topic} answerCount={total} />}
-      {answersListComponent}
-    </StickyHeaderLayout>
+    />
   );
 }

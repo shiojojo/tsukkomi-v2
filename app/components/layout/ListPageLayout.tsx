@@ -8,6 +8,7 @@ interface ListPageLayoutProps {
   list: ReactNode;
   pagination?: ReactNode;
   contentRef?: RefObject<HTMLDivElement | null>;
+  extraContent?: ReactNode;
 }
 
 /**
@@ -28,6 +29,7 @@ export function ListPageLayout({
   list,
   pagination,
   contentRef,
+  extraContent,
 }: ListPageLayoutProps) {
   const header = (
     <div className={`${HEADER_BASE}`}>
@@ -42,6 +44,7 @@ export function ListPageLayout({
 
   return (
     <StickyHeaderLayout header={header} contentRef={contentRef}>
+      {extraContent}
       {list}
       {pagination}
     </StickyHeaderLayout>
