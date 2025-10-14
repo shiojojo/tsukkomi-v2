@@ -58,16 +58,13 @@ export default function ResponsiveNav() {
     <nav
       ref={navRef}
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 bg-white/90 backdrop-blur-sm dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 md:fixed md:top-0 md:bottom-auto md:border-b md:h-16"
+      className="fixed inset-x-0 bottom-0 z-40 bg-white dark:bg-black border-t border-border md:fixed md:top-0 md:bottom-auto md:border-b md:h-16"
       role="navigation"
     >
       <div className="max-w-4xl mx-auto px-4 h-full">
         <div className="flex items-center justify-between md:gap-6 h-full">
           <div className="hidden md:flex items-center gap-4">
-            <NavLink
-              to="/"
-              className="font-semibold text-gray-800 dark:text-gray-100"
-            >
+            <NavLink to="/" className="font-semibold text-foreground">
               Tsukkomi V2
             </NavLink>
           </div>
@@ -86,9 +83,7 @@ export default function ResponsiveNav() {
                   end={to === '/'}
                   className={({ isActive }) =>
                     `group flex flex-col items-center justify-center gap-1 py-2 px-3 text-sm leading-none w-full md:w-auto md:flex-row md:items-center md:px-2 md:py-3 ` +
-                    (isActive
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-gray-700 dark:text-gray-200')
+                    (isActive ? 'text-primary' : 'text-muted-foreground')
                   }
                 >
                   <Icon className="w-5 h-5 stroke-current" />
@@ -116,13 +111,13 @@ function UserBadge() {
     return (
       <NavLink
         to="/me"
-        className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline"
+        className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
       >
         <span>
           {subName ? (
             <>
               {subName}
-              <span className="text-[10px] text-gray-500 ml-1">
+              <span className="text-[10px] text-muted-foreground ml-1">
                 ({mainName})
               </span>
             </>
@@ -134,7 +129,7 @@ function UserBadge() {
     );
   }
   return (
-    <NavLink to="/login" className="text-sm text-blue-600">
+    <NavLink to="/login" className="text-sm text-primary">
       ログイン
     </NavLink>
   );
@@ -146,9 +141,9 @@ function MobileUserButton() {
     return (
       <NavLink
         to="/me"
-        className="group flex flex-col items-center justify-center gap-1 py-2 px-3 text-sm leading-none w-full text-blue-600"
+        className="group flex flex-col items-center justify-center gap-1 py-2 px-3 text-sm leading-none w-full text-primary"
       >
-        <div className="max-w-[72px] px-2 h-6 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-700 text-[10px] font-medium text-blue-700 dark:text-white truncate">
+        <div className="max-w-[72px] px-2 h-6 flex items-center justify-center rounded-full bg-secondary text-[10px] font-medium text-secondary-foreground truncate">
           {subName ? subName : mainName}
         </div>
       </NavLink>
@@ -159,9 +154,7 @@ function MobileUserButton() {
       to="/login"
       className={({ isActive }) =>
         `group flex flex-col items-center justify-center gap-1 py-2 px-3 text-sm leading-none w-full ` +
-        (isActive
-          ? 'text-blue-600 dark:text-blue-400'
-          : 'text-gray-700 dark:text-gray-200')
+        (isActive ? 'text-primary' : 'text-muted-foreground')
       }
     >
       <svg

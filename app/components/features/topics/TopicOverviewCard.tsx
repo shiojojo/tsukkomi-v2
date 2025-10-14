@@ -26,7 +26,7 @@ export function TopicOverviewCard({
 
   return (
     <section className="px-4 pt-4" data-testid="topic-overview-card">
-      <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-white/90 dark:bg-gray-900/80 shadow-sm">
+      <div className="rounded-md border border-border bg-card shadow-sm">
         <div className="p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-1 font-semibold text-[11px] text-gray-600 dark:text-gray-200">
@@ -36,7 +36,7 @@ export function TopicOverviewCard({
               回答 {answerCount} 件
             </span>
           </div>
-          <h2 className="text-xl font-semibold leading-snug text-gray-900 dark:text-gray-100 break-words">
+          <h2 className="text-xl font-semibold leading-snug text-card-foreground break-words">
             {topic.title}
           </h2>
           {topic.image ? (

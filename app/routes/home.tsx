@@ -2,6 +2,7 @@ import type { Route } from './+types/home';
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
 import { TopicCard } from '~/components/features/topics/TopicCard';
+import { ListPageLayout } from '~/components/layout/ListPageLayout';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 
@@ -22,23 +23,23 @@ export default function Home() {
   const data = useLoaderData() as { latest: Topic | null };
   const latest: Topic | null = data?.latest ?? null;
 
-  return (
-    <main id="main-content" className="p-4">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-extrabold mb-6">Tsukkomi — 今日のお題</h1>
-
-        {latest ? (
-          <section className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 shadow-sm rounded-lg p-6">
-            <div>
-              <TopicCard topic={latest} />
-            </div>
-          </section>
-        ) : (
-          <div className="text-center text-gray-800 dark:text-gray-200">
-            お題がまだありません。
-          </div>
-        )}
+  const content = latest ? (
+    <section className="bg-card border border-border shadow-sm rounded-lg p-6">
+      <div>
+        <TopicCard topic={latest} />
       </div>
-    </main>
+    </section>
+  ) : (
+    <div className="text-center text-muted-foreground">
+      お題がまだありません。
+    </div>
+  );
+
+  return (
+    <ListPageLayout
+      headerTitle="Tsukkomi — 今日のお題"
+      filters={null}
+      list={content}
+    />
   );
 }

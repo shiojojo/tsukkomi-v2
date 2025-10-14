@@ -103,7 +103,7 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
 
       {/* Advanced filters: minScore, hasComments, date range */}
       {showAdvancedFilters && (
-        <div className="w-full flex flex-wrap gap-2 items-center border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+        <div className="w-full flex flex-wrap gap-2 items-center border-t border-border pt-2 mt-2">
           <div className="w-full">
             <SearchInput value={query} onChange={setQuery} />
           </div>

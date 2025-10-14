@@ -58,7 +58,7 @@ export function AnswerActionCard({
   })();
 
   return (
-    <li className="p-4 border rounded-md bg-white/80 dark:bg-gray-950/80">
+    <li className="p-4 border rounded-md bg-card/80">
       <div className="flex flex-col gap-4">
         <div>
           {topic ? (
@@ -91,8 +91,7 @@ export function AnswerActionCard({
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
               <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
-                Score:{' '}
-                <span className="text-gray-900 dark:text-gray-50">{score}</span>
+                Score: <span className="text-foreground">{score}</span>
               </div>
               {getNameByProfileId(answer.profileId) && (
                 <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -121,7 +120,7 @@ export function AnswerActionCard({
         </div>
 
         {open && (
-          <div className="pt-3 border-t border-gray-200 dark:border-gray-800 space-y-4">
+          <div className="pt-3 border-t border-border space-y-4">
             <VoteSection
               answer={answer}
               userAnswerData={userAnswerData}

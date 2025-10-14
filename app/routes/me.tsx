@@ -207,7 +207,6 @@ export default function MeRoute() {
             <li key={u.id} className="flex items-center justify-between">
               <div>
                 <div className="font-medium">{u.name}</div>
-                <div className="text-xs text-gray-500">{u.id}</div>
               </div>
               <div className="flex items-center gap-2">
                 {currentUserId === u.id ? (

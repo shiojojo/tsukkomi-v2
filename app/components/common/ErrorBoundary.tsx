@@ -96,7 +96,7 @@ function DefaultErrorFallback({
           </svg>
         </div>
 
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        <h1 className="text-xl font-semibold text-foreground mb-2">
           {message}
         </h1>
 

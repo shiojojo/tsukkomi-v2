@@ -132,7 +132,7 @@ export default function LoginRoute() {
   return (
     <div className="p-4 max-w-md mx-auto space-y-6">
       <header>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+        <h1 className="text-xl font-bold text-foreground mb-2">
           ログイン（開発用）
         </h1>
         <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -164,10 +164,7 @@ export default function LoginRoute() {
         <h2 className="text-sm font-semibold mb-2">メインユーザー一覧</h2>
         <ul className="space-y-3">
           {users.map(u => (
-            <li
-              key={u.id}
-              className="border rounded-md p-3 bg-white/70 dark:bg-gray-900/60"
-            >
+            <li key={u.id} className="border rounded-md p-3 bg-card/70">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex-1">
                   <div className="font-medium text-sm">{u.name}</div>

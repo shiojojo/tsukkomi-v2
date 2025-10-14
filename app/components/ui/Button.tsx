@@ -24,12 +24,12 @@ const buttonVariants = cva(
         control:
           'inline-flex items-center justify-center px-4 py-2 min-h-[44px] rounded-md text-sm font-medium border bg-primary text-primary-foreground border-primary hover:bg-primary/90',
         small:
-          'inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium border shadow-sm bg-transparent text-gray-800 border-gray-200 dark:bg-transparent dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700',
+          'inline-flex items-center justify-center px-2 py-1 rounded-md text-xs font-medium border shadow-sm bg-transparent text-foreground border-border hover:bg-accent hover:text-accent-foreground',
         smallSecondary:
           'inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border border-blue-200 bg-black text-white hover:bg-gray-800',
         tertiary: 'text-[10px] px-2 py-1 rounded bg-gray-200 dark:bg-gray-700',
         loadMore:
-          'px-4 py-2 rounded-md border bg-white disabled:opacity-50 mb-4',
+          'px-4 py-2 rounded-md border bg-background disabled:opacity-50 mb-4',
         icon: 'p-2 rounded-md hover:opacity-90',
       },
       size: {

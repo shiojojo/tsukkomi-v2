@@ -28,7 +28,7 @@ export function NotFoundPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-2xl font-semibold text-foreground mb-2">
             404 - ページが見つかりません
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -68,7 +68,7 @@ export function ServerErrorPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-2xl font-semibold text-foreground mb-2">
             500 - サーバーエラー
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -114,7 +114,7 @@ export function GenericErrorPage({
               />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-xl font-semibold text-foreground mb-2">
             {status} - {message}
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
