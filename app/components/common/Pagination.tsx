@@ -39,15 +39,19 @@ export function Pagination({
         <Link
           to={buildHref(Math.max(1, currentPage - 1))}
           aria-label="前のページ"
-          className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+          className={`px-4 py-2 rounded-md border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors ${
+            currentPage <= 1 ? 'opacity-50 pointer-events-none' : ''
+          }`}
         >
           前へ
         </Link>
-        <div className="text-sm">{`ページ ${currentPage} / ${pageCount}`}</div>
+        <div className="text-sm text-muted-foreground">{`ページ ${currentPage} / ${pageCount}`}</div>
         <Link
           to={buildHref(Math.min(pageCount, currentPage + 1))}
           aria-label="次のページ"
-          className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+          className={`px-4 py-2 rounded-md border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors ${
+            currentPage >= pageCount ? 'opacity-50 pointer-events-none' : ''
+          }`}
         >
           次へ
         </Link>
@@ -61,7 +65,9 @@ export function Pagination({
           <Link
             to={buildHref(Math.max(1, currentPage - 1))}
             aria-label="前のページ"
-            className={`px-3 py-2 rounded-md border ${currentPage <= 1 ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+            className={`px-4 py-2 rounded-md border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors ${
+              currentPage <= 1 ? 'opacity-50 pointer-events-none' : ''
+            }`}
           >
             前へ
           </Link>
@@ -71,11 +77,13 @@ export function Pagination({
               <>
                 <Link
                   to={buildHref(1)}
-                  className="px-2 py-1 rounded-md border bg-white"
+                  className="px-3 py-2 rounded-md border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
                   1
                 </Link>
-                {start > 2 && <span className="px-2">…</span>}
+                {start > 2 && (
+                  <span className="px-2 text-muted-foreground">…</span>
+                )}
               </>
             )}
 
@@ -85,7 +93,11 @@ export function Pagination({
                   key={p}
                   to={buildHref(p)}
                   aria-current={p === currentPage ? 'page' : undefined}
-                  className={`px-3 py-2 rounded-md border ${p === currentPage ? 'bg-blue-600 text-white' : 'bg-white'}`}
+                  className={`px-3 py-2 rounded-md border transition-all ${
+                    p === currentPage
+                      ? 'bg-primary text-primary-foreground border-primary shadow-md ring-2 ring-primary/20 font-semibold scale-105'
+                      : 'border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-sm'
+                  }`}
                 >
                   {p}
                 </Link>
@@ -94,10 +106,12 @@ export function Pagination({
 
             {end < pageCount && (
               <>
-                {end < pageCount - 1 && <span className="px-2">…</span>}
+                {end < pageCount - 1 && (
+                  <span className="px-2 text-muted-foreground">…</span>
+                )}
                 <Link
                   to={buildHref(pageCount)}
-                  className="px-2 py-1 rounded-md border bg-white"
+                  className="px-3 py-2 rounded-md border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
                   {pageCount}
                 </Link>
@@ -108,7 +122,9 @@ export function Pagination({
           <Link
             to={buildHref(Math.min(pageCount, currentPage + 1))}
             aria-label="次のページ"
-            className={`px-3 py-2 rounded-md border ${currentPage >= pageCount ? 'opacity-40 pointer-events-none' : 'bg-white'}`}
+            className={`px-4 py-2 rounded-md border border-border bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors ${
+              currentPage >= pageCount ? 'opacity-50 pointer-events-none' : ''
+            }`}
           >
             次へ
           </Link>
