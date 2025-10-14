@@ -10,6 +10,7 @@ import type { User, SubUser } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
 import { useThemeStore } from '~/lib/store';
+import { ListPageLayout } from '~/components/layout/ListPageLayout';
 
 /**
  * 概要: /me ページ - 開発向けにサブユーザーの作成 / 削除 / 切替 を提供する。
@@ -112,6 +113,12 @@ export default function MeRoute() {
     return 'システム';
   };
 
+  // hydration後のテーマ同期
+  const [isHydrated, setIsHydrated] = useState(false);
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
   // fetchers for mutate actions
   const add = useFetcher();
   const remove = useFetcher();
@@ -194,142 +201,164 @@ export default function MeRoute() {
   }
 
   return (
-    <div className="p-4 max-w-lg mx-auto pb-24">
-      <h1 className="text-xl font-bold mb-2">アカウント / サブユーザー</h1>
-      <p className="text-sm text-gray-600 mb-4">
-        サブユーザーの作成・削除・切替（開発用）
-      </p>
-
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold">メインアカウントを選択</h2>
-        <ul className="mt-2 space-y-2">
-          {users.map((u: User) => (
-            <li key={u.id} className="flex items-center justify-between">
-              <div>
-                <div className="font-medium">{u.name}</div>
-              </div>
-              <div className="flex items-center gap-2">
-                {currentUserId === u.id ? (
-                  <span className="text-xs text-green-600">選択中</span>
-                ) : (
-                  <button className="btn-inline" onClick={() => selectMain(u)}>
-                    選択
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* Current status / return to main when acting as sub-user (list-item style) */}
-      <section className="mb-6">
-        {currentSubUserId ? (
-          <ul className="mt-2">
-            <li className="flex items-center justify-between">
-              <div>
-                <div className="font-medium">{currentSubUserName}</div>
-                <div className="text-xs text-gray-500">
-                  メイン: {currentUserName}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="text-sm btn-inline" onClick={returnToMain}>
-                  サブユーザーを終了してメインに戻る
-                </button>
-              </div>
-            </li>
-          </ul>
-        ) : currentUserId ? (
-          <div className="text-xs text-gray-500">現在: {currentUserName}</div>
-        ) : null}
-      </section>
-
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold">サブユーザーを追加</h2>
-        {currentUserId ? (
-          <add.Form method="post" className="flex gap-2 mt-2">
-            <input type="hidden" name="intent" value="add-subuser" />
-            <input type="hidden" name="parentId" value={currentUserId ?? ''} />
-            <input
-              name="name"
-              className="form-input flex-1"
-              placeholder="サブユーザー名"
-            />
-            <button className="btn-inline" type="submit">
-              作成
-            </button>
-          </add.Form>
-        ) : (
-          <div className="text-xs text-gray-500 mt-2">
-            まずメインアカウントを選択してください。
-          </div>
-        )}
-      </section>
-
-      <section className="mb-6">
-        <h2 className="text-sm font-semibold">既存のサブユーザー</h2>
-        {currentUserId ? (
-          <ul className="mt-2 space-y-2">
-            {users.find(u => u.id === currentUserId)?.subUsers?.length ? (
-              users
-                .find(u => u.id === currentUserId)!
-                .subUsers!.map((s: SubUser) => (
-                  <li key={s.id} className="flex items-center justify-between">
-                    <div>{s.name}</div>
-                    <div className="flex items-center gap-2">
+    <ListPageLayout
+      headerTitle="アカウント / サブユーザー"
+      filters={
+        <p className="text-sm text-muted-foreground mb-4">
+          サブユーザーの作成・削除・切替（開発用）
+        </p>
+      }
+      list={
+        <div className="space-y-6">
+          <section>
+            <h2 className="text-sm font-semibold">メインアカウントを選択</h2>
+            <ul className="mt-2 space-y-2">
+              {users.map((u: User) => (
+                <li key={u.id} className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{u.name}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {currentUserId === u.id ? (
+                      <span className="text-xs text-green-600">選択中</span>
+                    ) : (
                       <button
-                        className="text-sm text-blue-600"
-                        onClick={() =>
-                          switchToSub(
-                            s,
-                            users.find(u => u.id === currentUserId)!
-                          )
-                        }
+                        className="btn-inline"
+                        onClick={() => selectMain(u)}
                       >
-                        切替
+                        選択
                       </button>
-                      <remove.Form method="post">
-                        <input
-                          type="hidden"
-                          name="intent"
-                          value="remove-subuser"
-                        />
-                        <input
-                          type="hidden"
-                          name="parentId"
-                          value={currentUserId ?? ''}
-                        />
-                        <input type="hidden" name="subId" value={s.id} />
-                        <Button variant="destructive">削除</Button>
-                      </remove.Form>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Current status / return to main when acting as sub-user (list-item style) */}
+          <section>
+            {currentSubUserId ? (
+              <ul className="mt-2">
+                <li className="flex items-center justify-between">
+                  <div>
+                    <div className="font-medium">{currentSubUserName}</div>
+                    <div className="text-xs text-muted-foreground">
+                      メイン: {currentUserName}
                     </div>
-                  </li>
-                ))
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="text-sm btn-inline"
+                      onClick={returnToMain}
+                    >
+                      サブユーザーを終了してメインに戻る
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            ) : currentUserId ? (
+              <div className="text-xs text-muted-foreground">
+                現在: {currentUserName}
+              </div>
+            ) : null}
+          </section>
+
+          <section>
+            <h2 className="text-sm font-semibold">サブユーザーを追加</h2>
+            {currentUserId ? (
+              <add.Form method="post" className="flex gap-2 mt-2">
+                <input type="hidden" name="intent" value="add-subuser" />
+                <input
+                  type="hidden"
+                  name="parentId"
+                  value={currentUserId ?? ''}
+                />
+                <input
+                  name="name"
+                  className="form-input flex-1"
+                  placeholder="サブユーザー名"
+                />
+                <button className="btn-inline" type="submit">
+                  作成
+                </button>
+              </add.Form>
             ) : (
-              <div className="text-xs text-gray-500">
-                サブユーザーがありません。
+              <div className="text-xs text-muted-foreground mt-2">
+                まずメインアカウントを選択してください。
               </div>
             )}
-          </ul>
-        ) : (
-          <div className="text-xs text-gray-500">
-            メインアカウントを選択してください。
-          </div>
-        )}
-      </section>
+          </section>
 
-      <div className="flex justify-between items-center">
-        <button
-          onClick={toggleTheme}
-          className="btn-inline flex items-center gap-2"
-          title={`テーマ切り替え (現在: ${getThemeLabel()})`}
-        >
-          {theme === 'light' ? '🌞' : theme === 'dark' ? '🌙' : '💻'}
-          <span className="text-sm">{getThemeLabel()}</span>
-        </button>
-      </div>
-    </div>
+          <section>
+            <h2 className="text-sm font-semibold">既存のサブユーザー</h2>
+            {currentUserId ? (
+              <ul className="mt-2 space-y-2">
+                {users.find(u => u.id === currentUserId)?.subUsers?.length ? (
+                  users
+                    .find(u => u.id === currentUserId)!
+                    .subUsers!.map((s: SubUser) => (
+                      <li
+                        key={s.id}
+                        className="flex items-center justify-between"
+                      >
+                        <div>{s.name}</div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="text-sm text-primary"
+                            onClick={() =>
+                              switchToSub(
+                                s,
+                                users.find(u => u.id === currentUserId)!
+                              )
+                            }
+                          >
+                            切替
+                          </button>
+                          <remove.Form method="post">
+                            <input
+                              type="hidden"
+                              name="intent"
+                              value="remove-subuser"
+                            />
+                            <input
+                              type="hidden"
+                              name="parentId"
+                              value={currentUserId ?? ''}
+                            />
+                            <input type="hidden" name="subId" value={s.id} />
+                            <Button variant="destructive">削除</Button>
+                          </remove.Form>
+                        </div>
+                      </li>
+                    ))
+                ) : (
+                  <div className="text-xs text-muted-foreground">
+                    サブユーザーがありません。
+                  </div>
+                )}
+              </ul>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                メインアカウントを選択してください。
+              </div>
+            )}
+          </section>
+
+          <div className="flex justify-between items-center pt-4 border-t">
+            {isHydrated && (
+              <button
+                onClick={toggleTheme}
+                className="btn-inline flex items-center gap-2"
+                title={`テーマ切り替え (現在: ${getThemeLabel()})`}
+              >
+                {theme === 'light' ? '🌞' : theme === 'dark' ? '🌙' : '💻'}
+                <span className="text-sm">{getThemeLabel()}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      }
+    />
   );
 }
 
