@@ -2,8 +2,6 @@ import { Link } from 'react-router';
 import { Button } from '~/components/ui/Button';
 import {
   ERROR_PAGE_CONTAINER,
-  BUTTON_PRIMARY,
-  BUTTON_SECONDARY,
   ICON_GRAY,
   ICON_RED,
   PAGE_CONTAINER,
