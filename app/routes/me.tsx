@@ -145,10 +145,9 @@ export default function MeRoute() {
         if (parent) setItem('currentUserName', parent.name ?? '');
         setItem('currentSubUserId', sub.id);
         setItem('currentSubUserName', sub.name);
-        // refresh() is not needed as storage event will trigger update
+        // Trigger identity change event instead of reload
+        window.dispatchEvent(new Event('identity-change'));
       } catch {}
-      // reload to reflect updated server-side mock state
-      window.location.reload();
     }
   }, [add.state, add.data]);
 
@@ -161,9 +160,9 @@ export default function MeRoute() {
           removeItem('currentSubUserId');
           removeItem('currentSubUserName');
         }
-        // refresh() is not needed as storage event will trigger update
+        // Trigger identity change event instead of reload
+        window.dispatchEvent(new Event('identity-change'));
       } catch {}
-      window.location.reload();
     }
   }, [remove.state, remove.data]);
 
@@ -174,9 +173,9 @@ export default function MeRoute() {
       // clear any sub selection
       removeItem('currentSubUserId');
       removeItem('currentSubUserName');
-      // refresh() is not needed as storage event will trigger update
+      // Trigger identity change event instead of reload
+      window.dispatchEvent(new Event('identity-change'));
     } catch {}
-    window.location.reload();
   }
 
   function switchToSub(sub: SubUser, parent: User) {
@@ -185,9 +184,9 @@ export default function MeRoute() {
       setItem('currentUserName', parent.name ?? '');
       setItem('currentSubUserId', sub.id);
       setItem('currentSubUserName', sub.name);
-      // refresh() is not needed as storage event will trigger update
+      // Trigger identity change event instead of reload
+      window.dispatchEvent(new Event('identity-change'));
     } catch {}
-    window.location.reload();
   }
 
   // End using sub-user and return to main user (clear sub selection)
@@ -195,9 +194,9 @@ export default function MeRoute() {
     try {
       removeItem('currentSubUserId');
       removeItem('currentSubUserName');
-      // refresh() is not needed as storage event will trigger update
+      // Trigger identity change event instead of reload
+      window.dispatchEvent(new Event('identity-change'));
     } catch {}
-    window.location.reload();
   }
 
   return (
