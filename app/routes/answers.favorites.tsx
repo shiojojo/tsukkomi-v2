@@ -8,6 +8,10 @@ import { handleAnswerActions } from '~/lib/actionHandlers';
 import { Button } from '~/components/ui/Button';
 import { HEADER_BASE } from '~/styles/headerStyles';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
+import type { Answer } from '~/lib/schemas/answer';
+import type { Topic } from '~/lib/schemas/topic';
+import type { Comment } from '~/lib/schemas/comment';
+import type { User } from '~/lib/schemas/user';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -49,7 +53,7 @@ export async function action(args: ActionFunctionArgs) {
 
 export default function FavoriteAnswersRoute() {
   const data = useLoaderData() as {
-    answers: any[];
+    answers: Answer[];
     total: number;
     page: number;
     pageSize: number;
@@ -60,9 +64,9 @@ export default function FavoriteAnswersRoute() {
     hasComments: boolean;
     fromDate: string;
     toDate: string;
-    topicsById: Record<string, any>;
-    commentsByAnswer: Record<string, any[]>;
-    users: any[];
+    topicsById: Record<string, Topic>;
+    commentsByAnswer: Record<string, Comment[]>;
+    users: User[];
     requiresProfileId: boolean;
     profileId?: string;
   };

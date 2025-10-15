@@ -2,6 +2,15 @@ import { CommentSchema } from '~/lib/schemas/comment';
 import type { Comment } from '~/lib/schemas/comment';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 
+// Database row type for comments
+interface DatabaseCommentRow {
+  id: number;
+  answer_id: number;
+  text: string;
+  profile_id: string;
+  created_at: string;
+}
+
 export async function getCommentsByAnswer(answerId: string | number): Promise<Comment[]> {
   // Delegate to getCommentsForAnswers to avoid duplicated query/mapping logic
   const map = await getCommentsForAnswers([answerId]);
@@ -35,16 +44,16 @@ export async function getCommentsForAnswers(
 
   // helper: normalize raw postgrest row into Comment
   // Note: we no longer resolve profile names here. Return profile id only.
-  const mapRaw = (c: any) => ({
+  const mapRaw = (c: DatabaseCommentRow) => ({
     id: typeof c.id === 'string' ? Number(c.id) : c.id,
-    answerId: c.answer_id ?? c.answerId,
+    answerId: c.answer_id,
     text: c.text,
-  profileId: c.profile_id ?? c.profileId,
-    created_at: c.created_at ?? c.createdAt,
+    profileId: c.profile_id ?? undefined,
+    created_at: c.created_at,
   });
 
   const rows = (data ?? []).map(mapRaw);
-  const validated = CommentSchema.array().parse(rows as any);
+  const validated = CommentSchema.array().parse(rows as unknown);
   for (const r of validated) {
     const key = String(r.answerId);
     result[key] = result[key] ?? [];

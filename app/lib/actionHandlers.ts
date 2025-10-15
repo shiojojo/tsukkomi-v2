@@ -2,6 +2,11 @@ import type { ActionFunctionArgs } from 'react-router';
 import { consumeToken } from '~/lib/rateLimiter';
 import { logger } from '~/lib/logger';
 
+// Extend globalThis for instrumentation
+declare global {
+  var __answersActionLastLog: number | undefined;
+}
+
 /**
  * 概要: 回答関連アクション（お気に入り  const { addComment } = await import('~/lib/db');
   try {
@@ -28,16 +33,17 @@ export async function handleAnswerActions({ request }: ActionFunctionArgs) {
   try {
     const anyKey = Array.from(form.keys())[0];
     const now = Date.now();
-    (globalThis as any).__answersActionLastLog =
-      (globalThis as any).__answersActionLastLog || 0;
-    if (now - (globalThis as any).__answersActionLastLog > 2000) {
-      (globalThis as any).__answersActionLastLog = now;
+    globalThis.__answersActionLastLog = globalThis.__answersActionLastLog || 0;
+    if (now - globalThis.__answersActionLastLog > 2000) {
+      globalThis.__answersActionLastLog = now;
       logger.debug(
         'answers.action inbound keys',
         anyKey ? [...form.keys()] : []
       );
     }
-  } catch {}
+  } catch {
+    // Ignore instrumentation errors
+  }
 
   const op = form.get('op') ? String(form.get('op')) : undefined;
   const answerIdRaw = form.get('answerId');
@@ -68,9 +74,13 @@ export async function handleAnswerActions({ request }: ActionFunctionArgs) {
           request.headers.get('x-forwarded-for') ||
           request.headers.get('x-real-ip');
         if (hdr) rateKey = `ip:${String(hdr).split(',')[0].trim()}`;
-      } catch {}
+      } catch {
+        // Ignore header parsing errors
+      }
     }
-  } catch {}
+  } catch {
+    // Ignore rate key setup errors
+  }
   if (!consumeToken(rateKey, 1)) {
     throw new Response(
       JSON.stringify({ ok: false, error: 'Too Many Requests', rateKey }),
@@ -110,12 +120,14 @@ async function handleToggleFavorite(form: FormData) {
   try {
     const key = `toggle:${String(profileId)}:${String(answerId)}`;
     const now = Date.now();
-    const prev = (_recentPostGuard as Map<string, number>).get(key) ?? 0;
+    const prev = _recentPostGuard.get(key) ?? 0;
     if (now - prev < 800) {
       return Response.json({ ok: true, deduped: true });
     }
-    (_recentPostGuard as Map<string, number>).set(key, now);
-  } catch {}
+    _recentPostGuard.set(key, now);
+  } catch {
+    // Ignore duplicate suppression errors
+  }
 
   if (!answerId || !profileId) {
     return new Response('Invalid', { status: 400 });
@@ -128,9 +140,9 @@ async function handleToggleFavorite(form: FormData) {
       profileId,
     });
     return Response.json(res);
-  } catch (e: any) {
-    logger.error('toggleFavorite failed', String(e?.message ?? e));
-    throw Response.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
+  } catch (e: unknown) {
+    logger.error('toggleFavorite failed', String((e as Error)?.message ?? e));
+    throw Response.json({ ok: false, error: String((e as Error)?.message ?? e) }, { status: 500 });
   }
 }
 
@@ -144,12 +156,14 @@ async function handleFavoriteStatus(form: FormData) {
   try {
     const key = `status:${String(profileId)}:${String(answerId)}`;
     const now = Date.now();
-    const prev = (_recentPostGuard as Map<string, number>).get(key) ?? 0;
+    const prev = _recentPostGuard.get(key) ?? 0;
     if (now - prev < 800) {
       return Response.json({ favorited: false, deduped: true });
     }
-    (_recentPostGuard as Map<string, number>).set(key, now);
-  } catch {}
+    _recentPostGuard.set(key, now);
+  } catch {
+    // Ignore duplicate suppression errors
+  }
 
   if (!answerId || !profileId) {
     throw new Response('Invalid', { status: 400 });
@@ -160,8 +174,8 @@ async function handleFavoriteStatus(form: FormData) {
     const list = await getFavoritesForProfile(profileId, [Number(answerId)]);
     const favorited = (list || []).map(Number).includes(Number(answerId));
     return Response.json({ favorited });
-  } catch (e: any) {
-    throw Response.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
+  } catch (e: unknown) {
+    throw Response.json({ ok: false, error: String((e as Error)?.message ?? e) }, { status: 500 });
   }
 }
 
@@ -183,9 +197,9 @@ async function handleVote(form: FormData) {
       userId,
     });
     return Response.json({ answer: updated });
-  } catch (e: any) {
+  } catch (e: unknown) {
     throw new Response(
-      JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
+      JSON.stringify({ ok: false, error: String((e as Error)?.message ?? e) }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
@@ -213,10 +227,10 @@ async function handleAddComment(form: FormData) {
       profileId,
     });
     return Response.json({ comment });
-  } catch (e: any) {
-    logger.error('addComment failed', String(e?.message ?? e));
+  } catch (e: unknown) {
+    logger.error('addComment failed', String((e as Error)?.message ?? e));
     return new Response(
-      JSON.stringify({ ok: false, error: String(e?.message ?? e) }),
+      JSON.stringify({ ok: false, error: String((e as Error)?.message ?? e) }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

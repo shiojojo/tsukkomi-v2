@@ -39,17 +39,28 @@ export default function ResponsiveNav() {
     // media query change listener
     if (typeof mq.addEventListener === 'function') {
       mq.addEventListener('change', update);
-    } else if (typeof (mq as any).addListener === 'function') {
+    } else if (
+      typeof (mq as unknown as { addListener?: (listener: () => void) => void })
+        .addListener === 'function'
+    ) {
       // older browsers
-      (mq as any).addListener(update);
+      (
+        mq as unknown as { addListener: (listener: () => void) => void }
+      ).addListener(update);
     }
 
     return () => {
       window.removeEventListener('resize', update);
       if (typeof mq.removeEventListener === 'function') {
         mq.removeEventListener('change', update);
-      } else if (typeof (mq as any).removeListener === 'function') {
-        (mq as any).removeListener(update);
+      } else if (
+        typeof (
+          mq as unknown as { removeListener?: (listener: () => void) => void }
+        ).removeListener === 'function'
+      ) {
+        (
+          mq as unknown as { removeListener: (listener: () => void) => void }
+        ).removeListener(update);
       }
     };
   }, [navRef]);

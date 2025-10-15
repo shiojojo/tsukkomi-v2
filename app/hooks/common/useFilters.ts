@@ -25,7 +25,7 @@ export type Filters = AnswersFilters | TopicsFilters;
  * @param useUrlInit URLから初期化するかどうか（デフォルト: true）
  * @returns フィルタ状態と更新関数
  */
-export function useFilters<T extends Record<string, any>>(
+export function useFilters<T extends Record<string, unknown>>(
   initialValues: T,
   urlKeys: Record<keyof T, string>,
   useUrlInit: boolean = true

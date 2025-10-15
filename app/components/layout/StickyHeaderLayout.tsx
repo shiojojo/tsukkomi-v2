@@ -141,14 +141,16 @@ export default function StickyHeaderLayout({
       <div
         ref={contentRef}
         className="mt-2 overflow-auto pb-20 sm:pb-28 min-w-0"
-        style={{
-          minHeight: 0,
-          paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)',
-          // Contain overscroll so the outer document doesn't start scrolling
-          // when the inner content is at its edges (helps on iOS Safari)
-          overscrollBehavior: 'contain' as any,
-          WebkitOverflowScrolling: 'touch' as any,
-        }}
+        style={
+          {
+            minHeight: 0,
+            paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)',
+            // Contain overscroll so the outer document doesn't start scrolling
+            // when the inner content is at its edges (helps on iOS Safari)
+            overscrollBehavior: 'contain',
+            WebkitOverflowScrolling: 'touch',
+          } as React.CSSProperties
+        }
       >
         {children}
       </div>

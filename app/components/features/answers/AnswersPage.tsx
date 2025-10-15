@@ -4,10 +4,14 @@ import { AnswersList } from '~/components/features/answers/AnswersList';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';
 import { TopicOverviewCard } from '~/components/features/topics/TopicOverviewCard';
 import type { ReactNode } from 'react';
+import type { Answer } from '~/lib/schemas/answer';
+import type { Comment } from '~/lib/schemas/comment';
+import type { Topic } from '~/lib/schemas/topic';
+import type { User } from '~/lib/schemas/user';
 
 interface AnswersPageProps {
   data: {
-    answers: any[];
+    answers: Answer[];
     total: number;
     page: number;
     pageSize: number;
@@ -18,14 +22,14 @@ interface AnswersPageProps {
     hasComments: boolean;
     fromDate: string;
     toDate: string;
-    topicsById: Record<string, any>;
-    commentsByAnswer: Record<string, any[]>;
-    users: any[];
+    topicsById: Record<string, Topic>;
+    commentsByAnswer: Record<string, Comment[]>;
+    users: User[];
     profileId?: string;
   };
   mode: 'all' | 'topic' | 'favorites';
   topicId?: string;
-  topic?: any;
+  topic?: Topic;
 }
 
 export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {

@@ -1,12 +1,22 @@
 import { FavoriteSchema } from '~/lib/schemas/favorite';
 import { AnswerSchema } from '~/lib/schemas/answer';
 import type { Answer } from '~/lib/schemas/answer';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 import { DEFAULT_PAGE_SIZE } from '../constants';
 
+// Database row types for type safety
+interface DatabaseAnswerRow {
+  id: number;
+  text: string;
+  profile_id: string | null;
+  topic_id: number | null;
+  created_at: string;
+}
+
 async function getVotesByForAnswers(
   answerIds: Array<number | string>,
-  client: any = supabase
+  client: SupabaseClient = supabase
 ): Promise<Record<number, Record<string, number>>> {
   const numericIds = Array.from(
     new Set(
@@ -119,7 +129,7 @@ export async function getFavoritesForProfile(profileId: string, answerIds?: Arra
   if (answerIds && answerIds.length) q = q.in('answer_id', answerIds.map((v) => Number(v)).filter(Boolean));
   const { data, error } = await q;
   if (error) throw error;
-  return (data ?? []).map((r: any) => Number(r.answer_id));
+  return (data ?? []).map((r: { answer_id: number }) => Number(r.answer_id));
 }
 
 /**
@@ -148,7 +158,7 @@ export async function getFavoriteAnswersForProfile(profileId: string, opts?: { p
     .range((page - 1) * pageSize, page * pageSize - 1);
   if (favError) throw favError;
 
-  const orderedIds = (favRows ?? []).map((row: any) => Number(row.answer_id)).filter(Number.isFinite);
+  const orderedIds = (favRows ?? []).map((row: { answer_id: number }) => Number(row.answer_id)).filter(Number.isFinite);
   if (!orderedIds.length) return { answers: [], total: count ?? 0 };
 
   const idOrder = new Map<number, number>();
@@ -163,12 +173,12 @@ export async function getFavoriteAnswersForProfile(profileId: string, opts?: { p
     .in('id', uniqueIds);
   if (answerErr) throw answerErr;
 
-  const answers = (answerRows ?? []).map((a: any) => ({
+  const answers = (answerRows ?? []).map((a: DatabaseAnswerRow) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
     profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
-    created_at: a.created_at ?? a.createdAt,
+    created_at: a.created_at,
   }));
 
   const ids = answers.map((a) => Number(a.id)).filter(Number.isFinite);
@@ -203,5 +213,5 @@ export async function getFavoriteAnswersForProfile(profileId: string, opts?: { p
       return ai - bi;
     });
 
-  return { answers: AnswerSchema.array().parse(normalized as any), total: count ?? 0 };
+  return { answers: AnswerSchema.array().parse(normalized as unknown), total: count ?? 0 };
 }

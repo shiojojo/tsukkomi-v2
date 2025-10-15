@@ -110,7 +110,7 @@ export async function getAnswers(): Promise<Answer[]> {
     votesBy: votesByMap[a.id] ?? {},
   }));
 
-  return AnswerSchema.array().parse(normalized as any);
+  return AnswerSchema.array().parse(normalized as unknown);
 }
 
 /**
@@ -274,7 +274,7 @@ export async function getAnswersByTopic(topicId: string | number, profileId?: st
     created_at: a.created_at,
   }));
 
-  const ids = answers.map((r: any) => Number(r.id)).filter(Boolean);
+  const ids = answers.map((r: PartialAnswer) => Number(r.id)).filter(Boolean);
   const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
   if (ids.length) {
     const { data: countsData, error: countsErr } = await supabase
@@ -316,14 +316,14 @@ export async function getAnswersByTopic(topicId: string | number, profileId?: st
 
   const votesByMap = await getVotesByForAnswers(ids);
 
-  const normalized = answers.map((a: any) => ({
+  const normalized = answers.map((a: PartialAnswer) => ({
     ...a,
     votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
     votesBy: votesByMap[a.id] ?? {},
     favorited: profileId ? userFavorites.has(a.id) : undefined,
   }));
 
-  return AnswerSchema.array().parse(normalized as any);
+  return AnswerSchema.array().parse(normalized as unknown);
 }
 
 /**
@@ -401,7 +401,7 @@ async function normalizeAnswers(
     favorited: profileId ? userFavorites.has(a.id) : undefined,
   }));
 
-  return AnswerSchema.array().parse(normalizedRows as any);
+  return AnswerSchema.array().parse(normalizedRows as unknown);
 }
 
 export async function getAnswersPageByTopic({
@@ -525,17 +525,15 @@ export async function voteAnswer({
     countsPromise,
   ]);
 
-  const upsertError = (upsertRes as any).error;
+  const upsertError = (upsertRes as { error: unknown }).error;
   if (upsertError) throw upsertError;
 
-  const answerRow = (answerRes as any).data;
+  const answerRow = (answerRes as { data: DatabaseAnswerRow | null }).data;
   if (!answerRow) {
     throw new Error(`voteAnswer: answer ${numericAnswerId} not found`);
   }
 
-  let counts = (countsRes as any).data as
-    | { level1: number; level2: number; level3: number }
-    | null;
+  let counts = (countsRes as { data: { level1: number; level2: number; level3: number } | null }).data;
 
   if (!counts) {
     const { data: agg, error: aggErr } = await supabase
@@ -581,5 +579,5 @@ export async function voteAnswer({
     votesBy: votesByObj,
   } as const;
 
-  return AnswerSchema.parse(result as any);
+  return AnswerSchema.parse(result as unknown);
 }

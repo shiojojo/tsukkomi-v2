@@ -81,7 +81,9 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
           <select
             name="sortBy"
             value={sortBy}
-            onChange={e => setSortBy(e.target.value as any)}
+            onChange={e =>
+              setSortBy(e.target.value as 'newest' | 'oldest' | 'scoreDesc')
+            }
             className="form-select w-full text-sm"
           >
             <option value="newest">新着</option>

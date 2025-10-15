@@ -12,6 +12,8 @@ export interface CommonFilterParams {
   toDate?: string;
 }
 
+export type SortBy = 'newest' | 'oldest' | 'scoreDesc';
+
 export function parsePaginationParams(request: LoaderFunctionArgs['request']): PaginationParams {
   const url = new URL(request.url);
   const params = url.searchParams;
@@ -46,7 +48,7 @@ export function parseAnswersFilterParams(request: LoaderFunctionArgs['request'])
   return {
     ...common,
     author: params.get('authorName') ?? undefined,
-    sortBy: (params.get('sortBy') as any) ?? 'newest',
+    sortBy: (params.get('sortBy') as SortBy) ?? 'newest',
     minScore: params.get('minScore') ? Number(params.get('minScore')) : undefined,
     hasComments: params.get('hasComments') === '1' || params.get('hasComments') === 'true',
   };

@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, ensureConnection } from '../supabase';
 import { getFavoritesForProfile } from './favorites';
 
@@ -34,7 +35,7 @@ export async function getProfileAnswerData(profileId: string, answerIds: Array<n
 
 export async function getVotesByForAnswers(
   answerIds: Array<number | string>,
-  client: any = supabase
+  client: SupabaseClient = supabase
 ): Promise<Record<number, Record<string, number>>> {
   const numericIds = Array.from(
     new Set(

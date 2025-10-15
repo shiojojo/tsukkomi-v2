@@ -11,7 +11,7 @@ import type { Answer } from '~/lib/schemas/answer';
  * Environment: サーバーサイドのみ。db.ts 関数を呼び出す。
  * Errors: DBエラー時は throw（呼び出し側 loader が捕捉）。
  */
-export async function createListLoader(entityType: 'topics' | 'answers', request: Request, extraParams?: Record<string, any>): Promise<Response> {
+export async function createListLoader(entityType: 'topics' | 'answers', request: Request, extraParams?: Record<string, unknown>): Promise<Response> {
   const { page, pageSize } = parsePaginationParams(request);
   const filters = parseFilterParams(request, entityType);
 
@@ -30,7 +30,7 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
  * Environment: サーバーサイドのみ。
  * Errors: DBエラー時は throw。
  */
-export async function createAnswersListLoader(request: Request, extraParams?: Record<string, any>): Promise<Response> {
+export async function createAnswersListLoader(request: Request, extraParams?: Record<string, unknown>): Promise<Response> {
   const url = new URL(request.url);
   const profileIdQuery = url.searchParams.get('profileId') ?? undefined;
 

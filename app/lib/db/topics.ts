@@ -3,6 +3,14 @@ import type { Topic } from '~/lib/schemas/topic';
 import { supabase, ensureConnection } from '../supabase';
 import { ServerError } from '../errors';
 
+// Database row type for topics
+interface DatabaseTopicRow {
+  id: number;
+  title: string;
+  created_at: string;
+  image: string | null;
+}
+
 export async function getTopics(): Promise<Topic[]> {
   await ensureConnection(); // 接続失敗時は throw
 
@@ -53,8 +61,8 @@ export async function getTopicsPaged(opts: {
   const offset = (page - 1) * pageSize;
   const { data, error, count } = await query.range(offset, offset + pageSize - 1);
   if (error) throw error;
-  const rows = (data ?? []).map((r: any) => ({ id: r.id, title: r.title, created_at: r.created_at ?? r.createdAt, image: r.image }));
-  return { topics: TopicSchema.array().parse(rows as any), total: Number(count ?? rows.length) };
+  const rows = (data ?? []).map((r: DatabaseTopicRow) => ({ id: r.id, title: r.title, created_at: r.created_at, image: r.image }));
+  return { topics: TopicSchema.array().parse(rows as unknown), total: Number(count ?? rows.length) };
 }
 
 /**
@@ -79,7 +87,7 @@ export async function getLatestTopic(): Promise<Topic | null> {
   if (error) throw new ServerError(`Failed to fetch latest topic: ${error.message}`);
 
   const row = (data ?? [])[0] ?? null;
-  return row ? TopicSchema.parse(row as any) : null;
+  return row ? TopicSchema.parse(row as unknown) : null;
 }
 
 export async function getTopic(id: string | number): Promise<Topic | undefined> {

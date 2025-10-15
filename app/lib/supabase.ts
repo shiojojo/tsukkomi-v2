@@ -13,7 +13,7 @@ const SUPABASE_PUBLIC_KEY =
 
 // Secret / service role key must never be bundled into client code. Create server client only when
 // running in a server environment (SSR / Node). Prefer process.env on server to avoid leakage.
-const isServer = typeof window === 'undefined' || Boolean((import.meta as any).env?.SSR);
+const isServer = typeof window === 'undefined' || Boolean((import.meta as { env?: { SSR?: boolean } }).env?.SSR);
 const SUPABASE_SECRET_KEY = isServer
   ? (process.env.VITE_SUPABASE_SECRET_KEY ?? process.env.VITE_SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SECRET_KEY ?? import.meta.env.VITE_SUPABASE_SECRET_KEY ?? '')
   : '';
@@ -58,9 +58,9 @@ export async function ensureConnection(): Promise<void> {
       // lightweight probe: attempt to select 1 row from profiles (smallest safe table)
       const { error } = await clientToProbe.from('profiles').select('id').limit(1);
       if (error) throw error;
-    } catch (e: any) {
+    } catch (e: unknown) {
       // normalize error shape for caller
-      throw new Error(`Supabase connection check failed: ${e?.message ?? String(e)}`);
+      throw new Error(`Supabase connection check failed: ${(e as Error)?.message ?? String(e)}`);
     }
   })();
 

@@ -11,7 +11,7 @@ import { useIdentity } from './useIdentity';
  * Environment: ブラウザ専用（window.location 使用）。SSR では非アクティブ。
  * Errors: 未ログイン時はリダイレクト。fetcher のエラーは呼び出し側で処理。
  */
-export function useOptimisticAction<T extends Record<string, any>>(
+export function useOptimisticAction<T extends Record<string, unknown>>(
   actionPath: string,
   loginRedirectPath: string = '/login'
 ) {

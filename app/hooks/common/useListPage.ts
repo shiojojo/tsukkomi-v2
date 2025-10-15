@@ -1,5 +1,7 @@
 import { useFilters, type TopicsFilters, type AnswersFilters } from './useFilters';
 import { useScrollReset } from './useScrollReset';
+import type { Topic } from '~/lib/schemas/topic';
+import type { Answer } from '~/lib/schemas/answer';
 
 type FilterType = 'topics' | 'answers';
 
@@ -13,14 +15,14 @@ interface BaseLoaderData {
 }
 
 interface TopicsLoaderData extends BaseLoaderData {
-  topics: any[];
+  topics: Topic[];
 }
 
 interface AnswersLoaderData extends BaseLoaderData {
-  answers: any[];
+  answers: Answer[];
   // answers 固有の追加フィールド
   author?: string;
-  sortBy?: string;
+  sortBy?: 'newest' | 'oldest' | 'scoreDesc';
   minScore?: string;
   hasComments?: boolean;
 }
@@ -62,7 +64,7 @@ export function useListPage(
       : {
           q: q || '',
           author: (extraData as AnswersLoaderData).author || '',
-          sortBy: ((extraData as AnswersLoaderData).sortBy as any) || 'newest',
+          sortBy: (extraData as AnswersLoaderData).sortBy || 'newest',
           minScore: (extraData as AnswersLoaderData).minScore || '',
           hasComments: (extraData as AnswersLoaderData).hasComments || false,
           fromDate: fromDate || '',

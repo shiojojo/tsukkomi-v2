@@ -15,7 +15,7 @@ export function mergeUserDataIntoAnswers(
   profileId?: string
 ): Answer[] {
   return answers.map(a => {
-    const embeddedVotes = (a as any).votesBy ?? {};
+    const embeddedVotes = a.votesBy ?? {};
     const mergedVotesBy = { ...embeddedVotes };
     if (profileId && userData?.votes[a.id]) {
       mergedVotesBy[profileId] = userData.votes[a.id];

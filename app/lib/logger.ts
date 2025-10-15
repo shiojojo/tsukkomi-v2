@@ -15,7 +15,7 @@ export const logger = {
   /**
    * 開発環境でのみ console.log を実行
    */
-  log: (...args: any[]) => {
+  log: (...args: unknown[]) => {
     if (isDev) {
       console.log(...args);
     }
@@ -24,7 +24,7 @@ export const logger = {
   /**
    * 開発環境でのみ console.debug を実行
    */
-  debug: (...args: any[]) => {
+  debug: (...args: unknown[]) => {
     if (isDev) {
       console.debug(...args);
     }
@@ -33,7 +33,7 @@ export const logger = {
   /**
    * 開発環境でのみ console.info を実行
    */
-  info: (...args: any[]) => {
+  info: (...args: unknown[]) => {
     if (isDev) {
       console.info(...args);
     }
@@ -42,7 +42,7 @@ export const logger = {
   /**
    * 開発環境でのみ console.warn を実行
    */
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     if (isDev) {
       console.warn(...args);
     }
@@ -51,7 +51,7 @@ export const logger = {
   /**
    * エラーログは本番環境でも出力（重要なエラーのため）
    */
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     console.error(...args);
   },
 };
