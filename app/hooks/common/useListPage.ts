@@ -1,4 +1,3 @@
-import { useEffect, useRef } from 'react';
 import { useFilters, type TopicsFilters, type AnswersFilters } from './useFilters';
 import { useScrollReset } from './useScrollReset';
 

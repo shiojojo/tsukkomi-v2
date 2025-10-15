@@ -1,10 +1,7 @@
 import { parsePaginationParams, parseFilterParams } from '~/lib/queryParser';
-import { getTopicsPaged, searchAnswers, getTopics, getCommentsForAnswers, getUsers, getUserAnswerData, getFavoriteCounts } from '~/lib/db';
+import { getTopicsPaged, searchAnswers } from '~/lib/db';
 import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
 import type { Answer } from '~/lib/schemas/answer';
-import type { Topic } from '~/lib/schemas/topic';
-import type { Comment } from '~/lib/schemas/comment';
-import type { User } from '~/lib/schemas/user';
 
 /**
  * 概要: リストページの loader を共通化するためのヘルパー関数。

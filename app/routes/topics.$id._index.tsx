@@ -1,7 +1,6 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useParams } from 'react-router';
 import { AnswersPage } from '~/components/features/answers/AnswersPage';
-import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 

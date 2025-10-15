@@ -2,9 +2,7 @@ import { useAnswersPage } from '~/hooks/features/answers/useAnswersPage';
 import { FilterForm } from '~/components/forms/FilterForm';
 import { AnswersList } from '~/components/features/answers/AnswersList';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';
-import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
 import { TopicOverviewCard } from '~/components/features/topics/TopicOverviewCard';
-import { HEADER_BASE } from '~/styles/headerStyles';
 import type { ReactNode } from 'react';
 
 interface AnswersPageProps {

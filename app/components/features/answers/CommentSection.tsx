@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useFetcher } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCommentSection } from '~/hooks/features/answers/useCommentSection';
 import type { Comment } from '~/lib/schemas/comment';

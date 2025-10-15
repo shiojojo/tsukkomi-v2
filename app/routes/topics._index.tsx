@@ -8,7 +8,6 @@ import { useListPage } from '~/hooks/common/useListPage';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 import { createListLoader } from '~/lib/loaders';
-import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
 export function meta() {
   return [
@@ -22,15 +21,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function TopicsRoute() {
-  type LoaderData = {
-    topics: Topic[];
-    total: number;
-    page: number;
-    pageSize: number;
-    q?: string;
-    fromDate?: string;
-    toDate?: string;
-  };
   const data = useLoaderData() as {
     topics: Topic[];
     total: number;

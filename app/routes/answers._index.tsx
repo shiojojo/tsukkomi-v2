@@ -51,7 +51,6 @@ export default function AnswersRoute() {
   return <AnswersPage data={data} mode="all" />;
 }
 
-import { isRouteErrorResponse } from 'react-router';
 import type { Route } from './+types/answers._index';
 import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
 
