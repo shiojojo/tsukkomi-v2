@@ -66,10 +66,10 @@ for (const p of candidateEnvFiles) {
 const PROFILE_NAMESPACE = '3b2c5d4c-9d03-4af1-8cde-9a3fb7319a44';
 
 function usage(msg) {
-  if (msg) console.error(msg); // eslint-disable-line no-console
+  if (msg) console.error(msg);
   console.error(
     'Usage: node scripts/import_line_csv_to_sql.mjs input.csv output.sql [--no-upload]'
-  ); // eslint-disable-line no-console
+  );
   process.exit(1);
 }
 
@@ -103,7 +103,7 @@ if (!noUpload) {
   if (!STORAGE_ENDPOINT || !STORAGE_ID || !STORAGE_ACCESS_KEY) {
     console.error(
       'Missing storage env vars. Use --no-upload if you only want SQL with placeholders.'
-    ); // eslint-disable-line no-console
+    );
     process.exit(1);
   }
   s3 = new S3Client({
@@ -189,7 +189,7 @@ async function main() {
       skipEmptyLines: true,
     });
     parser.on('readable', () => {
-      let r; // eslint-disable-line no-cond-assign
+      let r;
       while ((r = parser.read()) !== null) records.push(r);
     });
     parser.on('error', reject);
@@ -257,7 +257,6 @@ async function main() {
         try {
           const buf = await downloadAndResize(t.source_image);
           const { publicUrl } = await uploadImage(buf, t.source_image);
-          // eslint-disable-next-line no-param-reassign
           t.image = publicUrl;
           // brief rate limit safety to avoid overwhelming storage
           await new Promise(r => setTimeout(r, 120));
@@ -267,14 +266,14 @@ async function main() {
             'Image upload failed for',
             t.source_image,
             e?.message || e
-          ); // eslint-disable-line no-console
+          );
         }
       }
     }
     if (failedImages.length) {
       console.error(
         `\nERROR: ${failedImages.length} image(s) failed to upload. Aborting so that missing image URLs do not enter the SQL.`
-      ); // eslint-disable-line no-console
+      );
       process.exit(2);
     }
   } else {
@@ -385,19 +384,19 @@ async function main() {
     }
     console.log(
       `Done. Wrote ${files.length} chunk files (statements per chunk=${chunkSize}).`
-    ); // eslint-disable-line no-console
+    );
   } else {
     const content = statements.join('\n') + '\n';
     fs.writeFileSync(outputPath, content, 'utf8');
     console.log(
       `Done. Wrote SQL to ${outputPath} (statements=${statements.length}).`
-    ); // eslint-disable-line no-console
+    );
   }
   if (!noUpload)
-    console.log('Images uploaded to storage (images/<hash>.webp).'); // eslint-disable-line no-console
+    console.log('Images uploaded to storage (images/<hash>.webp).');
 }
 
 main().catch(e => {
-  console.error(e); // eslint-disable-line no-console
+  console.error(e);
   process.exit(1);
 });

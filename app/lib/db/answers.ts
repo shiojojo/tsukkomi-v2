@@ -250,7 +250,6 @@ export async function getAnswersByTopic(topicId: string | number, profileId?: st
     await ensureConnection();
   } catch (e) {
     // If connection fails, return empty answers to avoid hanging loaders.
-    // eslint-disable-next-line no-console
     console.error('getAnswersByTopic: ensureConnection failed, returning empty list', e);
     return [];
   }
@@ -421,7 +420,6 @@ export async function getAnswersPageByTopic({
     await ensureConnection();
   } catch (e) {
     // If connection cannot be established, return empty page quickly so UI can finish loading.
-    // eslint-disable-next-line no-console
     console.error('getAnswersPageByTopic: ensureConnection failed, returning empty page', e);
     return { answers: [], nextCursor: null };
   }

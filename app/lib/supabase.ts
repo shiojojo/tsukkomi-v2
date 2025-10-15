@@ -19,7 +19,6 @@ const SUPABASE_SECRET_KEY = isServer
   : '';
 
 if (!SUPABASE_URL) {
-  // eslint-disable-next-line no-console
   console.warn('Supabase URL is not set. Set VITE_SUPABASE_URL / SUPABASE_URL in environment.');
 }
 

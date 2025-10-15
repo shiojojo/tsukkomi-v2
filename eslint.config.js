@@ -59,6 +59,28 @@ export default [
     },
   },
   {
+    files: ['api/**/*.js', 'scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        // Node.js globals
+        process: 'readonly',
+        Buffer: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        global: 'readonly',
+        // Browser globals for scripts that might need them
+        URL: 'readonly',
+        Request: 'readonly',
+        Headers: 'readonly',
+        fetch: 'readonly',
+      },
+    },
+  },
+  {
     ignores: [
       'build/',
       'coverage/',
