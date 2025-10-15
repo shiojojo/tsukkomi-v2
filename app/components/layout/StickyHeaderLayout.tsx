@@ -3,6 +3,55 @@ import type { ReactNode, RefObject } from 'react';
 import { useBrowserDetection } from '~/hooks/common/useBrowserDetection';
 
 /**
+ * スクロール方向を検知するカスタムフック（速度考慮）
+ */
+function useScrollDirection() {
+  const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [lastScrollTime, setLastScrollTime] = useState(Date.now());
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const currentTime = Date.now();
+      const timeDiff = currentTime - lastScrollTime;
+      const scrollDiff = Math.abs(currentScrollY - lastScrollY);
+      const velocity = scrollDiff / timeDiff; // px/ms
+
+      // 一番上に戻った時は常にヘッダーを表示
+      if (currentScrollY <= 10) {
+        setScrollDirection('up');
+        setLastScrollY(currentScrollY);
+        setLastScrollTime(currentTime);
+        return;
+      }
+
+      // 下スクロール（ヘッダー隠す）は敏感に、上スクロール（ヘッダー表示）はより強い条件で
+      const shouldUpdateDirection =
+        currentScrollY > lastScrollY
+          ? velocity > 0.05 || scrollDiff > 10 // 下スクロール: 敏感
+          : velocity > 2; // 上スクロール: より強い条件
+
+      if (shouldUpdateDirection) {
+        if (currentScrollY > lastScrollY && currentScrollY > 100) {
+          setScrollDirection('down');
+        } else if (currentScrollY < lastScrollY) {
+          setScrollDirection('up');
+        }
+      }
+
+      setLastScrollY(currentScrollY);
+      setLastScrollTime(currentTime);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY, lastScrollTime]);
+
+  return scrollDirection;
+}
+
+/**
  * StickyHeaderLayout
  *
  * Purpose: provide a consistent two-row layout where the header lives in an
@@ -26,6 +75,7 @@ export default function StickyHeaderLayout({
   contentRef?: RefObject<HTMLDivElement | null>;
 }) {
   const useDocumentScroll = useBrowserDetection();
+  const scrollDirection = useScrollDirection();
 
   if (useDocumentScroll) {
     return (
@@ -39,7 +89,9 @@ export default function StickyHeaderLayout({
             In that environment we let the page scroll normally and keep the header sticky
             instead of relying on an inner overflow container. */}
         <div
-          className="sticky bg-white dark:bg-black rounded-lg p-4 shadow-sm"
+          className={`sticky bg-white dark:bg-black rounded-lg p-4 shadow-sm transition-transform duration-300 ease-in-out ${
+            scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'
+          }`}
           style={{
             top: 0,
             paddingTop: 'var(--app-header-height, 0px)',
