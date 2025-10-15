@@ -29,8 +29,8 @@ function useScrollDirection() {
       // 下スクロール（ヘッダー隠す）は敏感に、上スクロール（ヘッダー表示）はより強い条件で
       const shouldUpdateDirection =
         currentScrollY > lastScrollY
-          ? velocity > 0.05 || scrollDiff > 10 // 下スクロール: 敏感
-          : velocity > 2; // 上スクロール: より強い条件
+          ? velocity > 0.3 || scrollDiff > 10 // 下スクロール: 敏感
+          : velocity > 3; // 上スクロール: より強い条件
 
       if (shouldUpdateDirection) {
         if (currentScrollY > lastScrollY && currentScrollY > 100) {
