@@ -2,6 +2,16 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AnswersFilterForm } from '~/components/forms/AnswersFilterForm';
 
+// Mock react-router Form component
+vi.mock('react-router', () => ({
+  Form: ({ children, ...props }: any) => (
+    <form role="form" {...props}>
+      {children}
+    </form>
+  ),
+  useSubmit: vi.fn(() => vi.fn()),
+}));
+
 // Mock child components
 vi.mock('~/components/ui/SearchInput', () => ({
   SearchInput: (props: any) => (
@@ -10,14 +20,6 @@ vi.mock('~/components/ui/SearchInput', () => ({
       value={props.value}
       onChange={e => props.onChange(e.target.value)}
     />
-  ),
-}));
-
-vi.mock('./DateRangeFilter', () => ({
-  DateRangeFilter: (props: any) => (
-    <div data-testid="date-range-filter">
-      DateRangeFilter: {props.fromDate} - {props.toDate}
-    </div>
   ),
 }));
 
@@ -43,10 +45,6 @@ vi.mock('~/hooks/common/useNumericInput', () => ({
 }));
 
 describe('AnswersFilterForm', () => {
-  const mockUseNumericInput = vi.mocked(
-    require('~/hooks/common/useNumericInput').useNumericInput
-  );
-
   const baseProps = {
     query: 'test query',
     setQuery: vi.fn(),
@@ -73,10 +71,7 @@ describe('AnswersFilterForm', () => {
   };
 
   beforeEach(() => {
-    mockUseNumericInput.mockReturnValue({
-      increment: vi.fn(),
-      decrement: vi.fn(),
-    });
+    // Reset mocks if needed
   });
 
   it('renders form with correct method', () => {
@@ -92,7 +87,7 @@ describe('AnswersFilterForm', () => {
     const authorSelect = screen.getByDisplayValue('全員');
     expect(authorSelect).toBeInTheDocument();
 
-    const options = screen.getAllByRole('option', { hidden: true });
+    const options = authorSelect.querySelectorAll('option');
     expect(options).toHaveLength(3); // "全員" + 2 users
     expect(options[1]).toHaveTextContent('User 1');
     expect(options[2]).toHaveTextContent('User 2');
@@ -123,7 +118,8 @@ describe('AnswersFilterForm', () => {
     render(<AnswersFilterForm {...baseProps} showAdvancedFilters={true} />);
 
     expect(screen.getByTestId('search-input')).toBeInTheDocument();
-    expect(screen.getByTestId('date-range-filter')).toBeInTheDocument();
+    expect(screen.getByLabelText('開始日')).toBeInTheDocument();
+    expect(screen.getByLabelText('終了日')).toBeInTheDocument();
     expect(screen.getByText('最小スコア')).toBeInTheDocument();
     expect(screen.getByDisplayValue('10')).toBeInTheDocument();
     expect(screen.getByText('has comments')).toBeInTheDocument();
@@ -133,7 +129,8 @@ describe('AnswersFilterForm', () => {
     render(<AnswersFilterForm {...baseProps} showAdvancedFilters={false} />);
 
     expect(screen.queryByTestId('search-input')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('date-range-filter')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('開始日')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('終了日')).not.toBeInTheDocument();
     expect(screen.queryByText('最小スコア')).not.toBeInTheDocument();
   });
 
@@ -202,10 +199,11 @@ describe('AnswersFilterForm', () => {
   it('passes correct props to DateRangeFilter', () => {
     render(<AnswersFilterForm {...baseProps} showAdvancedFilters={true} />);
 
-    const dateRangeFilter = screen.getByTestId('date-range-filter');
-    expect(dateRangeFilter).toHaveTextContent(
-      'DateRangeFilter: 2024-01-01 - 2024-01-31'
-    );
+    const fromDateInput = screen.getByLabelText('開始日');
+    const toDateInput = screen.getByLabelText('終了日');
+
+    expect(fromDateInput).toHaveValue('2024-01-01');
+    expect(toDateInput).toHaveValue('2024-01-31');
   });
 
   it('shows "回答" instead of "全員" when mode is favorites', () => {

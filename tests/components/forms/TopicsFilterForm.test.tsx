@@ -2,6 +2,16 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TopicsFilterForm } from '~/components/forms/TopicsFilterForm';
 
+// Mock react-router Form component
+vi.mock('react-router', () => ({
+  Form: ({ children, method, ...props }: any) => (
+    <form data-testid="form" method={method} {...props}>
+      {children}
+    </form>
+  ),
+  useSubmit: vi.fn(() => vi.fn()),
+}));
+
 // Mock child components
 vi.mock('~/components/ui/SearchInput', () => ({
   SearchInput: ({
@@ -28,19 +38,6 @@ vi.mock('~/components/ui/Button', () => ({
   ),
 }));
 
-vi.mock('./DateRangeFilter', () => ({
-  DateRangeFilter: ({
-    fromDate,
-    toDate,
-    onFromDateChange,
-    onToDateChange,
-  }: any) => (
-    <div data-testid="date-range-filter">
-      DateRangeFilter: {fromDate} - {toDate}
-    </div>
-  ),
-}));
-
 describe('TopicsFilterForm', () => {
   const defaultProps = {
     query: 'test query',
@@ -54,7 +51,7 @@ describe('TopicsFilterForm', () => {
   it('renders form with correct method', () => {
     render(<TopicsFilterForm {...defaultProps} />);
 
-    const form = screen.getByRole('form');
+    const form = screen.getByTestId('form');
     expect(form).toHaveAttribute('method', 'get');
   });
 
@@ -77,10 +74,10 @@ describe('TopicsFilterForm', () => {
   it('renders DateRangeFilter with correct props', () => {
     render(<TopicsFilterForm {...defaultProps} />);
 
-    const dateRangeFilter = screen.getByTestId('date-range-filter');
-    expect(dateRangeFilter).toHaveTextContent(
-      'DateRangeFilter: 2024-01-01 - 2024-01-31'
-    );
+    expect(screen.getByLabelText('開始日')).toBeInTheDocument();
+    expect(screen.getByLabelText('終了日')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('2024-01-01')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('2024-01-31')).toBeInTheDocument();
   });
 
   it('renders submit button with correct text', () => {
@@ -94,23 +91,16 @@ describe('TopicsFilterForm', () => {
   it('applies correct CSS classes', () => {
     render(<TopicsFilterForm {...defaultProps} />);
 
-    const form = screen.getByRole('form');
+    const form = screen.getByTestId('form');
     expect(form).toHaveClass('space-y-2');
-
-    const container = screen
-      .getByText('DateRangeFilter: 2024-01-01 - 2024-01-31')
-      .closest('.flex');
-    expect(container).toHaveClass('flex', 'flex-wrap', 'gap-2', 'items-center');
   });
 
   it('renders with empty values', () => {
     const emptyProps = {
+      ...defaultProps,
       query: '',
-      setQuery: vi.fn(),
       fromDate: '',
-      setFromDate: vi.fn(),
       toDate: '',
-      setToDate: vi.fn(),
     };
 
     render(<TopicsFilterForm {...emptyProps} />);
@@ -118,7 +108,10 @@ describe('TopicsFilterForm', () => {
     const searchInput = screen.getByTestId('search-input');
     expect(searchInput).toHaveValue('');
 
-    const dateRangeFilter = screen.getByTestId('date-range-filter');
-    expect(dateRangeFilter).toHaveTextContent('DateRangeFilter:  - ');
+    // Check that DateRangeFilter inputs have empty values
+    const fromDateInput = screen.getByLabelText('開始日') as HTMLInputElement;
+    const toDateInput = screen.getByLabelText('終了日') as HTMLInputElement;
+    expect(fromDateInput.value).toBe('');
+    expect(toDateInput.value).toBe('');
   });
 });

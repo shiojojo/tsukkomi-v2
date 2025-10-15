@@ -1,13 +1,14 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import ResponsiveNav from '~/components/layout/ResponsiveNav';
+// Mock useIdentity hook
+vi.mock('~/hooks/common/useIdentity', () => ({
+  useIdentity: vi.fn(),
+}));
 
 // Mock react-router NavLink
 vi.mock('react-router', () => ({
   NavLink: (props: any) => (
     <a
       href={props.to}
-      data-testid={`nav-link-${props.to.replace('/', '').replace('/', '-') || 'home'}`}
+      data-testid={`nav-link-${props.to.replace(/^\//, '').replace(/\//g, '-') || 'home'}`}
       className={
         typeof props.className === 'function'
           ? props.className({ isActive: false })
@@ -18,12 +19,13 @@ vi.mock('react-router', () => ({
       {props.children}
     </a>
   ),
+  useLocation: vi.fn(() => ({ pathname: '/' })),
 }));
 
-// Mock useIdentity hook
-vi.mock('~/hooks/common/useIdentity', () => ({
-  useIdentity: vi.fn(),
-}));
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import ResponsiveNav from '~/components/layout/ResponsiveNav';
+import { useIdentity } from '~/hooks/common/useIdentity';
 
 // Mock ThemeToggle component
 vi.mock('~/components/ui/ThemeToggle', () => ({
@@ -31,16 +33,15 @@ vi.mock('~/components/ui/ThemeToggle', () => ({
 }));
 
 describe('ResponsiveNav', () => {
-  const mockUseIdentity = vi.mocked(
-    require('~/hooks/common/useIdentity').useIdentity
-  );
-
   beforeEach(() => {
-    // Reset mocks
-    mockUseIdentity.mockReturnValue({
-      effectiveName: null,
-      subName: null,
+    vi.mocked(useIdentity).mockReturnValue({
+      mainId: null,
       mainName: null,
+      subId: null,
+      subName: null,
+      effectiveId: null,
+      effectiveName: null,
+      refresh: vi.fn(),
     });
 
     // Mock window.matchMedia
@@ -69,7 +70,9 @@ describe('ResponsiveNav', () => {
   it('renders all navigation items', () => {
     render(<ResponsiveNav />);
 
-    expect(screen.getByTestId('nav-link-home')).toBeInTheDocument();
+    // Mobile navigation items
+    const homeLinks = screen.getAllByTestId('nav-link-home');
+    expect(homeLinks).toHaveLength(2); // Desktop brand link and mobile nav link
     expect(screen.getByTestId('nav-link-answers')).toBeInTheDocument();
     expect(
       screen.getByTestId('nav-link-answers-favorites')
@@ -95,20 +98,27 @@ describe('ResponsiveNav', () => {
   it('renders login link when user is not authenticated', () => {
     render(<ResponsiveNav />);
 
-    expect(screen.getByText('ログイン')).toBeInTheDocument();
+    const loginLinks = screen.getAllByText('ログイン');
+    expect(loginLinks).toHaveLength(2); // Mobile and desktop
   });
 
   it('renders user badge when user is authenticated', () => {
-    mockUseIdentity.mockReturnValue({
-      effectiveName: 'Test User',
-      subName: 'Test',
+    vi.mocked(useIdentity).mockReturnValue({
+      mainId: '1',
       mainName: 'User',
+      subId: '2',
+      subName: 'Test',
+      effectiveId: '2',
+      effectiveName: 'Test User',
+      refresh: vi.fn(),
     });
 
     render(<ResponsiveNav />);
 
-    expect(screen.getByText('Test')).toBeInTheDocument();
-    expect(screen.getByText('(User)')).toBeInTheDocument();
+    const testTexts = screen.getAllByText('Test');
+    expect(testTexts).toHaveLength(2); // Mobile and desktop
+    const userTexts = screen.getAllByText('(User)');
+    expect(userTexts).toHaveLength(1); // Only desktop
   });
 
   it('renders theme toggle on desktop', () => {
@@ -118,16 +128,21 @@ describe('ResponsiveNav', () => {
   });
 
   it('renders mobile user button when authenticated', () => {
-    mockUseIdentity.mockReturnValue({
-      effectiveName: 'Test User',
-      subName: 'Test',
+    vi.mocked(useIdentity).mockReturnValue({
+      mainId: '1',
       mainName: 'User',
+      subId: '2',
+      subName: 'Test',
+      effectiveId: '2',
+      effectiveName: 'Test User',
+      refresh: vi.fn(),
     });
 
     render(<ResponsiveNav />);
 
     // Mobile user button should show truncated name
-    expect(screen.getByText('Test')).toBeInTheDocument();
+    const testTexts = screen.getAllByText('Test');
+    expect(testTexts).toHaveLength(2); // Mobile and desktop
   });
 
   it('applies responsive classes for mobile navigation', () => {

@@ -8,7 +8,12 @@ describe('DateRangeFilter', () => {
 
     expect(screen.getByLabelText('開始日')).toBeInTheDocument();
     expect(screen.getByLabelText('終了日')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('')).toBeInTheDocument();
+
+    // Check that both inputs have empty values
+    const fromDateInput = screen.getByLabelText('開始日') as HTMLInputElement;
+    const toDateInput = screen.getByLabelText('終了日') as HTMLInputElement;
+    expect(fromDateInput.value).toBe('');
+    expect(toDateInput.value).toBe('');
   });
 
   it('displays provided fromDate and toDate values', () => {

@@ -1,20 +1,17 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
-
 // Mock useBrowserDetection hook
 vi.mock('~/hooks/common/useBrowserDetection', () => ({
   useBrowserDetection: vi.fn(),
 }));
 
-describe('StickyHeaderLayout', () => {
-  const mockUseBrowserDetection = vi.mocked(
-    require('~/hooks/common/useBrowserDetection').useBrowserDetection
-  );
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import StickyHeaderLayout from '~/components/layout/StickyHeaderLayout';
+import { useBrowserDetection } from '~/hooks/common/useBrowserDetection';
 
+describe('StickyHeaderLayout', () => {
   beforeEach(() => {
     // Reset mocks
-    mockUseBrowserDetection.mockReturnValue(false);
+    vi.mocked(useBrowserDetection).mockReturnValue(false);
   });
 
   const baseProps = {
@@ -34,18 +31,21 @@ describe('StickyHeaderLayout', () => {
   });
 
   it('applies custom className', () => {
+    vi.mocked(useBrowserDetection).mockReturnValue(false);
     render(<StickyHeaderLayout {...baseProps} />);
 
-    const container = screen.getByTestId('children').parentElement;
+    const container =
+      screen.getByTestId('children').parentElement?.parentElement;
     expect(container).toHaveClass('test-class');
   });
 
   it('renders with grid layout when useDocumentScroll is false', () => {
-    mockUseBrowserDetection.mockReturnValue(false);
+    vi.mocked(useBrowserDetection).mockReturnValue(false);
 
     render(<StickyHeaderLayout {...baseProps} />);
 
-    const container = screen.getByTestId('children').parentElement;
+    const container =
+      screen.getByTestId('children').parentElement?.parentElement;
     expect(container).toHaveStyle({
       display: 'grid',
       gridTemplateRows: 'auto 1fr',
@@ -53,18 +53,19 @@ describe('StickyHeaderLayout', () => {
   });
 
   it('renders with document scroll layout when useDocumentScroll is true', () => {
-    mockUseBrowserDetection.mockReturnValue(true);
+    vi.mocked(useBrowserDetection).mockReturnValue(true);
 
     render(<StickyHeaderLayout {...baseProps} />);
 
-    const container = screen.getByTestId('children').parentElement;
+    const container =
+      screen.getByTestId('children').parentElement?.parentElement;
     expect(container).toHaveStyle({
       minHeight: 'calc(var(--vh, 1vh) * 100)',
     });
   });
 
   it('applies correct styles to header in document scroll mode', () => {
-    mockUseBrowserDetection.mockReturnValue(true);
+    vi.mocked(useBrowserDetection).mockReturnValue(true);
 
     render(<StickyHeaderLayout {...baseProps} />);
 
@@ -78,7 +79,7 @@ describe('StickyHeaderLayout', () => {
   });
 
   it('applies correct styles to header in grid mode', () => {
-    mockUseBrowserDetection.mockReturnValue(false);
+    vi.mocked(useBrowserDetection).mockReturnValue(false);
 
     render(<StickyHeaderLayout {...baseProps} />);
 
@@ -112,10 +113,12 @@ describe('StickyHeaderLayout', () => {
   });
 
   it('handles missing className prop', () => {
+    vi.mocked(useBrowserDetection).mockReturnValue(false);
     const propsWithoutClassName = { ...baseProps, className: undefined };
     render(<StickyHeaderLayout {...propsWithoutClassName} />);
 
-    const container = screen.getByTestId('children').parentElement;
+    const container =
+      screen.getByTestId('children').parentElement?.parentElement;
     expect(container).toHaveClass(
       'p-4',
       'max-w-3xl',
