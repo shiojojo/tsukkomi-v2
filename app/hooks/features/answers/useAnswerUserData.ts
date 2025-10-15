@@ -1,5 +1,4 @@
 import { useCallback, useMemo } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { logger } from '~/lib/logger';
 import { useIdentity } from '../../common/useIdentity';
 import { useQueryWithError } from '../../common/useQueryWithError';
@@ -32,8 +31,6 @@ export function useAnswerUserData(
     unique.sort((a, b) => a - b);
     return { ids: unique, key: unique.join(',') } as const;
   }, [answerIds]);
-
-  const queryClient = useQueryClient();
 
   const query = useQueryWithError(
     ['user-data', userId || 'anonymous', normalized.key],

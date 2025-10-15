@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import { LineAnswerIngestRequestSchema, type LineAnswerIngestRequest } from '~/lib/schemas/line-sync';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 
@@ -96,7 +95,7 @@ async function uploadImageToSupabaseStorage(sourceUrl: string) {
 
   const bucket = resolveStorageBucket();
   const storageClient = supabaseAdmin?.storage ?? supabase.storage;
-  const { data, error } = await storageClient
+  const { error } = await storageClient
     .from(bucket)
     .upload(storagePath, processedBuffer, {
       contentType: `image/${extension}`,

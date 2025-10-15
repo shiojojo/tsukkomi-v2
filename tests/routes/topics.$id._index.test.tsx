@@ -42,7 +42,7 @@ describe('topics.$id._index route', () => {
 
       const request = new Request('http://localhost/topics/undefined');
       const params = { id: undefined };
-      const result = await loader({ request, params } as any);
+      await loader({ request, params } as any);
 
       expect(createAnswersListLoader).toHaveBeenCalledWith(request, {
         topicId: undefined,

@@ -53,7 +53,7 @@ describe('ErrorBoundary', () => {
   });
 
   it('renders custom fallback when provided', async () => {
-    const customFallback = vi.fn((error, errorInfo) => (
+    const customFallback = vi.fn((error, _errorInfo) => (
       <div data-testid="custom-fallback">Custom error: {error.message}</div>
     ));
 

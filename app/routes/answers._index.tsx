@@ -54,7 +54,7 @@ export default function AnswersRoute() {
 import type { Route } from './+types/answers._index';
 import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
 
-export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+export function ErrorBoundary({ error: _error }: Route.ErrorBoundaryProps) {
   return (
     <ErrorBoundaryComponent showDetails={import.meta.env.DEV}>
       <div />

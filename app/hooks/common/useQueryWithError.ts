@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, type UseQueryOptions } from '@tanstack/react-query';
 import { getUserFriendlyErrorMessage } from '~/lib/errors';
 import { useToast } from '~/hooks/common/useToast';
 
@@ -7,7 +7,6 @@ export function useQueryWithError<T>(
   queryFn: () => Promise<T>,
   options?: Omit<UseQueryOptions<T>, 'queryKey' | 'queryFn'>
 ) {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useQuery({

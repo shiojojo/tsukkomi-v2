@@ -50,13 +50,6 @@ export function AnswersList({
       <div className="px-4 py-4 space-y-4 w-full">
         <ul className="space-y-4">
           {answers.map(answer => {
-            // トピックを取得（topicsById または直接の topic から）
-            const answerTopic: Topic | null =
-              topic ||
-              (answer.topicId
-                ? topicsById?.[String(answer.topicId)] || null
-                : null);
-
             return (
               <AnswerActionCard
                 key={answer.id}

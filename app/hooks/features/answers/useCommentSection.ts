@@ -71,12 +71,12 @@ export function useCommentSection({
       });
     },
     {
-      onMutate: async (variables): Promise<{ previousComments: Comment[] }> => {
+      onMutate: async (_variables): Promise<{ previousComments: Comment[] }> => {
         // Store previous comments for rollback
         const previousComments = queryClient.getQueryData(['comments', answerId]) as Comment[];
         return { previousComments: previousComments || [] };
       },
-      onSuccess: (data, variables, context) => {
+      onSuccess: (_data, _variables, _context) => {
         console.log('[DEBUG] Comment addition successful, waiting for DB sync before refetching for answerId:', answerId);
         // Wait for DB to sync before refetching to ensure new comment is reflected
         setTimeout(() => {
@@ -84,7 +84,7 @@ export function useCommentSection({
           queryClient.invalidateQueries({ queryKey: ['comments', answerId] });
         }, 500); // Wait 500ms for DB sync
       },
-      onError: (error, variables, context) => {
+      onError: (error, variables, _context) => {
         // On error, rollback to previous comments (no optimistic update, so no need to do anything)
         // Invalidate to ensure fresh data from server
         queryClient.invalidateQueries({ queryKey: ['comments', answerId] });

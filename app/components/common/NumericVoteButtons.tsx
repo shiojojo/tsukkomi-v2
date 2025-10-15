@@ -18,12 +18,11 @@ export type NumericVoteButtonsProps =
 
 export function NumericVoteButtons(props: NumericVoteButtonsProps) {
   let selection: number | null;
-  let counts: { level1: number; level2: number; level3: number };
   let handleVote: (level: 1 | 2 | 3) => void;
 
   if ('selection' in props) {
     // Controlled mode
-    ({ selection, counts, onVote: handleVote } = props);
+    ({ selection, onVote: handleVote } = props);
   } else {
     // Hook mode
     const hookResult = useNumericVoteButtons({
@@ -34,7 +33,7 @@ export function NumericVoteButtons(props: NumericVoteButtonsProps) {
       loginRedirectPath: props.loginRedirectPath,
       onSelectionChange: props.onSelectionChange,
     });
-    ({ selection, counts, handleVote } = hookResult);
+    ({ selection, handleVote } = hookResult);
   }
 
   return (

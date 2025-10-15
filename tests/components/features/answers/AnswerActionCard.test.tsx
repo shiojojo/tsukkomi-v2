@@ -32,12 +32,12 @@ vi.mock('react-router', () => ({
 vi.mock('./VoteSection', () => ({
   VoteSection: ({
     answer,
-    userAnswerData,
+    userAnswerData: _userAnswerData,
     actionPath,
-    profileIdForVotes,
-    currentUserId,
-    getNameByProfileId,
-    currentUserName,
+    profileIdForVotes: _profileIdForVotes,
+    currentUserId: _currentUserId,
+    getNameByProfileId: _getNameByProfileId,
+    currentUserName: _currentUserName,
   }: any) => (
     <div data-testid="vote-section">
       VoteSection - answer: {answer.id}, actionPath: {actionPath}
@@ -49,11 +49,11 @@ vi.mock('./CommentSection', () => ({
   CommentSection: ({
     comments,
     answerId,
-    currentUserId,
-    currentUserName,
-    getNameByProfileId,
-    actionPath,
-    onCommentCountChange,
+    currentUserId: _currentUserId,
+    currentUserName: _currentUserName,
+    getNameByProfileId: _getNameByProfileId,
+    actionPath: _actionPath,
+    onCommentCountChange: _onCommentCountChange,
   }: any) => (
     <div data-testid="comment-section">
       CommentSection - comments: {comments.length}, answerId: {answerId}

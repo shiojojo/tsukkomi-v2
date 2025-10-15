@@ -56,7 +56,7 @@ export function VoteSection({
     return getNameByProfileId(pid);
   };
 
-  const { votesCounts, score } = useMemo(() => {
+  const { votesCounts } = useMemo(() => {
     const fallbackCounts = (() => {
       const votes = answer.votes || {
         level1: 0,
@@ -71,11 +71,7 @@ export function VoteSection({
     })();
 
     if (!votesBy) {
-      const fallbackScore =
-        fallbackCounts.level1 * 1 +
-        fallbackCounts.level2 * 2 +
-        fallbackCounts.level3 * 3;
-      return { votesCounts: fallbackCounts, score: fallbackScore };
+      return { votesCounts: fallbackCounts };
     }
 
     const aggregated = { level1: 0, level2: 0, level3: 0 };
@@ -94,10 +90,7 @@ export function VoteSection({
         ? aggregated
         : fallbackCounts;
 
-    const computedScore =
-      counts.level1 * 1 + counts.level2 * 2 + counts.level3 * 3;
-
-    return { votesCounts: counts, score: computedScore };
+    return { votesCounts: counts };
   }, [answer, votesBy]);
 
   const { selection, counts, handleVote } = useNumericVoteButtons({

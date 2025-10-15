@@ -67,7 +67,6 @@ export default function FavoriteAnswersRoute() {
     profileId?: string;
   };
   const requiresProfileId = data.requiresProfileId;
-  const profileIdFromLoader = data.profileId;
 
   const { effectiveId: currentUserId } = useIdentity();
   const navigate = useNavigate();

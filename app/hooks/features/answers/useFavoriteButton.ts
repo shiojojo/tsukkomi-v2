@@ -66,7 +66,7 @@ export function useFavoriteButton({
     { previousFavorited: boolean | undefined; previousCount: number }
   >(
     async () => {
-      return new Promise<void>((resolve, reject) => {
+      return new Promise<void>((resolve) => {
         performAction({ op: 'toggle', answerId, profileId: effectiveId });
         // Wait for fetcher to complete
         const checkComplete = () => {

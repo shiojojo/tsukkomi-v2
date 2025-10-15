@@ -48,7 +48,7 @@ vi.mock('./AnswerActionCard', () => ({
   ),
 }));
 vi.mock('~/components/common/Pagination', () => ({
-  Pagination: ({ currentPage, pageCount, buildHref }: any) => (
+  Pagination: ({ currentPage, pageCount, buildHref: _buildHref }: any) => (
     <div data-testid="pagination">
       Pagination - Page {currentPage} of {pageCount}
     </div>

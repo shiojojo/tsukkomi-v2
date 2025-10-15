@@ -167,11 +167,6 @@ describe('ResponsiveNav', () => {
   });
 
   it('sets up CSS variable for header height', () => {
-    // Mock getComputedStyle and offsetHeight
-    const mockElement = {
-      offsetHeight: 64,
-    };
-
     // Mock document.documentElement
     Object.defineProperty(document, 'documentElement', {
       writable: true,

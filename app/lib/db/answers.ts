@@ -17,12 +17,6 @@ interface DatabaseAnswerRow {
   has_comments?: boolean;
 }
 
-interface DatabaseVoteRow {
-  answer_id: number;
-  profile_id: string;
-  level: number;
-}
-
 // Search view row type (includes aggregated vote counts)
 interface SearchViewRow extends DatabaseAnswerRow {
   level1: number;

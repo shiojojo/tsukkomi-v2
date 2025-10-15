@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAnswerUserData } from './useAnswerUserData';
 import { useIdentity } from '../../common/useIdentity';
 import { useNameByProfileId } from '../../common/useNameByProfileId';
@@ -30,8 +30,6 @@ type LoaderData = {
 
 export function useAnswersPage(data: LoaderData) {
   // Extract data
-  const topicsById = data.topicsById ?? {};
-  const commentsByAnswer = data.commentsByAnswer ?? {};
   const users = data.users ?? [];
   const qParam = data.q ?? '';
   const authorParam = data.author ?? '';
@@ -44,7 +42,6 @@ export function useAnswersPage(data: LoaderData) {
   const hasCommentsParam = data.hasComments ?? false;
   const fromDateParam = data.fromDate ?? '';
   const toDateParam = data.toDate ?? '';
-  const profileId = data.profileId ?? undefined;
 
   const { getNameByProfileId } = useNameByProfileId(users);
   const { effectiveId: currentUserId, effectiveName: currentUserName } = useIdentity();

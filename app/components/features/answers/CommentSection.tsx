@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { useCommentSection } from '~/hooks/features/answers/useCommentSection';
 import type { Comment } from '~/lib/schemas/comment';
 
@@ -24,25 +23,19 @@ export function CommentSection({
 }: CommentSectionProps) {
   const commentFormRef = useRef<HTMLFormElement>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
-  const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState('');
 
   // Use the new hook for comment management
-  const {
-    comments,
-    handleAddComment,
-    isAddingComment,
-    isLoadingComments,
-    isRefetchingComments,
-  } = useCommentSection({
-    answerId,
-    initialComments,
-    actionPath,
-    onError: (error, text) => {
-      // Restore the failed comment text to the textarea
-      setCommentText(text);
-    },
-  });
+  const { comments, handleAddComment, isAddingComment, isRefetchingComments } =
+    useCommentSection({
+      answerId,
+      initialComments,
+      actionPath,
+      onError: (error, text) => {
+        // Restore the failed comment text to the textarea
+        setCommentText(text);
+      },
+    });
 
   // Notify parent of comment count changes
   useEffect(() => {

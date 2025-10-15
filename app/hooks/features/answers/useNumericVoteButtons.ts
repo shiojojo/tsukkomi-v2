@@ -50,7 +50,7 @@ export function useNumericVoteButtons({
   // Mutation for voting
   const voteMutation = useMutationWithError(
     async ({ level }: { level: number }) => {
-      return new Promise<void>((resolve, reject) => {
+      return new Promise<void>((resolve) => {
         performAction({ answerId, level, userId: effectiveId });
         // Wait for fetcher to complete
         const checkComplete = () => {
@@ -105,7 +105,7 @@ export function useNumericVoteButtons({
       onSuccess: () => {
         // 成功時は楽観的更新を維持し、リフェッチしない
       },
-      onError: (error, { level }, context) => {
+      onError: (_error, { level: _level }, _context) => {
         // On error, invalidate to refetch from server
         queryClient.invalidateQueries({
           queryKey: ['user-vote', answerId, effectiveId],
