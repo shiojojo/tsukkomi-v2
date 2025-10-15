@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, vi } from 'vitest';
@@ -21,7 +22,15 @@ const createTestWrapper = () => {
 
 // Mock react-router
 vi.mock('react-router', () => ({
-  Link: ({ children, to, ...props }: any) => (
+  Link: ({
+    children,
+    to,
+    ...props
+  }: {
+    children: React.ReactNode;
+    to: string;
+    [key: string]: unknown;
+  }) => (
     <a href={to} {...props}>
       {children}
     </a>
@@ -35,7 +44,15 @@ vi.mock('react-router', () => ({
 
 // Mock child components
 vi.mock('./AnswerActionCard', () => ({
-  default: ({ answer, topic, comments }: any) => (
+  default: ({
+    answer,
+    topic,
+    comments,
+  }: {
+    answer: Answer;
+    topic: Topic | null;
+    comments: Comment[];
+  }) => (
     <div data-testid={`answer-action-card-${answer.id}`}>
       <div>{topic?.title || 'お題なし（フリー回答）'}</div>
       <p>{answer.text}</p>
@@ -48,7 +65,15 @@ vi.mock('./AnswerActionCard', () => ({
   ),
 }));
 vi.mock('~/components/common/Pagination', () => ({
-  Pagination: ({ currentPage, pageCount, buildHref: _buildHref }: any) => (
+  Pagination: ({
+    currentPage,
+    pageCount,
+    buildHref: _buildHref,
+  }: {
+    currentPage: number;
+    pageCount: number;
+    buildHref: (page: number) => string;
+  }) => (
     <div data-testid="pagination">
       Pagination - Page {currentPage} of {pageCount}
     </div>
@@ -96,7 +121,7 @@ describe('AnswersList', () => {
     userAnswerData: { votes: {} },
     actionPath: '/test-action',
     profileIdForVotes: 'user1' as string | null,
-    pagination: null as any,
+    pagination: undefined,
     emptyMessage: '表示される回答がありません。',
   };
 

@@ -1,10 +1,17 @@
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AnswersFilterForm } from '~/components/forms/AnswersFilterForm';
 
 // Mock react-router Form component
 vi.mock('react-router', () => ({
-  Form: ({ children, ...props }: any) => (
+  Form: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <form role="form" {...props}>
       {children}
     </form>
@@ -14,17 +21,29 @@ vi.mock('react-router', () => ({
 
 // Mock child components
 vi.mock('~/components/ui/SearchInput', () => ({
-  SearchInput: (props: any) => (
+  SearchInput: (props: {
+    value?: string;
+    onChange?: (value: string) => void;
+    [key: string]: unknown;
+  }) => (
     <input
       data-testid="search-input"
       value={props.value}
-      onChange={e => props.onChange(e.target.value)}
+      onChange={
+        props.onChange ? e => props.onChange!(e.target.value) : undefined
+      }
     />
   ),
 }));
 
 vi.mock('~/components/ui/Button', () => ({
-  Button: (props: any) => (
+  Button: (props: {
+    variant?: string;
+    type?: 'button' | 'submit' | 'reset';
+    onClick?: () => void;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <button
       data-testid={`button-${props.variant || 'default'}`}
       type={props.type}

@@ -1,10 +1,19 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Pagination } from '~/components/common/Pagination';
 
 // Mock react-router's Link component
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: any) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={to} {...props}>
       {children}
     </a>

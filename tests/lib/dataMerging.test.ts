@@ -30,9 +30,9 @@ describe('mergeUserDataIntoAnswers', () => {
 
     expect(result).toHaveLength(2);
     expect(result[0].favorited).toBeUndefined();
-    expect((result[0] as any).favCount).toBe(5);
+    expect((result[0] as Answer & { favCount: number }).favCount).toBe(5);
     expect(result[1].favorited).toBeUndefined();
-    expect((result[1] as any).favCount).toBe(3);
+    expect((result[1] as Answer & { favCount: number }).favCount).toBe(3);
   });
 
   it('ユーザーの投票データをマージする', () => {
@@ -45,11 +45,11 @@ describe('mergeUserDataIntoAnswers', () => {
 
     expect(result[0].votesBy).toEqual({ currentUser: 2 });
     expect(result[0].favorited).toBe(true);
-    expect((result[0] as any).favCount).toBe(5);
+    expect((result[0] as Answer & { favCount: number }).favCount).toBe(5);
 
     expect(result[1].votesBy).toEqual({ user3: 1, currentUser: 3 });
     expect(result[1].favorited).toBe(false);
-    expect((result[1] as any).favCount).toBe(3);
+    expect((result[1] as Answer & { favCount: number }).favCount).toBe(3);
   });
 
   it('profileIdが指定されていない場合、投票データをマージしない', () => {
@@ -72,8 +72,8 @@ describe('mergeUserDataIntoAnswers', () => {
     const favCounts = {};
     const result = mergeUserDataIntoAnswers(mockAnswers, userData, favCounts, 'currentUser');
 
-    expect((result[0] as any).favCount).toBe(0);
-    expect((result[1] as any).favCount).toBe(0);
+    expect((result[0] as Answer & { favCount: number }).favCount).toBe(0);
+    expect((result[1] as Answer & { favCount: number }).favCount).toBe(0);
   });
 
   it('空のanswers配列を処理する', () => {

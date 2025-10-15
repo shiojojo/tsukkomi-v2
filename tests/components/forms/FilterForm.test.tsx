@@ -1,16 +1,23 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { FilterForm } from '~/components/forms/FilterForm';
 
 // Mock react-router Form component
 vi.mock('react-router', () => ({
-  Form: ({ children, ...props }: any) => <form {...props}>{children}</form>,
+  Form: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => <form {...props}>{children}</form>,
   useSubmit: vi.fn(() => vi.fn()),
 }));
 
 // Mock child components
 vi.mock('./AnswersFilterForm', () => ({
-  AnswersFilterForm: (props: any) => (
+  AnswersFilterForm: (props: { query: string; [key: string]: unknown }) => (
     <div data-testid="answers-filter-form">
       AnswersFilterForm: {props.query}
     </div>
@@ -18,7 +25,7 @@ vi.mock('./AnswersFilterForm', () => ({
 }));
 
 vi.mock('./TopicsFilterForm', () => ({
-  TopicsFilterForm: (props: any) => (
+  TopicsFilterForm: (props: { query: string; [key: string]: unknown }) => (
     <div data-testid="topics-filter-form">TopicsFilterForm: {props.query}</div>
   ),
 }));

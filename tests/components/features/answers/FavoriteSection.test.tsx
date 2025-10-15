@@ -5,7 +5,15 @@ import type { Answer } from '~/lib/schemas/answer';
 
 // Mock child component
 vi.mock('~/components/common/FavoriteButton', () => ({
-  default: ({ answerId, initialFavorited, initialCount }: any) => (
+  default: ({
+    answerId,
+    initialFavorited,
+    initialCount,
+  }: {
+    answerId: number;
+    initialFavorited: boolean;
+    initialCount: number;
+  }) => (
     <div data-testid="favorite-button">
       FavoriteButton - answerId: {answerId}, favorited:{' '}
       {String(initialFavorited)}, count: {initialCount}
@@ -24,7 +32,7 @@ describe('FavoriteSection', () => {
       votesBy: {},
       created_at: '2024-01-01T00:00:00Z',
       favCount: 5,
-    } as Answer;
+    } as Answer & { favCount: number };
 
     render(<FavoriteSection answer={mockAnswer} />);
 
@@ -37,7 +45,7 @@ describe('FavoriteSection', () => {
   });
 
   it('passes initialFavorited as false', () => {
-    const mockAnswer: Answer = {
+    const mockAnswer = {
       id: 2,
       text: 'Another answer',
       profileId: 'user2',
@@ -45,7 +53,8 @@ describe('FavoriteSection', () => {
       votes: { level1: 0, level2: 0, level3: 0 },
       votesBy: {},
       created_at: '2024-01-01T00:00:00Z',
-    };
+      favCount: 0,
+    } as Answer & { favCount: number };
 
     render(<FavoriteSection answer={mockAnswer} />);
 
@@ -57,7 +66,7 @@ describe('FavoriteSection', () => {
   });
 
   it('handles undefined favCount', () => {
-    const mockAnswer: Answer = {
+    const mockAnswer = {
       id: 3,
       text: 'Answer without favCount',
       profileId: 'user3',
@@ -65,8 +74,9 @@ describe('FavoriteSection', () => {
       votes: { level1: 0, level2: 0, level3: 0 },
       votesBy: {},
       created_at: '2024-01-01T00:00:00Z',
+      favCount: 0,
       // favCount is not defined
-    };
+    } as Answer & { favCount: number };
 
     render(<FavoriteSection answer={mockAnswer} />);
 

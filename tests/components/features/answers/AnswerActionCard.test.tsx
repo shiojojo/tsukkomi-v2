@@ -32,13 +32,21 @@ vi.mock('react-router', () => ({
 vi.mock('./VoteSection', () => ({
   VoteSection: ({
     answer,
-    userAnswerData: _userAnswerData,
+    userAnswerData,
     actionPath,
-    profileIdForVotes: _profileIdForVotes,
-    currentUserId: _currentUserId,
-    getNameByProfileId: _getNameByProfileId,
-    currentUserName: _currentUserName,
-  }: any) => (
+    profileIdForVotes,
+    currentUserId,
+    getNameByProfileId,
+    currentUserName,
+  }: {
+    answer: Answer;
+    userAnswerData: { votes: Record<number, number> };
+    actionPath: string;
+    profileIdForVotes?: string | null;
+    currentUserId: string | null;
+    getNameByProfileId: (pid?: string | null) => string | undefined;
+    currentUserName: string | null;
+  }) => (
     <div data-testid="vote-section">
       VoteSection - answer: {answer.id}, actionPath: {actionPath}
     </div>
@@ -54,7 +62,15 @@ vi.mock('./CommentSection', () => ({
     getNameByProfileId: _getNameByProfileId,
     actionPath: _actionPath,
     onCommentCountChange: _onCommentCountChange,
-  }: any) => (
+  }: {
+    comments: Comment[];
+    answerId: number;
+    currentUserId: string | null;
+    currentUserName: string | null;
+    getNameByProfileId: (pid?: string | null) => string | undefined;
+    actionPath: string;
+    onCommentCountChange?: (count: number) => void;
+  }) => (
     <div data-testid="comment-section">
       CommentSection - comments: {comments.length}, answerId: {answerId}
     </div>

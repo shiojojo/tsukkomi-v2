@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import {
@@ -8,7 +9,15 @@ import {
 
 // Mock react-router Link component
 vi.mock('react-router', () => ({
-  Link: ({ to, children, ...props }: any) => (
+  Link: ({
+    to,
+    children,
+    ...props
+  }: {
+    to: string;
+    children: React.ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={to} {...props}>
       {children}
     </a>

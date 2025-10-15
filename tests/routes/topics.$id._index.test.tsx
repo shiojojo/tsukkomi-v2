@@ -25,7 +25,7 @@ describe('topics.$id._index route', () => {
 
       const request = new Request('http://localhost/topics/123');
       const params = { id: '123' };
-      const result = await loader({ request, params } as any);
+      const result = await loader({ request, params, context: undefined });
 
       expect(createAnswersListLoader).toHaveBeenCalledWith(request, {
         topicId: '123',
@@ -42,7 +42,7 @@ describe('topics.$id._index route', () => {
 
       const request = new Request('http://localhost/topics/undefined');
       const params = { id: undefined };
-      await loader({ request, params } as any);
+      await loader({ request, params, context: undefined });
 
       expect(createAnswersListLoader).toHaveBeenCalledWith(request, {
         topicId: undefined,
@@ -60,7 +60,9 @@ describe('topics.$id._index route', () => {
 
       const args = {
         request: new Request('http://localhost/topics/123'),
-      } as any;
+        params: {},
+        context: undefined,
+      };
       const result = await action(args);
 
       expect(handleAnswerActions).toHaveBeenCalledWith(args);

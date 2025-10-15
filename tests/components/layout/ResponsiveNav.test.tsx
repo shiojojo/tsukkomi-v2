@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Mock useIdentity hook
 vi.mock('~/hooks/common/useIdentity', () => ({
   useIdentity: vi.fn(),
@@ -5,7 +7,12 @@ vi.mock('~/hooks/common/useIdentity', () => ({
 
 // Mock react-router NavLink
 vi.mock('react-router', () => ({
-  NavLink: (props: any) => (
+  NavLink: (props: {
+    to: string;
+    children: React.ReactNode;
+    className?: string | (({ isActive }: { isActive: boolean }) => string);
+    onClick?: () => void;
+  }) => (
     <a
       href={props.to}
       data-testid={`nav-link-${props.to.replace(/^\//, '').replace(/\//g, '-') || 'home'}`}
