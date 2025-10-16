@@ -24,41 +24,35 @@ export default function ResponsiveNav() {
     const el = navRef.current;
     const mq = window.matchMedia('(min-width:48rem)');
 
+    let rafId: number;
     const update = () => {
-      const value = mq.matches ? `${el.offsetHeight}px` : '0px';
-      document.documentElement.style.setProperty('--app-header-height', value);
+      // Cancel previous animation frame to avoid multiple updates
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const value = mq.matches ? `${el.offsetHeight}px` : '0px';
+        document.documentElement.style.setProperty(
+          '--app-header-height',
+          value
+        );
+      });
     };
 
+    // Initial update
     update();
-    window.addEventListener('resize', update);
-    // media query change listener
-    if (typeof mq.addEventListener === 'function') {
-      mq.addEventListener('change', update);
-    } else if (
-      typeof (mq as unknown as { addListener?: (listener: () => void) => void })
-        .addListener === 'function'
-    ) {
-      // older browsers
-      (
-        mq as unknown as { addListener: (listener: () => void) => void }
-      ).addListener(update);
-    }
+
+    // Use ResizeObserver for efficient size monitoring
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(el);
+
+    // Media query change listener
+    mq.addEventListener('change', update);
 
     return () => {
-      window.removeEventListener('resize', update);
-      if (typeof mq.removeEventListener === 'function') {
-        mq.removeEventListener('change', update);
-      } else if (
-        typeof (
-          mq as unknown as { removeListener?: (listener: () => void) => void }
-        ).removeListener === 'function'
-      ) {
-        (
-          mq as unknown as { removeListener: (listener: () => void) => void }
-        ).removeListener(update);
-      }
+      resizeObserver.disconnect();
+      mq.removeEventListener('change', update);
+      cancelAnimationFrame(rafId);
     };
-  }, [navRef]);
+  }, []);
 
   return (
     <nav
