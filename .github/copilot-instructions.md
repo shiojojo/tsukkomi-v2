@@ -42,7 +42,7 @@ app/
 		db/              		← データアクセス統合ポイント
 		schemas/            ← zod スキーマ（I/O 変換 & 型出力）
 	hooks/                ← 再利用カスタムフック
-	styles/               ← Tailwind / グローバル CSS
+	app.css              ← スタイルの一元管理ポイント。CSS 変数と @layer components を使用
 tests/                  ← 統合テスト
 e2e/                    ← E2Eテスト
 ```
@@ -233,7 +233,15 @@ const addCommentMutation = useMutationWithError(..., {
 
 • `components/` = ロジック最小。データ取得フックを直接呼ばず、親から props。
 • 状態はできるだけ局所化。グローバルは認証ユーザー、テーマ、トーストなどに限定。
+• **スタイル適用**: CSS クラス（例: `className="error-page-container"`）を使用。TypeScript 定数は廃止。
 • アニメーションは `framer-motion`。Tailwind ユーティリティを使用。モバイルファースト。
+
+### スタイル定義規約
+
+• **一元管理**: すべての共通スタイルは `app/app.css` に統合。TypeScript 定数（例: `commonStyles.ts`）は使用せず、CSS クラスとして定義。
+• **CSS 変数**: テーマ変数（ライト/ダークモード対応）を拡張。shadcn/ui 互換のカラーパレット（`--success`, `--warning`, `--info`）を追加。
+• **@layer components**: コンポーネント固有のスタイルを `@layer components` で定義。アニメーション、ホバー効果、アクセシビリティ（`focus-visible`）を標準化。
+• **モダン化**: インタラクション（`transition`, `scale`）、アニメーション（`keyframes`）、レスポンシブ対応を優先。Tailwind CSS を活用しつつ、CSS 変数でテーマ切り替えを可能に。
 
 ⸻
 
