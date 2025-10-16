@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { loader, action } from '~/routes/answers.favorites';
 
 // Mock db
@@ -18,7 +19,7 @@ describe('answers.favorites route', () => {
   describe('loader', () => {
     it('should return default data when profileId is not provided', async () => {
       const request = new Request('http://localhost:3000/answers/favorites');
-      const result = await loader({ request } as any);
+      const result = await loader({ request } as LoaderFunctionArgs);
 
       const data = await result.json();
       expect(data).toEqual({
@@ -42,19 +43,19 @@ describe('answers.favorites route', () => {
     });
 
     it('should call createAnswersListLoader with correct params when profileId is provided', async () => {
-      const mockResponse = {
-        json: vi.fn().mockResolvedValue({
+      const mockResponse = new Response(
+        JSON.stringify({
           answers: [{ id: 1 }],
           total: 1,
-        }),
-      };
+        })
+      );
       const { createAnswersListLoader } = await import('~/lib/loaders');
-      vi.mocked(createAnswersListLoader).mockResolvedValue(mockResponse as any);
+      vi.mocked(createAnswersListLoader).mockResolvedValue(mockResponse);
 
       const request = new Request(
         'http://localhost:3000/answers/favorites?profileId=user123'
       );
-      const result = await loader({ request } as any);
+      const result = await loader({ request } as LoaderFunctionArgs);
 
       expect(createAnswersListLoader).toHaveBeenCalledWith(request, {
         favorite: true,
@@ -81,7 +82,7 @@ describe('answers.favorites route', () => {
 
       const args = {
         request: new Request('http://localhost:3000/answers/favorites'),
-      } as any;
+      } as ActionFunctionArgs;
       const result = await action(args);
 
       expect(handleAnswerActions).toHaveBeenCalledWith(args);

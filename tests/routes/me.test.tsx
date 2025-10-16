@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { loader, action } from '~/routes/me';
 
 // Mock db
@@ -29,7 +30,7 @@ describe('me route', () => {
       const { getUsers } = await import('~/lib/db');
       vi.mocked(getUsers).mockResolvedValue(mockUsers);
 
-      const result = await loader({} as any);
+      const result = await loader({} as LoaderFunctionArgs);
       expect(result).toBeInstanceOf(Response);
       const resultData = await result.json();
       expect(resultData).toEqual({ users: mockUsers });
@@ -54,7 +55,9 @@ describe('me route', () => {
       const { addSubUser } = await import('~/lib/db');
       vi.mocked(addSubUser).mockResolvedValue(mockSub);
 
-      const result = await action({ request: mockRequest } as any);
+      const result = await action({
+        request: mockRequest,
+      } as ActionFunctionArgs);
       expect(addSubUser).toHaveBeenCalledWith({
         parentId: 'parent1',
         name: 'New Sub',
@@ -78,7 +81,9 @@ describe('me route', () => {
       const { removeSubUser } = await import('~/lib/db');
       vi.mocked(removeSubUser).mockResolvedValue(true);
 
-      const result = await action({ request: mockRequest } as any);
+      const result = await action({
+        request: mockRequest,
+      } as ActionFunctionArgs);
       expect(removeSubUser).toHaveBeenCalledWith('parent1', 'sub1');
       const data = await result.json();
       expect(data).toEqual({ ok: true, parentId: 'parent1', subId: 'sub1' });
@@ -95,7 +100,9 @@ describe('me route', () => {
         body: formData,
       });
 
-      const result = await action({ request: mockRequest } as any);
+      const result = await action({
+        request: mockRequest,
+      } as ActionFunctionArgs);
       expect(result.status).toBe(429);
       const data = await result.json();
       expect(data).toEqual({ ok: false, error: 'rate_limited' });

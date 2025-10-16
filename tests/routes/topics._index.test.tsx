@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { type LoaderFunctionArgs } from 'react-router';
 import { loader } from '~/routes/topics._index';
 
 // Mock loaders
@@ -32,7 +33,9 @@ describe('topics._index route', () => {
       });
       vi.mocked(createListLoader).mockResolvedValue(mockResponse);
 
-      const result = await loader({ request: mockRequest } as any);
+      const result = await loader({
+        request: mockRequest,
+      } as LoaderFunctionArgs);
       expect(createListLoader).toHaveBeenCalledWith('topics', mockRequest);
       expect(result).toBeInstanceOf(Response);
       const resultData = await result.json();

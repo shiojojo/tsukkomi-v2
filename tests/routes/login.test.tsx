@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { loader, action } from '~/routes/login';
 
 // Mock db
@@ -18,7 +19,7 @@ describe('login route', () => {
       const { getUsers } = await import('~/lib/db');
       vi.mocked(getUsers).mockResolvedValue(mockUsers);
 
-      const result = await loader({} as any);
+      const result = await loader({} as LoaderFunctionArgs);
       expect(result).toBeInstanceOf(Response);
       const resultData = await result.json();
       expect(resultData).toEqual({ users: mockUsers });
@@ -40,7 +41,9 @@ describe('login route', () => {
       const { addSubUser } = await import('~/lib/db');
       vi.mocked(addSubUser).mockResolvedValue(mockSub);
 
-      const result = await action({ request: mockRequest } as any);
+      const result = await action({
+        request: mockRequest,
+      } as ActionFunctionArgs);
       expect(addSubUser).toHaveBeenCalledWith({
         parentId: 'parent1',
         name: 'New Sub',
@@ -59,7 +62,9 @@ describe('login route', () => {
         body: formData,
       });
 
-      const result = await action({ request: mockRequest } as any);
+      const result = await action({
+        request: mockRequest,
+      } as ActionFunctionArgs);
       const data = await result.json();
       expect(data).toHaveProperty('ok', false);
       expect(data).toHaveProperty('errors');
