@@ -2,7 +2,7 @@ import type { Route } from './+types/_index';
 import type { LoaderFunctionArgs } from 'react-router';
 import Home from './home';
 
-export function meta({}: Route.MetaArgs) {
+export function meta(_args: Route.MetaArgs) {
   return [
     { title: 'Tsukkomi V2' },
     { name: 'description', content: 'Welcome to Tsukkomi V2!' },

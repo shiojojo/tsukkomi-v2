@@ -6,7 +6,7 @@ import { ListPageLayout } from '~/components/layout/ListPageLayout';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 
-export function meta({}: Route.MetaArgs) {
+export function meta(_args: Route.MetaArgs) {
   return [
     { title: 'New React Router App' },
     { name: 'description', content: 'Welcome to React Router!' },

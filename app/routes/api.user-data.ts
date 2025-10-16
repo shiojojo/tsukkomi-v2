@@ -25,12 +25,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to fetch user data:', error);
     return new Response(JSON.stringify({ 
       votes: {}, 
       favorites: [],
-      error: error?.message || 'Failed to fetch user data'
+      error: error instanceof Error ? error.message : 'Failed to fetch user data'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }

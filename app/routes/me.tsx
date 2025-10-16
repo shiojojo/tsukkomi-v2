@@ -20,7 +20,7 @@ import { ListPageLayout } from '~/components/layout/ListPageLayout';
  * Environment: dev は in-memory mock を使う (lib/db の分岐に従う)
  * Errors: バリデーションエラーは { ok: false, errors } を返す
  */
-export async function loader({}: LoaderFunctionArgs) {
+export async function loader(_args: LoaderFunctionArgs) {
   const { getUsers } = await import('~/lib/db');
   const users = await getUsers();
   return Response.json({ users });
@@ -80,7 +80,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function MeRoute() {
-  const data = useLoaderData() as { users: any[] };
+  const data = useLoaderData() as { users: User[] };
   const users = data.users;
 
   const {

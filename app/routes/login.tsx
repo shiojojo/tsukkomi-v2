@@ -55,7 +55,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function LoginRoute() {
-  const data = useLoaderData() as { users: any[] };
+  const data = useLoaderData() as { users: User[] };
   const users = data.users;
   const createFetcher = useFetcher();
 
@@ -63,7 +63,7 @@ export default function LoginRoute() {
     ok: boolean;
     sub?: { id: string; name: string };
     parentId?: string;
-    errors?: any;
+    errors?: { [key: string]: { _errors: string[] } };
   };
 
   const {

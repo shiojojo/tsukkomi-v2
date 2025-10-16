@@ -5,7 +5,7 @@ import { LineAnswerIngestRequestSchema } from '~/lib/schemas/line-sync';
 const API_KEY_HEADER = 'x-api-key';
 
 function resolveLineSyncApiKey(): string | undefined {
-  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any).env : undefined;
+  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env: Record<string, string | undefined> }).env : undefined;
   return (
     process.env.LINE_SYNC_API_KEY ||
     process.env.VITE_LINE_SYNC_API_KEY ||
