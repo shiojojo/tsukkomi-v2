@@ -17,6 +17,8 @@ export default function ResponsiveNav() {
     { to: '/topics', label: 'お題', icon: MemoizedTopicIcon },
   ];
 
+  const identity = useIdentity(); // ← 一度だけ呼び出し
+
   const navRef = useRef<HTMLElement | null>(null);
 
   // Measure nav height and expose as CSS variable so routes can offset accordingly.
@@ -93,11 +95,11 @@ export default function ResponsiveNav() {
               </li>
             ))}
             <li className={`flex-1 md:flex-initial md:hidden`}>
-              <MobileUserButton />
+              <MobileUserButton {...identity} />
             </li>
           </ul>
           <div className="hidden md:flex items-center gap-4">
-            <UserBadge />
+            <UserBadge {...identity} />
             <ThemeToggle />
           </div>
         </div>
@@ -106,8 +108,15 @@ export default function ResponsiveNav() {
   );
 }
 
-function UserBadge() {
-  const { effectiveName, subName, mainName } = useIdentity();
+function UserBadge({
+  effectiveName,
+  subName,
+  mainName,
+}: {
+  effectiveName: string | null;
+  subName: string | null;
+  mainName: string | null;
+}) {
   if (effectiveName) {
     return (
       <NavLink
@@ -136,8 +145,15 @@ function UserBadge() {
   );
 }
 
-function MobileUserButton() {
-  const { effectiveName, subName, mainName } = useIdentity();
+function MobileUserButton({
+  effectiveName,
+  subName,
+  mainName,
+}: {
+  effectiveName: string | null;
+  subName: string | null;
+  mainName: string | null;
+}) {
   if (effectiveName) {
     return (
       <NavLink
