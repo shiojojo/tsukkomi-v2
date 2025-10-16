@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router';
 import { useEffect, useRef } from 'react';
+import { memo } from 'react';
 import { useIdentity } from '~/hooks/common/useIdentity';
 import { ThemeToggle } from '~/components/ui/ThemeToggle';
 
@@ -10,10 +11,10 @@ import { ThemeToggle } from '~/components/ui/ThemeToggle';
  */
 export default function ResponsiveNav() {
   const items = [
-    { to: '/', label: 'Home', icon: HomeIcon },
-    { to: '/answers', label: '検索', icon: SearchIcon },
-    { to: '/answers/favorites', label: 'お気に', icon: StarIcon },
-    { to: '/topics', label: 'お題', icon: TopicIcon },
+    { to: '/', label: 'Home', icon: MemoizedHomeIcon },
+    { to: '/answers', label: '検索', icon: MemoizedSearchIcon },
+    { to: '/answers/favorites', label: 'お気に', icon: MemoizedStarIcon },
+    { to: '/topics', label: 'お題', icon: MemoizedTopicIcon },
   ];
 
   const navRef = useRef<HTMLElement | null>(null);
@@ -189,6 +190,8 @@ function HomeIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+const MemoizedHomeIcon = memo(HomeIcon);
+
 // Search icon for the answers/search route
 function SearchIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -205,6 +208,8 @@ function SearchIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+const MemoizedSearchIcon = memo(SearchIcon);
 
 function TopicIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -223,6 +228,8 @@ function TopicIcon(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+const MemoizedTopicIcon = memo(TopicIcon);
+
 function StarIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
@@ -237,3 +244,5 @@ function StarIcon(props: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+const MemoizedStarIcon = memo(StarIcon);
