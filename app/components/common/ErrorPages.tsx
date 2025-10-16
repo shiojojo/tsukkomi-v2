@@ -1,19 +1,12 @@
 import { Link } from 'react-router';
 import { Button } from '~/components/ui/Button';
-import {
-  ERROR_PAGE_CONTAINER,
-  ICON_GRAY,
-  ICON_RED,
-  PAGE_CONTAINER,
-  CENTERED_CONTAINER,
-} from '~/styles/commonStyles';
 
 export function NotFoundPage() {
   return (
-    <main className={PAGE_CONTAINER}>
-      <div className={CENTERED_CONTAINER}>
-        <div className={ERROR_PAGE_CONTAINER}>
-          <div className={ICON_GRAY}>
+    <main className="page-container">
+      <div className="centered-container">
+        <div className="error-page-container">
+          <div className="icon-gray">
             <svg
               className="w-8 h-8 text-gray-600 dark:text-gray-400"
               fill="none"
@@ -50,10 +43,10 @@ export function NotFoundPage() {
 
 export function ServerErrorPage() {
   return (
-    <main className={PAGE_CONTAINER}>
-      <div className={CENTERED_CONTAINER}>
-        <div className={ERROR_PAGE_CONTAINER}>
-          <div className={ICON_RED}>
+    <main className="page-container">
+      <div className="centered-container">
+        <div className="error-page-container">
+          <div className="icon-red">
             <svg
               className="w-8 h-8 text-red-600 dark:text-red-400"
               fill="none"
@@ -96,10 +89,10 @@ export function GenericErrorPage({
   message: string;
 }) {
   return (
-    <main className={PAGE_CONTAINER}>
-      <div className={CENTERED_CONTAINER}>
-        <div className={ERROR_PAGE_CONTAINER}>
-          <div className={ICON_RED}>
+    <main className="page-container">
+      <div className="centered-container">
+        <div className="error-page-container">
+          <div className="icon-red">
             <svg
               className="w-8 h-8 text-red-600 dark:text-red-400"
               fill="none"

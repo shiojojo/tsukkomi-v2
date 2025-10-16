@@ -6,7 +6,6 @@ import { AnswersPage } from '~/components/features/answers/AnswersPage';
 import { useIdentity } from '~/hooks/common/useIdentity';
 import { handleAnswerActions } from '~/lib/actionHandlers';
 import { Button } from '~/components/ui/Button';
-import { HEADER_BASE } from '~/styles/headerStyles';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
@@ -87,7 +86,7 @@ export default function FavoriteAnswersRoute() {
     return (
       <StickyHeaderLayout
         header={
-          <div className={HEADER_BASE}>
+          <div className="header-base">
             <div className="p-4">
               <h1 className="text-lg font-semibold">お気に入り</h1>
             </div>

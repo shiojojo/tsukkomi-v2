@@ -1,6 +1,5 @@
 import type { ReactNode, RefObject } from 'react';
 import StickyHeaderLayout from './StickyHeaderLayout';
-import { HEADER_BASE } from '~/styles/headerStyles';
 
 interface ListPageLayoutProps {
   headerTitle: string;
@@ -32,7 +31,7 @@ export function ListPageLayout({
   extraContent,
 }: ListPageLayoutProps) {
   const header = (
-    <div className={`${HEADER_BASE}`}>
+    <div className="header-base">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold">{headerTitle}</h1>

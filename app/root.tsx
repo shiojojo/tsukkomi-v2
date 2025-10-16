@@ -15,7 +15,6 @@ import {
   NotFoundPage,
   ServerErrorPage,
 } from '~/components/common/ErrorPages';
-import { TOAST_SLATE, TOAST_BLUE } from '~/styles/commonStyles';
 
 import type { Route } from './+types/root';
 import './app.css';
@@ -102,7 +101,7 @@ export default function App() {
         {/* Loading overlay with timeout protection */}
         {isLoading && !loadingTimeout && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 pointer-events-auto">
-            <div className={TOAST_SLATE}>
+            <div className="toast-slate">
               <div className="w-6 h-6 border-2 border-t-transparent border-white rounded-full animate-spin" />
               <div className="text-sm font-medium">
                 {navigation.state === 'loading' &&
@@ -119,7 +118,7 @@ export default function App() {
 
         {/* Loading timeout fallback - shows a less intrusive loading indicator */}
         {isLoading && loadingTimeout && (
-          <div className={TOAST_BLUE}>
+          <div className="toast-blue">
             <div className="w-4 h-4 border border-t-transparent border-white rounded-full animate-spin" />
             <span>Loading...</span>
           </div>

@@ -1,7 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { isRouteErrorResponse } from 'react-router';
 import { Button } from '~/components/ui/Button';
-import { ERROR_PAGE_CONTAINER } from '~/styles/commonStyles';
 
 interface Props {
   children: ReactNode;
@@ -79,7 +78,7 @@ function DefaultErrorFallback({
 
   return (
     <div className="min-h-[400px] flex items-center justify-center p-4">
-      <div className={ERROR_PAGE_CONTAINER}>
+      <div className="error-page-container">
         <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
           <svg
             className="w-8 h-8 text-red-600 dark:text-red-400"

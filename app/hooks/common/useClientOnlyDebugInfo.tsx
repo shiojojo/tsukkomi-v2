@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import type { Navigation } from 'react-router';
-import { TOAST_BLACK } from '~/styles/commonStyles';
 
 export function useClientOnlyDebugInfo(
   navigation: Navigation,
@@ -18,7 +17,7 @@ export function useClientOnlyDebugInfo(
   }
 
   return (
-    <div className={TOAST_BLACK}>
+    <div className="toast-black">
       <div>Nav: {navigation.state}</div>
       <div>Loading: {isLoading ? 'YES' : 'NO'}</div>
       <div>Timeout: {loadingTimeout ? 'YES' : 'NO'}</div>
