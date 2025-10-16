@@ -43,9 +43,11 @@ export default function TopicsRoute() {
     pageCount,
     currentPage,
     pageSize,
-    listData: topics,
+    listData,
     containerRef,
   } = useListPage(data, 'topics', urlKeys, 'topics');
+
+  const topics = listData as Topic[];
 
   return (
     <ListPageLayout
@@ -66,7 +68,7 @@ export default function TopicsRoute() {
       list={
         <div className="space-y-3 px-1">
           <ul className="space-y-3">
-            {topics.map((t: Topic) => (
+            {topics.map(t => (
               <li key={t.id}>
                 <TopicCard topic={t} />
               </li>
