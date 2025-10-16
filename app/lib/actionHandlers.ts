@@ -134,16 +134,11 @@ async function handleToggleFavorite(form: FormData) {
   }
 
   const { toggleFavorite } = await import('~/lib/db');
-  try {
-    const res = await toggleFavorite({
-      answerId: Number(answerId),
-      profileId,
-    });
-    return Response.json(res);
-  } catch (e: unknown) {
-    logger.error('toggleFavorite failed', String((e as Error)?.message ?? e));
-    throw Response.json({ ok: false, error: String((e as Error)?.message ?? e) }, { status: 500 });
-  }
+  const res = await toggleFavorite({
+    answerId: Number(answerId),
+    profileId,
+  });
+  return Response.json(res);
 }
 
 async function handleFavoriteStatus(form: FormData) {
@@ -170,13 +165,9 @@ async function handleFavoriteStatus(form: FormData) {
   }
 
   const { getFavoritesForProfile } = await import('~/lib/db');
-  try {
-    const list = await getFavoritesForProfile(profileId, [Number(answerId)]);
-    const favorited = (list || []).map(Number).includes(Number(answerId));
-    return Response.json({ favorited });
-  } catch (e: unknown) {
-    throw Response.json({ ok: false, error: String((e as Error)?.message ?? e) }, { status: 500 });
-  }
+  const list = await getFavoritesForProfile(profileId, [Number(answerId)]);
+  const favorited = (list || []).map(Number).includes(Number(answerId));
+  return Response.json({ favorited });
 }
 
 async function handleVote(form: FormData) {
@@ -190,19 +181,12 @@ async function handleVote(form: FormData) {
   }
 
   const { voteAnswer } = await import('~/lib/db');
-  try {
-    const updated = await voteAnswer({
-      answerId,
-      level,
-      userId,
-    });
-    return Response.json({ answer: updated });
-  } catch (e: unknown) {
-    throw new Response(
-      JSON.stringify({ ok: false, error: String((e as Error)?.message ?? e) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+  const updated = await voteAnswer({
+    answerId,
+    level,
+    userId,
+  });
+  return Response.json({ answer: updated });
 }
 
 async function handleAddComment(form: FormData) {
@@ -220,20 +204,12 @@ async function handleAddComment(form: FormData) {
   }
 
   const { addComment } = await import('~/lib/db');
-  try {
-    const comment = await addComment({
-      answerId: String(answerId),
-      text,
-      profileId,
-    });
-    return Response.json({ comment });
-  } catch (e: unknown) {
-    logger.error('addComment failed', String((e as Error)?.message ?? e));
-    return new Response(
-      JSON.stringify({ ok: false, error: String((e as Error)?.message ?? e) }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
+  const comment = await addComment({
+    answerId: String(answerId),
+    text,
+    profileId,
+  });
+  return Response.json({ comment });
 }
 
 // In-memory guard for duplicate requests (shared across routes)

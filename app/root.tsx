@@ -15,6 +15,7 @@ import {
   NotFoundPage,
   ServerErrorPage,
 } from '~/components/common/ErrorPages';
+import { AppError } from '~/lib/errors';
 
 import type { Route } from './+types/root';
 import './app.css';
@@ -138,6 +139,17 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  // AppError の場合
+  if (error instanceof AppError) {
+    if (error.status === 404) {
+      return <NotFoundPage />;
+    }
+    if (error.status === 500) {
+      return <ServerErrorPage />;
+    }
+    return <GenericErrorPage status={error.status} message={error.message} />;
+  }
+
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
       return <NotFoundPage />;
