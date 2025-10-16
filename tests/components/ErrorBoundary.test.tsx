@@ -3,9 +3,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { ErrorBoundary } from '~/components/common/ErrorBoundary';
 
 // Component that throws an error
-function ErrorThrowingComponent() {
+function ErrorThrowingComponent(): never {
   throw new Error('Test error');
-  return <div>Never reached</div>; // This line won't execute
 }
 
 // Component that doesn't throw

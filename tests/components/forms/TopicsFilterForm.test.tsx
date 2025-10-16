@@ -4,7 +4,14 @@ import { TopicsFilterForm } from '~/components/forms/TopicsFilterForm';
 
 // Mock react-router Form component
 vi.mock('react-router', () => ({
-  Form: ({ children, method, ...props }: any) => (
+  Form: ({
+    children,
+    method,
+    ...props
+  }: {
+    method?: string;
+    children: React.ReactNode;
+  } & React.FormHTMLAttributes<HTMLFormElement>) => (
     <form data-testid="form" method={method} {...props}>
       {children}
     </form>
@@ -31,7 +38,12 @@ vi.mock('~/components/ui/SearchInput', () => ({
 }));
 
 vi.mock('~/components/ui/Button', () => ({
-  Button: ({ children, ...props }: any) => (
+  Button: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+  } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button data-testid="button" {...props}>
       {children}
     </button>

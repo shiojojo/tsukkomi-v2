@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { type LoaderFunctionArgs } from 'react-router';
 import { loader } from '~/routes/_index';
 
 // Mock db
@@ -21,7 +22,7 @@ describe('_index route', () => {
       const { getLatestTopic } = await import('~/lib/db');
       vi.mocked(getLatestTopic).mockResolvedValue(mockTopic);
 
-      const result = await loader({} as any);
+      const result = await loader({} as LoaderFunctionArgs);
       expect(result).toBeInstanceOf(Response);
       const resultData = await result.json();
       expect(resultData).toEqual({ latest: mockTopic });
@@ -32,7 +33,7 @@ describe('_index route', () => {
       const { getLatestTopic } = await import('~/lib/db');
       vi.mocked(getLatestTopic).mockResolvedValue(null);
 
-      const result = await loader({} as any);
+      const result = await loader({} as LoaderFunctionArgs);
       expect(result).toBeInstanceOf(Response);
       const resultData = await result.json();
       expect(resultData).toEqual({ latest: null });

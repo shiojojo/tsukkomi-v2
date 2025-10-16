@@ -13,7 +13,7 @@ vi.mock('react-router', () => ({
 }));
 
 import { useIdentity } from '~/hooks/common/useIdentity';
-import { useFetcher } from 'react-router';
+import { useFetcher, type FetcherWithComponents } from 'react-router';
 
 describe('useOptimisticAction', () => {
   const mockUseIdentity = vi.mocked(useIdentity);
@@ -24,11 +24,17 @@ describe('useOptimisticAction', () => {
   });
 
   it('ログイン済みの場合、performAction で fetcher.submit が呼ばれる', () => {
-    const mockFetcher = { submit: vi.fn() } as any;
-    mockUseFetcher.mockReturnValue(mockFetcher);
+    const mockFetcher = { submit: vi.fn() };
+    mockUseFetcher.mockReturnValue(mockFetcher as unknown as FetcherWithComponents<unknown>);
     mockUseIdentity.mockReturnValue({
       effectiveId: 'user123',
-    } as any);
+      mainId: null,
+      mainName: null,
+      subId: null,
+      subName: null,
+      effectiveName: null,
+      refresh: vi.fn(),
+    });
 
     const { result } = renderHook(() =>
       useOptimisticAction('/test-action')
@@ -46,11 +52,17 @@ describe('useOptimisticAction', () => {
   });
 
   it('未ログインの場合、リダイレクトされる', () => {
-    const mockFetcher = { submit: vi.fn() } as any;
-    mockUseFetcher.mockReturnValue(mockFetcher);
+    const mockFetcher = { submit: vi.fn() };
+    mockUseFetcher.mockReturnValue(mockFetcher as unknown as FetcherWithComponents<unknown>);
     mockUseIdentity.mockReturnValue({
       effectiveId: null,
-    } as any);
+      mainId: null,
+      mainName: null,
+      subId: null,
+      subName: null,
+      effectiveName: null,
+      refresh: vi.fn(),
+    });
 
     const locationMock = { href: '' };
     vi.stubGlobal('location', locationMock);

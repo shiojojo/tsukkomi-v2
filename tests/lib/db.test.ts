@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { getAnswers, addFavorite, getTopics, getVotesForProfile, addComment, getCommentsForAnswers, getUsers } from '~/lib/db';
 

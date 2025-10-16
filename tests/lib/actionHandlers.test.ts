@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { type ActionFunctionArgs } from 'react-router';
 import { handleAnswerActions } from '~/lib/actionHandlers';
 
 // Mock dependencies
@@ -32,7 +33,7 @@ describe('actionHandlers', () => {
       vi.mocked(consumeToken).mockResolvedValue(true);
       vi.mocked(toggleFavorite).mockResolvedValue({ favorited: true });
 
-      const result = await handleAnswerActions({ request } as any);
+      const result = await handleAnswerActions({ request } as ActionFunctionArgs);
       expect(toggleFavorite).toHaveBeenCalledWith({ answerId: 1, profileId: 'user1' });
       expect(result).toBeInstanceOf(Response);
     });
@@ -57,7 +58,7 @@ describe('actionHandlers', () => {
         favorited: false
       });
 
-      const result = await handleAnswerActions({ request } as any);
+      const result = await handleAnswerActions({ request } as ActionFunctionArgs);
       expect(voteAnswer).toHaveBeenCalledWith({ answerId: 1, level: 1, userId: 'user1' });
       expect(result).toBeInstanceOf(Response);
     });
@@ -79,7 +80,7 @@ describe('actionHandlers', () => {
         created_at: '2023-01-01'
       });
 
-      const result = await handleAnswerActions({ request } as any);
+      const result = await handleAnswerActions({ request } as ActionFunctionArgs);
       expect(addComment).toHaveBeenCalledWith({ answerId: '1', text: 'Test comment', profileId: 'user1' });
       expect(result).toBeInstanceOf(Response);
     });

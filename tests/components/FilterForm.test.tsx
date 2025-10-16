@@ -5,12 +5,22 @@ import type { User } from '~/lib/schemas/user';
 
 // Mock react-router
 vi.mock('react-router', () => ({
-  Form: ({ children, ...props }: any) => <form {...props}>{children}</form>,
+  Form: ({ children, ...props }: React.FormHTMLAttributes<HTMLFormElement>) => (
+    <form {...props}>{children}</form>
+  ),
 }));
 
 // Mock the components
 vi.mock('~/components/ui/SearchInput', () => ({
-  SearchInput: ({ value, onChange, placeholder }: any) => (
+  SearchInput: ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+  }) => (
     <input
       data-testid="search-input"
       value={value}
@@ -26,7 +36,12 @@ vi.mock('~/components/forms/DateRangeFilter', () => ({
     toDate,
     onFromDateChange,
     onToDateChange,
-  }: any) => (
+  }: {
+    fromDate: string;
+    toDate: string;
+    onFromDateChange: (date: string) => void;
+    onToDateChange: (date: string) => void;
+  }) => (
     <div data-testid="date-range-filter">
       <input
         data-testid="from-date"

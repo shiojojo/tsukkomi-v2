@@ -4,7 +4,7 @@ import { ListPageLayout } from '~/components/layout/ListPageLayout';
 
 // Mock StickyHeaderLayout
 vi.mock('./StickyHeaderLayout', () => ({
-  default: (props: any) => (
+  default: (props: { header: React.ReactNode; children: React.ReactNode }) => (
     <div data-testid="sticky-header-layout">
       <div data-testid="header">{props.header}</div>
       <div data-testid="children">{props.children}</div>

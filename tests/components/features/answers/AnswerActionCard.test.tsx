@@ -32,12 +32,12 @@ vi.mock('react-router', () => ({
 vi.mock('./VoteSection', () => ({
   VoteSection: ({
     answer,
-    userAnswerData,
+    userAnswerData: _userAnswerData,
     actionPath,
-    profileIdForVotes,
-    currentUserId,
-    getNameByProfileId,
-    currentUserName,
+    profileIdForVotes: _profileIdForVotes,
+    currentUserId: _currentUserId,
+    getNameByProfileId: _getNameByProfileId,
+    currentUserName: _currentUserName,
   }: {
     answer: Answer;
     userAnswerData: { votes: Record<number, number> };

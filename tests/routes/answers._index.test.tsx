@@ -1,5 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
 import { loader, action } from '~/routes/answers._index';
+
+type AnswersListData = {
+  answers: unknown[];
+  total: number;
+  page: number;
+  pageSize: number;
+  q?: string;
+  author?: string;
+  sortBy: string;
+  minScore?: number;
+  hasComments?: boolean;
+  fromDate?: string;
+  toDate?: string;
+  topicsById: Record<string, unknown>;
+  commentsByAnswer: Record<string, unknown>;
+  users: unknown[];
+  profileId: string | null;
+};
 
 // Mock loaders and actionHandlers
 vi.mock('~/lib/loaders', () => ({
@@ -44,15 +63,19 @@ describe('answers._index route', () => {
         commentsByAnswer: {},
         users: [],
         profileId: null,
-      } as any;
+      } as AnswersListData;
       const { createAnswersListLoader } = await import('~/lib/loaders');
-      vi.mocked(createAnswersListLoader).mockResolvedValue(mockData);
+      vi.mocked(createAnswersListLoader).mockResolvedValue(
+        new Response(JSON.stringify(mockData))
+      );
 
-      const result = await loader({ request: mockRequest } as any);
+      const result = await loader({
+        request: mockRequest,
+      } as LoaderFunctionArgs);
       expect(createAnswersListLoader).toHaveBeenCalledWith(mockRequest, {
         topicId: undefined,
       });
-      expect(result).toEqual(mockData);
+      expect(await result.json()).toEqual(mockData);
     });
   });
 
@@ -60,7 +83,7 @@ describe('answers._index route', () => {
     it('should call handleAnswerActions', async () => {
       const mockArgs = {
         request: new Request('http://localhost/answers', { method: 'POST' }),
-      } as any;
+      } as ActionFunctionArgs;
       const mockResponse = new Response(JSON.stringify({ ok: true }), {
         status: 200,
       });
