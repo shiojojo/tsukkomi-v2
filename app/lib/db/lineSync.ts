@@ -274,8 +274,7 @@ export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise
       createdProfiles += 1;
     }
   }
-  if (createdProfiles || updatedProfiles) {
-  }
+  // Note: createdProfiles and updatedProfiles are tracked but not used here
 
   const { data: existingAnswers, error: existingAnswersErr } = await writeClient
     .from('answers')

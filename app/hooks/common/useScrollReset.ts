@@ -9,18 +9,14 @@ export function useScrollReset(currentPage: number) {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    try {
-      const el = containerRef.current;
-      if (el) {
-        el.scrollTop = 0;
-        try {
-          el.scrollTo?.({ top: 0, behavior: 'auto' });
-        } catch {}
-      }
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'auto' });
-      }
-    } catch {}
+    const el = containerRef.current;
+    if (el) {
+      el.scrollTop = 0;
+      el.scrollTo?.({ top: 0, behavior: 'auto' });
+    }
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
   }, [currentPage]);
 
   return containerRef;

@@ -91,12 +91,10 @@ export function useAnswersPage(data: LoaderData) {
   const toggleAdvancedFilters = () => {
     setShowAdvancedFilters(s => {
       const next = !s;
-      try {
-        const url = new URL(window.location.href);
-        if (next) url.searchParams.set('showAdvancedFilters', '1');
-        else url.searchParams.delete('showAdvancedFilters');
-        history.replaceState(null, '', url.toString());
-      } catch {}
+      const url = new URL(window.location.href);
+      if (next) url.searchParams.set('showAdvancedFilters', '1');
+      else url.searchParams.delete('showAdvancedFilters');
+      window.history.replaceState(null, '', url.toString());
       return next;
     });
   };

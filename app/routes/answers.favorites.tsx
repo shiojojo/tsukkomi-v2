@@ -78,11 +78,9 @@ export default function FavoriteAnswersRoute() {
   useEffect(() => {
     if (!requiresProfileId) return;
     if (!currentUserId) return;
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.set('profileId', currentUserId);
-      navigate(`${url.pathname}${url.search}`, { replace: true });
-    } catch {}
+    const url = new URL(window.location.href);
+    url.searchParams.set('profileId', currentUserId);
+    navigate(`${url.pathname}${url.search}`, { replace: true });
   }, [requiresProfileId, currentUserId, navigate]);
 
   if (requiresProfileId && !currentUserId) {

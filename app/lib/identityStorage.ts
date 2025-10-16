@@ -19,33 +19,27 @@ function readCookie(key: string) {
 }
 
 function writeCookie(key: string, value: string, days = 365) {
-  try {
-    const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
-    document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
-  } catch {}
+  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${encodeURIComponent(key)}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
 }
 
 function removeCookie(key: string) {
-  try {
-    document.cookie = `${encodeURIComponent(key)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
-  } catch {}
+  document.cookie = `${encodeURIComponent(key)}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
 }
 
 export function getItem(key: string): string | null {
   if (isLocalStorageAvailable()) {
-    try { return window.localStorage.getItem(key); } catch {}
+    return window.localStorage.getItem(key);
   }
   return readCookie(key);
 }
 
 export function setItem(key: string, value: string) {
   if (isLocalStorageAvailable()) {
-    try { 
-      window.localStorage.setItem(key, value); 
-      // Dispatch custom event for same-tab updates
-      window.dispatchEvent(new Event('identity-change'));
-      return; 
-    } catch {}
+    window.localStorage.setItem(key, value);
+    // Dispatch custom event for same-tab updates
+    window.dispatchEvent(new Event('identity-change'));
+    return;
   }
   writeCookie(key, value);
   // Also dispatch for cookie fallback
@@ -56,12 +50,10 @@ export function setItem(key: string, value: string) {
 
 export function removeItem(key: string) {
   if (isLocalStorageAvailable()) {
-    try { 
-      window.localStorage.removeItem(key); 
-      // Dispatch custom event for same-tab updates
-      window.dispatchEvent(new Event('identity-change'));
-      return; 
-    } catch {}
+    window.localStorage.removeItem(key);
+    // Dispatch custom event for same-tab updates
+    window.dispatchEvent(new Event('identity-change'));
+    return;
   }
   removeCookie(key);
   // Also dispatch for cookie fallback

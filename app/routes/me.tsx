@@ -29,30 +29,26 @@ export async function loader({}: LoaderFunctionArgs) {
 export async function action({ request }: ActionFunctionArgs) {
   const form = await request.formData();
   // basic rate limiting to protect this dev endpoint from storms
-  try {
-    const parentId = form.get('parentId')
-      ? String(form.get('parentId'))
-      : undefined;
-    let rateKey = 'anon';
-    if (parentId) rateKey = `p:${parentId}`;
-    else {
-      try {
-        const hdr =
-          request.headers && request.headers.get
-            ? request.headers.get('x-forwarded-for') ||
-              request.headers.get('x-real-ip')
-            : null;
-        if (hdr) rateKey = `ip:${String(hdr).split(',')[0].trim()}`;
-      } catch {}
-    }
-    // if no token available, return 429
-    if (!consumeToken(rateKey, 1)) {
-      return new Response(
-        JSON.stringify({ ok: false, error: 'rate_limited' }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-  } catch {}
+  const parentId = form.get('parentId')
+    ? String(form.get('parentId'))
+    : undefined;
+  let rateKey = 'anon';
+  if (parentId) rateKey = `p:${parentId}`;
+  else {
+    const hdr =
+      request.headers && request.headers.get
+        ? request.headers.get('x-forwarded-for') ||
+          request.headers.get('x-real-ip')
+        : null;
+    if (hdr) rateKey = `ip:${String(hdr).split(',')[0].trim()}`;
+  }
+  // if no token available, return 429
+  if (!consumeToken(rateKey, 1)) {
+    return new Response(JSON.stringify({ ok: false, error: 'rate_limited' }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
   const intent = form.get('intent') ? String(form.get('intent')) : '';
 
   if (intent === 'add-subuser') {
@@ -136,66 +132,56 @@ export default function MeRoute() {
       (add.data as ActionData).ok &&
       (add.data as ActionData).sub
     ) {
-      try {
-        const sub = (add.data as ActionData).sub!;
-        const parentId = String((add.data as ActionData).parentId || '');
-        setItem('currentUserId', parentId);
-        const parent = users.find(u => u.id === parentId);
-        if (parent) setItem('currentUserName', parent.name ?? '');
-        setItem('currentSubUserId', sub.id);
-        setItem('currentSubUserName', sub.name);
-        // Trigger identity change event instead of reload
-        window.dispatchEvent(new Event('identity-change'));
-      } catch {}
+      const sub = (add.data as ActionData).sub!;
+      const parentId = String((add.data as ActionData).parentId || '');
+      setItem('currentUserId', parentId);
+      const parent = users.find(u => u.id === parentId);
+      if (parent) setItem('currentUserName', parent.name ?? '');
+      setItem('currentSubUserId', sub.id);
+      setItem('currentSubUserName', sub.name);
+      // Trigger identity change event instead of reload
+      window.dispatchEvent(new Event('identity-change'));
     }
   }, [add.state, add.data]);
 
   // Handle remove result: if removed sub was active, clear sub selection
   useEffect(() => {
     if (remove.state === 'idle' && remove.data && remove.data.ok) {
-      try {
-        const removedId = String(remove.data.subId || '');
-        if (getItem('currentSubUserId') === removedId) {
-          removeItem('currentSubUserId');
-          removeItem('currentSubUserName');
-        }
-        // Trigger identity change event instead of reload
-        window.dispatchEvent(new Event('identity-change'));
-      } catch {}
+      const removedId = String(remove.data.subId || '');
+      if (getItem('currentSubUserId') === removedId) {
+        removeItem('currentSubUserId');
+        removeItem('currentSubUserName');
+      }
+      // Trigger identity change event instead of reload
+      window.dispatchEvent(new Event('identity-change'));
     }
   }, [remove.state, remove.data]);
 
   function selectMain(user: User) {
-    try {
-      setItem('currentUserId', user.id);
-      setItem('currentUserName', user.name ?? '');
-      // clear any sub selection
-      removeItem('currentSubUserId');
-      removeItem('currentSubUserName');
-      // Trigger identity change event instead of reload
-      window.dispatchEvent(new Event('identity-change'));
-    } catch {}
+    setItem('currentUserId', user.id);
+    setItem('currentUserName', user.name ?? '');
+    // clear any sub selection
+    removeItem('currentSubUserId');
+    removeItem('currentSubUserName');
+    // Trigger identity change event instead of reload
+    window.dispatchEvent(new Event('identity-change'));
   }
 
   function switchToSub(sub: SubUser, parent: User) {
-    try {
-      setItem('currentUserId', parent.id);
-      setItem('currentUserName', parent.name ?? '');
-      setItem('currentSubUserId', sub.id);
-      setItem('currentSubUserName', sub.name);
-      // Trigger identity change event instead of reload
-      window.dispatchEvent(new Event('identity-change'));
-    } catch {}
+    setItem('currentUserId', parent.id);
+    setItem('currentUserName', parent.name ?? '');
+    setItem('currentSubUserId', sub.id);
+    setItem('currentSubUserName', sub.name);
+    // Trigger identity change event instead of reload
+    window.dispatchEvent(new Event('identity-change'));
   }
 
   // End using sub-user and return to main user (clear sub selection)
   function returnToMain() {
-    try {
-      removeItem('currentSubUserId');
-      removeItem('currentSubUserName');
-      // Trigger identity change event instead of reload
-      window.dispatchEvent(new Event('identity-change'));
-    } catch {}
+    removeItem('currentSubUserId');
+    removeItem('currentSubUserName');
+    // Trigger identity change event instead of reload
+    window.dispatchEvent(new Event('identity-change'));
   }
 
   return (

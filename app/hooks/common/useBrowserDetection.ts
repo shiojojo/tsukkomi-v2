@@ -11,32 +11,30 @@ export function useBrowserDetection() {
   useEffect(() => {
     if (typeof navigator === 'undefined') return;
 
-    try {
-      const ua = navigator.userAgent ?? '';
-      const isAndroid = /Android/i.test(ua);
-      const isChrome = /Chrome\//i.test(ua);
-      const isEdge = /Edg\//i.test(ua);
-      const isOpera = /OPR\//i.test(ua);
-      const isSamsung = /SamsungBrowser/i.test(ua);
+    const ua = navigator.userAgent ?? '';
+    const isAndroid = /Android/i.test(ua);
+    const isChrome = /Chrome\//i.test(ua);
+    const isEdge = /Edg\//i.test(ua);
+    const isOpera = /OPR\//i.test(ua);
+    const isSamsung = /SamsungBrowser/i.test(ua);
 
-      const maxTouchPoints =
-        typeof navigator.maxTouchPoints === 'number'
-          ? navigator.maxTouchPoints
-          : 0;
-      const isiOSFamily =
-        /iP(hone|od|ad)/i.test(ua) ||
-        (ua.includes('Macintosh') && maxTouchPoints > 1);
-      const isCriOS = /CriOS/i.test(ua);
-      const isMobileSafari =
-        isiOSFamily && /Version\/\d+.*Safari/i.test(ua) && !isCriOS;
+    const maxTouchPoints =
+      typeof navigator.maxTouchPoints === 'number'
+        ? navigator.maxTouchPoints
+        : 0;
+    const isiOSFamily =
+      /iP(hone|od|ad)/i.test(ua) ||
+      (ua.includes('Macintosh') && maxTouchPoints > 1);
+    const isCriOS = /CriOS/i.test(ua);
+    const isMobileSafari =
+      isiOSFamily && /Version\/\d+.*Safari/i.test(ua) && !isCriOS;
 
-      if (
-        (isAndroid && isChrome && !isEdge && !isOpera && !isSamsung) ||
-        (isiOSFamily && (isCriOS || isMobileSafari))
-      ) {
-        setUseDocumentScroll(true);
-      }
-    } catch {}
+    if (
+      (isAndroid && isChrome && !isEdge && !isOpera && !isSamsung) ||
+      (isiOSFamily && (isCriOS || isMobileSafari))
+    ) {
+      setUseDocumentScroll(true);
+    }
   }, []);
 
   return useDocumentScroll;

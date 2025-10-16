@@ -11,15 +11,13 @@ export function useViewportHeight() {
     // Debounced setter to avoid thrash during scroll/resize.
     let rafId: number | null = null;
     const setVh = () => {
-      try {
-        const vv = window.visualViewport;
-        const vh =
-          vv && typeof vv.height === 'number' ? vv.height : window.innerHeight;
-        document.documentElement.style.setProperty(
-          '--vh',
-          String(vh / 100) + 'px'
-        );
-      } catch {}
+      const vv = window.visualViewport;
+      const vh =
+        vv && typeof vv.height === 'number' ? vv.height : window.innerHeight;
+      document.documentElement.style.setProperty(
+        '--vh',
+        String(vh / 100) + 'px'
+      );
     };
 
     const schedule = () => {

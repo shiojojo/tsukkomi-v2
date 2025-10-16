@@ -25,13 +25,8 @@ export default function ResponsiveNav() {
     const mq = window.matchMedia('(min-width:48rem)');
 
     const update = () => {
-      try {
-        const value = mq.matches ? `${el.offsetHeight}px` : '0px';
-        document.documentElement.style.setProperty(
-          '--app-header-height',
-          value
-        );
-      } catch {}
+      const value = mq.matches ? `${el.offsetHeight}px` : '0px';
+      document.documentElement.style.setProperty('--app-header-height', value);
     };
 
     update();
