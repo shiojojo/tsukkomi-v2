@@ -62,7 +62,8 @@ export function ThemeToggle() {
           initial={{ opacity: 0, rotate: -90 }}
           animate={{ opacity: 1, rotate: 0 }}
           exit={{ opacity: 0, rotate: 90 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.15 }}
+          style={{ willChange: 'transform, opacity' }}
         >
           {getIcon()}
         </motion.div>
