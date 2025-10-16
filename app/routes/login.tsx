@@ -82,50 +82,42 @@ export default function LoginRoute() {
       (createFetcher.data as ActionData).ok &&
       (createFetcher.data as ActionData).sub
     ) {
-      try {
-        const sub = (createFetcher.data as ActionData).sub!;
-        const parentId = String(
-          (createFetcher.data as ActionData).parentId || ''
-        );
-        const parent = users.find(u => u.id === parentId);
-        identityStorage.setItem('currentUserId', parentId);
-        if (parent) identityStorage.setItem('currentUserName', parent.name);
-        identityStorage.setItem('currentSubUserId', sub.id);
-        identityStorage.setItem('currentSubUserName', sub.name);
-        // refresh() is not needed as storage event will trigger update
-      } catch {}
+      const sub = (createFetcher.data as ActionData).sub!;
+      const parentId = String(
+        (createFetcher.data as ActionData).parentId || ''
+      );
+      const parent = users.find(u => u.id === parentId);
+      identityStorage.setItem('currentUserId', parentId);
+      if (parent) identityStorage.setItem('currentUserName', parent.name);
+      identityStorage.setItem('currentSubUserId', sub.id);
+      identityStorage.setItem('currentSubUserName', sub.name);
+      // refresh() is not needed as storage event will trigger update
       window.location.href = '/';
     }
   }, [createFetcher.state, createFetcher.data, users]);
 
   function selectMain(u: User) {
-    try {
-      identityStorage.setItem('currentUserId', u.id);
-      identityStorage.setItem('currentUserName', u.name ?? '');
-      identityStorage.removeItem('currentSubUserId');
-      identityStorage.removeItem('currentSubUserName');
-      // refresh() is not needed as storage event will trigger update
-    } catch {}
+    identityStorage.setItem('currentUserId', u.id);
+    identityStorage.setItem('currentUserName', u.name ?? '');
+    identityStorage.removeItem('currentSubUserId');
+    identityStorage.removeItem('currentSubUserName');
+    // refresh() is not needed as storage event will trigger update
     window.location.href = '/';
   }
 
   function selectSub(sub: SubUser, parent: User) {
-    try {
-      identityStorage.setItem('currentUserId', parent.id);
-      identityStorage.setItem('currentUserName', parent.name ?? '');
-      identityStorage.setItem('currentSubUserId', sub.id);
-      identityStorage.setItem('currentSubUserName', sub.name);
-      // refresh() is not needed as storage event will trigger update
-    } catch {}
+    identityStorage.setItem('currentUserId', parent.id);
+    identityStorage.setItem('currentUserName', parent.name ?? '');
+    identityStorage.setItem('currentSubUserId', sub.id);
+    identityStorage.setItem('currentSubUserName', sub.name);
+    // refresh() is not needed as storage event will trigger update
     window.location.href = '/';
   }
 
   function clearSub() {
-    try {
-      identityStorage.removeItem('currentSubUserId');
-      identityStorage.removeItem('currentSubUserName');
-      // refresh() is not needed as storage event will trigger update
-    } catch {}
+    identityStorage.removeItem('currentSubUserId');
+    identityStorage.removeItem('currentSubUserName');
+    // refresh() is not needed as storage event will trigger update
     window.location.href = '/';
   }
 
