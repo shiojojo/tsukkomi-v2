@@ -6,8 +6,6 @@ export {
   getAnswers,
   getUserAnswerData,
   searchAnswers,
-  getAnswersByTopic,
-  getAnswersPageByTopic,
   voteAnswer,
 } from './db/answers';
 
@@ -33,7 +31,6 @@ export {
   getTopics,
   getTopicsPaged,
   getLatestTopic,
-  getTopic,
 } from './db/topics';
 
 // Users domain
@@ -41,7 +38,6 @@ export {
   getUsers,
   addSubUser,
   removeSubUser,
-  getProfilesByIds,
 } from './db/users';
 
 // Votes domain

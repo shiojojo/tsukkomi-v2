@@ -108,19 +108,3 @@ export async function removeSubUser(parentId: string, subId: string): Promise<bo
   if (error) throw error;
   return true;
 }
-
-export async function getProfilesByIds(ids: Array<string | number>): Promise<Record<string, string>> {
-  const result: Record<string, string> = {};
-  const uniq = Array.from(new Set((ids ?? []).map(id => String(id)).filter(Boolean)));
-  if (uniq.length === 0) return result;
-  await ensureConnection();
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, name')
-    .in('id', uniq);
-  if (error) throw error;
-  for (const r of (data ?? [])) {
-    if (r && r.id) result[String(r.id)] = r.name;
-  }
-  return result;
-}

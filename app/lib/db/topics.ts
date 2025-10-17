@@ -89,8 +89,3 @@ export async function getLatestTopic(): Promise<Topic | null> {
   const row = (data ?? [])[0] ?? null;
   return row ? TopicSchema.parse(row as unknown) : null;
 }
-
-export async function getTopic(id: string | number): Promise<Topic | undefined> {
-  const topics = await getTopics();
-  return topics.find((t) => String(t.id) === String(id));
-}
