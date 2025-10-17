@@ -42,7 +42,6 @@ export {
 
 // Votes domain
 export {
-  getVotesForProfile,
   getProfileAnswerData,
   getVotesByForAnswers,
 } from './db/votes';

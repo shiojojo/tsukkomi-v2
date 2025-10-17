@@ -2,28 +2,26 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, ensureConnection } from '../supabase';
 import { getFavoritesForProfile } from './favorites';
 
-export async function getVotesForProfile(profileId: string, answerIds?: Array<number | string>) {
-  await ensureConnection();
-  let q = supabase.from('votes').select('answer_id, level');
-  q = q.eq('profile_id', profileId);
-  if (answerIds && answerIds.length) q = q.in('answer_id', answerIds.map((v) => Number(v)).filter(Boolean));
-  const { data, error } = await q;
-  if (error) throw error;
-
-  const result: Record<number, number> = {};
-  for (const vote of (data ?? [])) {
-    result[Number(vote.answer_id)] = vote.level;
-  }
-  return result;
-}
-
 /**
  * Get user's profile data including votes and favorites for answers
  * This ensures the latest data is always fetched from DB
  */
 export async function getProfileAnswerData(profileId: string, answerIds: Array<number | string>) {
   const [votes, favorites] = await Promise.all([
-    getVotesForProfile(profileId, answerIds),
+    (async () => {
+      await ensureConnection();
+      let q = supabase.from('votes').select('answer_id, level');
+      q = q.eq('profile_id', profileId);
+      if (answerIds && answerIds.length) q = q.in('answer_id', answerIds.map((v) => Number(v)).filter(Boolean));
+      const { data, error } = await q;
+      if (error) throw error;
+
+      const result: Record<number, number> = {};
+      for (const vote of (data ?? [])) {
+        result[Number(vote.answer_id)] = vote.level;
+      }
+      return result;
+    })(),
     getFavoritesForProfile(profileId, answerIds)
   ]);
 

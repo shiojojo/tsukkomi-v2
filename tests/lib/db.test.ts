@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { getAnswers, getUserAnswerData, searchAnswers, getTopics, getVotesForProfile } from '~/lib/db';
+import { getAnswers, getUserAnswerData, searchAnswers, getTopics } from '~/lib/db';
 
 // Mock Supabase
 vi.mock('~/lib/supabase', () => ({
@@ -341,52 +341,6 @@ describe('db functions', () => {
     });
   });
 
-  describe('getVotesForProfile', () => {
-    it('should return votes for specific profile', async () => {
-      const mockData = [
-        { answer_id: 1, level: 1 },
-        { answer_id: 2, level: 2 },
-      ];
-      const { supabase } = await import('~/lib/supabase');
-      vi.mocked(supabase.from).mockReturnValueOnce({
-        select: vi.fn().mockReturnValueOnce({
-          eq: vi.fn().mockReturnValueOnce({
-            in: vi.fn().mockResolvedValueOnce({
-              data: mockData,
-              error: null,
-            }),
-          }),
-        }),
-      } as any);
-
-      const result = await getVotesForProfile('profile-1', [1, 2]);
-      expect(result).toEqual({ 1: 1, 2: 2 });
-    });
-
-    it('should filter by profile_id to prevent mixing data', async () => {
-      // Mock data includes votes from different profiles, but eq('profile_id', profileId) should filter
-      const mockData = [
-        { answer_id: 1, level: 1 }, // Only this should be returned for profile-1
-      ];
-      const { supabase } = await import('~/lib/supabase');
-      const mockFrom = vi.mocked(supabase.from).mockReturnValueOnce({
-        select: vi.fn().mockReturnValueOnce({
-          eq: vi.fn().mockReturnValueOnce({
-            in: vi.fn().mockResolvedValueOnce({
-              data: mockData,
-              error: null,
-            }),
-          }),
-        }),
-      } as any);
-
-      const result = await getVotesForProfile('profile-1', [1]);
-      expect(result).toEqual({ 1: 1 });
-      // Verify that eq was called with correct profile_id
-      expect(mockFrom).toHaveBeenCalledWith('votes');
-      // Note: Deep mock verification would require more setup, but this ensures filtering logic
-    });
-  });
 
   describe('addComment', () => {
     it('should add comment successfully', async () => {
