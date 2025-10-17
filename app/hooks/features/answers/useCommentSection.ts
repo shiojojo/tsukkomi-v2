@@ -1,7 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useIdentity } from '~/hooks/common/useIdentity';
 import { useOptimisticAction } from '~/hooks/common/useOptimisticAction';
 import { useMutationWithError } from '~/hooks/common/useMutationWithError';
+import { useQueryWithError } from '~/hooks/common/useQueryWithError';
 import type { Comment } from '~/lib/schemas/comment';
 
 export type UseCommentSectionProps = {
@@ -28,15 +29,17 @@ export function useCommentSection({
   const queryClient = useQueryClient();
 
   // React Query for comments
-  const commentsQuery = useQuery({
-    queryKey: ['comments', answerId],
-    queryFn: async () => {
+  const commentsQuery = useQueryWithError(
+    ['comments', answerId.toString()],
+    async () => {
       const { getCommentsByAnswer } = await import('~/lib/db/comments');
       return await getCommentsByAnswer(answerId);
     },
-    placeholderData: initialComments,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+    {
+      placeholderData: initialComments,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    }
+  );
 
   const comments = commentsQuery.data ?? initialComments;
 
@@ -73,7 +76,7 @@ export function useCommentSection({
     {
       onMutate: async (_variables): Promise<{ previousComments: Comment[] }> => {
         // Store previous comments for rollback
-        const previousComments = queryClient.getQueryData(['comments', answerId]) as Comment[];
+        const previousComments = queryClient.getQueryData(['comments', answerId.toString()]) as Comment[];
         return { previousComments: previousComments || [] };
       },
       onSuccess: (_data, _variables, _context) => {
@@ -81,13 +84,13 @@ export function useCommentSection({
         // Wait for DB to sync before refetching to ensure new comment is reflected
         setTimeout(() => {
           console.log('[DEBUG] DB sync wait complete, invalidating queries for answerId:', answerId);
-          queryClient.invalidateQueries({ queryKey: ['comments', answerId] });
+          queryClient.invalidateQueries({ queryKey: ['comments', answerId.toString()] });
         }, 500); // Wait 500ms for DB sync
       },
       onError: (error, variables, _context) => {
         // On error, rollback to previous comments (no optimistic update, so no need to do anything)
         // Invalidate to ensure fresh data from server
-        queryClient.invalidateQueries({ queryKey: ['comments', answerId] });
+        queryClient.invalidateQueries({ queryKey: ['comments', answerId.toString()] });
         // Call onError callback with the error and the text that failed to send
         onError?.(error, variables.text);
       },

@@ -1,7 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useIdentity } from '~/hooks/common/useIdentity';
 import { useOptimisticAction } from '~/hooks/common/useOptimisticAction';
 import { useMutationWithError } from '~/hooks/common/useMutationWithError';
+import { useQueryWithError } from '~/hooks/common/useQueryWithError';
 
 export type UseNumericVoteButtonsProps = {
   answerId: number;
@@ -29,20 +30,24 @@ export function useNumericVoteButtons({
   const queryClient = useQueryClient();
 
   // React Query for user vote
-  const userVoteQuery = useQuery({
-    queryKey: ['user-vote', answerId, effectiveId],
-    queryFn: () => votesBy?.[effectiveId || ''] || null,
-    placeholderData: votesBy?.[effectiveId || ''] || null,
-    staleTime: Infinity, // loader dataなのでstaleにしない
-  });
+  const userVoteQuery = useQueryWithError(
+    ['user-vote', answerId.toString(), effectiveId || 'anonymous'],
+    async () => votesBy?.[effectiveId || ''] || null,
+    {
+      placeholderData: votesBy?.[effectiveId || ''] || null,
+      staleTime: Infinity, // loader dataなのでstaleにしない
+    }
+  );
 
   // React Query for vote counts
-  const voteCountsQuery = useQuery({
-    queryKey: ['vote-counts', answerId],
-    queryFn: () => initialVotes,
-    placeholderData: initialVotes,
-    staleTime: 5 * 60 * 1000,
-  });
+  const voteCountsQuery = useQueryWithError(
+    ['vote-counts', answerId.toString()],
+    async () => initialVotes,
+    {
+      placeholderData: initialVotes,
+      staleTime: 5 * 60 * 1000,
+    }
+  );
 
   const selection = userVoteQuery.data;
   const counts = voteCountsQuery.data || initialVotes;
@@ -68,17 +73,17 @@ export function useNumericVoteButtons({
         // Optimistic update
         const previousUserVote = queryClient.getQueryData([
           'user-vote',
-          answerId,
-          effectiveId,
+          answerId.toString(),
+          effectiveId || 'anonymous',
         ]);
         const previousVoteCounts = queryClient.getQueryData([
           'vote-counts',
-          answerId,
+          answerId.toString(),
         ]);
 
         // Update user vote
         const newVote = level === 0 ? null : level;
-        queryClient.setQueryData(['user-vote', answerId, effectiveId], newVote);
+        queryClient.setQueryData(['user-vote', answerId.toString(), effectiveId || 'anonymous'], newVote);
 
         // Update vote counts
         if (previousVoteCounts) {
@@ -95,7 +100,7 @@ export function useNumericVoteButtons({
           if (newVote && newVote >= 1 && newVote <= 3) {
             newCounts[`level${newVote}` as keyof typeof newCounts] += 1;
           }
-          queryClient.setQueryData(['vote-counts', answerId], newCounts);
+          queryClient.setQueryData(['vote-counts', answerId.toString()], newCounts);
         }
 
         onSelectionChange?.(newVote);
@@ -108,9 +113,9 @@ export function useNumericVoteButtons({
       onError: (_error, { level: _level }, _context) => {
         // On error, invalidate to refetch from server
         queryClient.invalidateQueries({
-          queryKey: ['user-vote', answerId, effectiveId],
+          queryKey: ['user-vote', answerId.toString(), effectiveId || 'anonymous'],
         });
-        queryClient.invalidateQueries({ queryKey: ['vote-counts', answerId] });
+        queryClient.invalidateQueries({ queryKey: ['vote-counts', answerId.toString()] });
       },
     }
   );

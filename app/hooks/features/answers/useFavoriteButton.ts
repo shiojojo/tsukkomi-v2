@@ -1,7 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useIdentity } from '~/hooks/common/useIdentity';
 import { useOptimisticAction } from '~/hooks/common/useOptimisticAction';
 import { useMutationWithError } from '~/hooks/common/useMutationWithError';
+import { useQueryWithError } from '~/hooks/common/useQueryWithError';
 
 export type UseFavoriteButtonProps = {
   answerId: number;
@@ -29,9 +30,9 @@ export function useFavoriteButton({
   const queryClient = useQueryClient();
 
   // React Query for user favorite status
-  const favoriteQuery = useQuery({
-    queryKey: ['user-favorite', answerId, effectiveId],
-    queryFn: async () => {
+  const favoriteQuery = useQueryWithError(
+    ['user-favorite', answerId.toString(), effectiveId || 'anonymous'],
+    async () => {
       if (!effectiveId) return false;
       const params = new URLSearchParams();
       params.set('profileId', effectiveId);
@@ -43,18 +44,22 @@ export function useFavoriteButton({
       const payload = await response.json();
       return (payload?.favorites ?? []).includes(answerId);
     },
-    placeholderData: initialFavorited,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!effectiveId,
-  });
+    {
+      placeholderData: initialFavorited,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      enabled: !!effectiveId,
+    }
+  );
 
   // React Query for favorite count
-  const countQuery = useQuery({
-    queryKey: ['favorite-count', answerId],
-    queryFn: () => initialCount,
-    placeholderData: initialCount,
-    staleTime: 5 * 60 * 1000,
-  });
+  const countQuery = useQueryWithError(
+    ['favorite-count', answerId.toString()],
+    async () => initialCount,
+    {
+      placeholderData: initialCount,
+      staleTime: 5 * 60 * 1000,
+    }
+  );
 
   const favorited = favoriteQuery.data ?? false;
   const count = countQuery.data ?? initialCount;
@@ -84,21 +89,21 @@ export function useFavoriteButton({
         // Optimistic update
         const previousFavorited = queryClient.getQueryData([
           'user-favorite',
-          answerId,
-          effectiveId,
+          answerId.toString(),
+          effectiveId || 'anonymous',
         ]) as boolean | undefined;
         const previousCount = queryClient.getQueryData([
           'favorite-count',
-          answerId,
+          answerId.toString(),
         ]) as number;
 
         // Update favorite status
         const newFavorited = !favorited;
-        queryClient.setQueryData(['user-favorite', answerId, effectiveId], newFavorited);
+        queryClient.setQueryData(['user-favorite', answerId.toString(), effectiveId || 'anonymous'], newFavorited);
 
         // Update favorite count
         const newCount = newFavorited ? count + 1 : count - 1;
-        queryClient.setQueryData(['favorite-count', answerId], newCount);
+        queryClient.setQueryData(['favorite-count', answerId.toString()], newCount);
 
         onFavoritedChange?.(newFavorited);
 
@@ -110,15 +115,15 @@ export function useFavoriteButton({
       onError: (error, _, context) => {
         // On error, rollback optimistic updates
         if (context?.previousFavorited !== undefined) {
-          queryClient.setQueryData(['user-favorite', answerId, effectiveId], context.previousFavorited);
+          queryClient.setQueryData(['user-favorite', answerId.toString(), effectiveId || 'anonymous'], context.previousFavorited);
         }
         if (context?.previousCount !== undefined) {
-          queryClient.setQueryData(['favorite-count', answerId], context.previousCount);
+          queryClient.setQueryData(['favorite-count', answerId.toString()], context.previousCount);
         }
         queryClient.invalidateQueries({
-          queryKey: ['user-favorite', answerId, effectiveId],
+          queryKey: ['user-favorite', answerId.toString(), effectiveId || 'anonymous'],
         });
-        queryClient.invalidateQueries({ queryKey: ['favorite-count', answerId] });
+        queryClient.invalidateQueries({ queryKey: ['favorite-count', answerId.toString()] });
       },
     }
   );
