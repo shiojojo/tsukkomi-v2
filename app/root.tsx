@@ -44,6 +44,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   // another <html>/<head>/<body> into the existing document which can cause
   // DOM removeChild errors during hydration and navigation.
   if (typeof document === 'undefined') {
+    // サーバーサイド: デフォルトはライトモード（フリック防止のため）
+    // 必要に応じて localStorage をシミュレートするか、クライアントサイドで初期化
     return (
       <html lang="en">
         <head>
@@ -51,6 +53,28 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <Meta />
           <Links />
+          {/* ダークモード初期化スクリプト - 他のスクリプトより先に実行 */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `
+                try {
+                  const theme = localStorage.getItem('theme') || 'system';
+                  const root = document.documentElement;
+                  if (theme === 'dark') {
+                    root.classList.add('dark');
+                  } else if (theme === 'light') {
+                    root.classList.remove('dark');
+                  } else {
+                    // system: メディアクエリに従う
+                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    root.classList.toggle('dark', prefersDark);
+                  }
+                } catch (e) {
+                  // localStorageが利用できない場合、デフォルトはライト
+                }
+              `,
+            }}
+          />
           {/* Place Scripts in the root head during SSR so runtime does not try to
         render synchronous/defer scripts outside the main document. */}
           <Scripts />
