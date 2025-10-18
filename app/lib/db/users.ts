@@ -3,6 +3,7 @@ import type { User, SubUser } from '~/lib/schemas/user';
 import { IdentitySchema } from '~/lib/schemas/identity';
 import type { Identity } from '~/lib/schemas/identity';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
+import { withTiming } from './debug';
 
 // Database row types
 interface DatabaseProfileRow {
@@ -20,7 +21,7 @@ interface DatabaseSubProfileRow {
   line_id: string | null;
 }
 
-export async function getUsers(opts?: { limit?: number; onlyMain?: boolean }): Promise<User[]> {
+async function _getUsers(opts?: { limit?: number; onlyMain?: boolean }): Promise<User[]> {
   // fetch profiles and attach sub_users
   // If opts.limit is provided, only fetch up to that many profiles and then fetch
   // sub-users for the returned main users. This avoids scanning the full profiles
@@ -72,12 +73,14 @@ export async function getUsers(opts?: { limit?: number; onlyMain?: boolean }): P
   return UserSchema.array().parse(rows as unknown);
 }
 
+export const getUsers = withTiming(_getUsers, 'getUsers', 'users');
+
 /**
  * addSubUser
  * Intent: create a new sub-user in dev and return it
  * Contract: name validated elsewhere. id is generated to be unique within mockUsers.
  */
-export async function addSubUser(input: { parentId: string; name: string }): Promise<SubUser> {
+async function _addSubUser(input: { parentId: string; name: string }): Promise<SubUser> {
   await ensureConnection();
   await ensureConnection();
   const writeClient = supabaseAdmin ?? supabase;
@@ -91,20 +94,21 @@ export async function addSubUser(input: { parentId: string; name: string }): Pro
   return data as SubUser;
 }
 
+export const addSubUser = withTiming(_addSubUser, 'addSubUser', 'users');
+
 /**
  * removeSubUser
  * Intent: delete a sub-user from parent in dev and return boolean
  */
-export async function removeSubUser(parentId: string, subId: string): Promise<boolean> {
-  await ensureConnection();
+async function _removeSubUser(input: { id: string }): Promise<void> {
   await ensureConnection();
   const writeClient = supabaseAdmin ?? supabase;
   if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
   const { error } = await writeClient
-  .from('profiles')
-  .delete()
-  .eq('id', subId)
-  .eq('parent_id', parentId);
+    .from('profiles')
+    .delete()
+    .eq('id', input.id);
   if (error) throw error;
-  return true;
 }
+
+export const removeSubUser = withTiming(_removeSubUser, 'removeSubUser', 'users');

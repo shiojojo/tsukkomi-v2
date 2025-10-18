@@ -18,12 +18,20 @@ const SUPABASE_SECRET_KEY = isServer
   ? (process.env.VITE_SUPABASE_SECRET_KEY ?? process.env.VITE_SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SECRET_KEY ?? import.meta.env.VITE_SUPABASE_SECRET_KEY ?? '')
   : '';
 
+const isDev = import.meta.env.DEV;
+
 if (!SUPABASE_URL) {
   console.warn('Supabase URL is not set. Set VITE_SUPABASE_URL / SUPABASE_URL in environment.');
 }
 
 // Public client: safe to use on client-side for SELECTs (RLS still applies).
-export const supabase = createClient(String(SUPABASE_URL ?? ''), SUPABASE_PUBLIC_KEY);
+export const supabase = createClient(String(SUPABASE_URL ?? ''), SUPABASE_PUBLIC_KEY, {
+  ...(isDev && {
+    global: {
+      headers: { 'x-client-info': 'tsukkomi-v2-dev' },
+    },
+  }),
+});
 
 // Server/admin client: only created on server and only when a secret key is present.
 export const supabaseAdmin = isServer && SUPABASE_SECRET_KEY ? createClient(String(SUPABASE_URL ?? ''), SUPABASE_SECRET_KEY) : undefined;

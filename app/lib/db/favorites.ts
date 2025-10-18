@@ -4,6 +4,7 @@ import type { Answer } from '~/lib/schemas/answer';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 import { DEFAULT_PAGE_SIZE } from '../constants';
+import { withTiming } from './debug';
 
 // Database row types for type safety
 interface DatabaseAnswerRow {
@@ -47,7 +48,7 @@ async function getVotesByForAnswers(
   return map;
 }
 
-export async function addFavorite(input: { answerId: number | string; profileId: string }) {
+async function _addFavorite(input: { answerId: number | string; profileId: string }) {
   const parsed = FavoriteSchema.parse({ answerId: input.answerId, profileId: input.profileId });
   const answerId = Number(parsed.answerId);
   const profileId = parsed.profileId;
@@ -69,7 +70,9 @@ export async function addFavorite(input: { answerId: number | string; profileId:
   return { success: true } as const;
 }
 
-export async function removeFavorite(input: { answerId: number | string; profileId: string }) {
+export const addFavorite = withTiming(_addFavorite, 'addFavorite', 'favorites');
+
+async function _removeFavorite(input: { answerId: number | string; profileId: string }) {
   const parsed = FavoriteSchema.parse({ answerId: input.answerId, profileId: input.profileId });
   const answerId = Number(parsed.answerId);
   const profileId = parsed.profileId;
@@ -85,7 +88,9 @@ export async function removeFavorite(input: { answerId: number | string; profile
   return { success: true } as const;
 }
 
-export async function toggleFavorite(input: { answerId: number | string; profileId: string }) {
+export const removeFavorite = withTiming(_removeFavorite, 'removeFavorite', 'favorites');
+
+async function _toggleFavorite(input: { answerId: number | string; profileId: string }) {
   const parsed = FavoriteSchema.parse({ answerId: input.answerId, profileId: input.profileId });
   const answerId = Number(parsed.answerId);
   const profileId = parsed.profileId;
@@ -105,7 +110,9 @@ export async function toggleFavorite(input: { answerId: number | string; profile
   return { favorited: true } as const;
 }
 
-export async function getFavoriteCounts(answerIds: Array<number | string>) {
+export const toggleFavorite = withTiming(_toggleFavorite, 'toggleFavorite', 'favorites');
+
+async function _getFavoriteCounts(answerIds: Array<number | string>) {
   const result: Record<number, number> = {};
   const ids = (answerIds ?? []).map((v) => Number(v)).filter(Boolean);
   if (!ids.length) return result;
@@ -122,7 +129,9 @@ export async function getFavoriteCounts(answerIds: Array<number | string>) {
   return result;
 }
 
-export async function getFavoritesForProfile(profileId: string, answerIds?: Array<number | string>) {
+export const getFavoriteCounts = withTiming(_getFavoriteCounts, 'getFavoriteCounts', 'favorites');
+
+async function _getFavoritesForProfile(profileId: string, answerIds?: Array<number | string>) {
   await ensureConnection();
   let q = supabase.from('favorites').select('answer_id');
   q = q.eq('profile_id', profileId);
@@ -131,6 +140,8 @@ export async function getFavoritesForProfile(profileId: string, answerIds?: Arra
   if (error) throw error;
   return (data ?? []).map((r: { answer_id: number }) => Number(r.answer_id));
 }
+
+export const getFavoritesForProfile = withTiming(_getFavoritesForProfile, 'getFavoritesForProfile', 'favorites');
 
 /**
  * 概要: 指定プロフィールがお気に入り登録した回答一覧を取得する集約層。
@@ -143,7 +154,7 @@ export async function getFavoritesForProfile(profileId: string, answerIds?: Arra
  * Errors: Supabase エラー / zod 失敗はそのまま throw。profileId 未指定はエラー扱い。
  * SideEffects: なし（読み取り専用）。
  */
-export async function getFavoriteAnswersForProfile(profileId: string, opts?: { page?: number; pageSize?: number }): Promise<{ answers: Answer[]; total: number }> {
+async function _getFavoriteAnswersForProfile(profileId: string, opts?: { page?: number; pageSize?: number }): Promise<{ answers: Answer[]; total: number }> {
   if (!profileId) {
     throw new Error('getFavoriteAnswersForProfile: profileId is required');
   }
@@ -215,3 +226,5 @@ export async function getFavoriteAnswersForProfile(profileId: string, opts?: { p
 
   return { answers: AnswerSchema.array().parse(normalized as unknown), total: count ?? 0 };
 }
+
+export const getFavoriteAnswersForProfile = withTiming(_getFavoriteAnswersForProfile, 'getFavoriteAnswersForProfile', 'favorites');

@@ -2,6 +2,7 @@ import { TopicSchema } from '~/lib/schemas/topic';
 import type { Topic } from '~/lib/schemas/topic';
 import { supabase, ensureConnection } from '../supabase';
 import { ServerError } from '../errors';
+import { withTiming } from './debug';
 
 // Database row type for topics
 interface DatabaseTopicRow {
@@ -11,7 +12,7 @@ interface DatabaseTopicRow {
   image: string | null;
 }
 
-export async function getTopics(): Promise<Topic[]> {
+async function _getTopics(): Promise<Topic[]> {
   await ensureConnection(); // 接続失敗時は throw
 
   const { data, error } = await supabase
@@ -23,13 +24,15 @@ export async function getTopics(): Promise<Topic[]> {
   return TopicSchema.array().parse(data ?? []);
 }
 
+export const getTopics = withTiming(_getTopics, 'getTopics', 'topics');
+
 /**
  * getTopicsPaged
  * Intent: server-driven pagination for topics listing with optional title/date filters.
  * Contract: returns { topics, total } where topics is the requested page slice and total is the total matching count.
  * Environment: always queries Supabase.
  */
-export async function getTopicsPaged(opts: {
+async function _getTopicsPaged(opts: {
   page?: number;
   pageSize?: number;
   q?: string | undefined;
@@ -65,6 +68,8 @@ export async function getTopicsPaged(opts: {
   return { topics: TopicSchema.array().parse(rows as unknown), total: Number(count ?? rows.length) };
 }
 
+export const getTopicsPaged = withTiming(_getTopicsPaged, 'getTopicsPaged', 'topics');
+
 /**
  * getLatestTopic
  * Intent: return the single latest Topic (by created_at desc) used on home screens.
@@ -74,7 +79,7 @@ export async function getTopicsPaged(opts: {
  *  - prod: queries DB with ORDER BY created_at DESC LIMIT 1
  * Errors: zod parsing errors or Supabase errors will throw.
  */
-export async function getLatestTopic(): Promise<Topic | null> {
+async function _getLatestTopic(): Promise<Topic | null> {
   // NOTE: avoid a separate connection probe on the hot path to reduce initial
   // request latency. We rely on the actual topics query to surface network
   // errors quickly; callers receive null only if no topic exists.
@@ -89,3 +94,5 @@ export async function getLatestTopic(): Promise<Topic | null> {
   const row = (data ?? [])[0] ?? null;
   return row ? TopicSchema.parse(row as unknown) : null;
 }
+
+export const getLatestTopic = withTiming(_getLatestTopic, 'getLatestTopic', 'topics');

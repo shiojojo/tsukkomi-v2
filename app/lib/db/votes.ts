@@ -1,12 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase, ensureConnection } from '../supabase';
 import { getFavoritesForProfile } from './favorites';
+import { withTiming } from './debug';
 
-/**
- * Get user's profile data including votes and favorites for answers
- * This ensures the latest data is always fetched from DB
- */
-export async function getProfileAnswerData(profileId: string, answerIds: Array<number | string>) {
+async function _getProfileAnswerData(profileId: string, answerIds: Array<number | string>) {
   const [votes, favorites] = await Promise.all([
     (async () => {
       await ensureConnection();
@@ -31,7 +28,9 @@ export async function getProfileAnswerData(profileId: string, answerIds: Array<n
   };
 }
 
-export async function getVotesByForAnswers(
+export const getProfileAnswerData = withTiming(_getProfileAnswerData, 'getProfileAnswerData', 'votes');
+
+async function _getVotesByForAnswers(
   answerIds: Array<number | string>,
   client: SupabaseClient = supabase
 ): Promise<Record<number, Record<string, number>>> {
@@ -63,3 +62,5 @@ export async function getVotesByForAnswers(
   }
   return map;
 }
+
+export const getVotesByForAnswers = withTiming(_getVotesByForAnswers, 'getVotesByForAnswers', 'votes');

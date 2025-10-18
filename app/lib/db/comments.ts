@@ -1,6 +1,7 @@
 import { CommentSchema } from '~/lib/schemas/comment';
 import type { Comment } from '~/lib/schemas/comment';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
+import { withTiming } from './debug';
 
 // Database row type for comments
 interface DatabaseCommentRow {
@@ -11,11 +12,13 @@ interface DatabaseCommentRow {
   created_at: string;
 }
 
-export async function getCommentsByAnswer(answerId: string | number): Promise<Comment[]> {
+async function _getCommentsByAnswer(answerId: string | number): Promise<Comment[]> {
   // Delegate to getCommentsForAnswers to avoid duplicated query/mapping logic
   const map = await getCommentsForAnswers([answerId]);
   return map[String(answerId)] ?? [];
 }
+
+export const getCommentsByAnswer = withTiming(_getCommentsByAnswer, 'getCommentsByAnswer', 'comments');
 
 /**
  * getCommentsForAnswers
@@ -27,7 +30,7 @@ export async function getCommentsByAnswer(answerId: string | number): Promise<Co
  *  - dev: filter `mockComments` and group them client-side
  *  - prod: single Supabase .in('answer_id', ids) query, normalized and grouped
  */
-export async function getCommentsForAnswers(
+async function _getCommentsForAnswers(
   answerIds: Array<string | number>
 ): Promise<Record<string, Comment[]>> {
   const result: Record<string, Comment[]> = {};
@@ -65,7 +68,9 @@ export async function getCommentsForAnswers(
   return result;
 }
 
-export async function addComment(input: { answerId: string | number; text: string; profileId?: string; }): Promise<Comment> {
+export const getCommentsForAnswers = withTiming(_getCommentsForAnswers, 'getCommentsForAnswers', 'comments');
+
+async function _addComment(input: { answerId: string | number; text: string; profileId?: string; }): Promise<Comment> {
   // insert into Supabase
   const payload = {
     answer_id: Number(input.answerId),
@@ -95,3 +100,5 @@ export async function addComment(input: { answerId: string | number; text: strin
 
   return CommentSchema.parse(mapped);
 }
+
+export const addComment = withTiming(_addComment, 'addComment', 'comments');

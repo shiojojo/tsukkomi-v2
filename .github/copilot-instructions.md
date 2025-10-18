@@ -387,6 +387,75 @@ export function createErrorResponse(
 
 ⸻
 
+## 🐛 開発環境デバッグ機能
+
+### DB 効率性分析
+
+**目的**: DB クエリの実行時間を測定し、開発環境でのみログ出力してパフォーマンス分析を可能にする。
+
+**実装パターン**:
+
+```ts
+// lib/db/debug.ts
+export function withTiming<TArgs extends unknown[], TReturn>(
+  fn: (...args: TArgs) => Promise<TReturn>,
+  functionName: string,
+  queryName?: string
+): (...args: TArgs) => Promise<TReturn> {
+  return async (...args: TArgs) => {
+    const start = Date.now();
+    try {
+      const result = await fn(...args);
+      const duration = Date.now() - start;
+      logger.debug(`${functionName} executed in ${duration}ms`, {
+        query: queryName || 'unknown',
+        duration,
+        args: import.meta.env.DEV ? args : undefined,
+      });
+      return result;
+    } catch (error) {
+      const duration = Date.now() - start;
+      logger.error(`${functionName} failed after ${duration}ms`, {
+        query: queryName || 'unknown',
+        duration,
+        error: String(error),
+      });
+      throw error;
+    }
+  };
+}
+```
+
+**使用方法**:
+
+```ts
+// 内部関数（アンダーバー接頭辞）
+async function _getAnswers(input: GetAnswersInput): Promise<Answer[]> {
+  // DB クエリの実装
+}
+
+// 外部公開関数（ラップ）
+export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
+```
+
+**環境別動作**:
+
+- **開発環境 (`npm run dev`)**: 実行時間と引数をコンソールログ出力
+- **本番環境**: ログ出力なし、最小限のオーバーヘッドのみ
+
+**適用対象**: `lib/db/` 配下の全 DB 関数（topics.ts, answers.ts, comments.ts, favorites.ts, users.ts, votes.ts, lineSync.ts）
+
+**ログ出力例**:
+
+```
+[DB DEBUG] getAnswers executed in 234ms
+[DB DEBUG] getUsers executed in 156ms
+```
+
+**原則**: 既存コードを汚さずデバッグ機能を追加。開発効率を向上させつつ、本番パフォーマンスを維持。
+
+⸻
+
 ## ✅ 追加時チェックリスト（開発者向け）
 
 1. 新規エンティティ: `schemas/xxx.ts` に zod スキーマ & 型 export

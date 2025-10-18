@@ -5,6 +5,7 @@ import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 import { getFavoritesForProfile, getFavoriteAnswersForProfile } from './favorites';
 import { ServerError } from '../errors';
 import { DEFAULT_PAGE_SIZE } from '../constants';
+import { withTiming } from './debug';
 
 // Database row types for type safety
 interface DatabaseAnswerRow {
@@ -66,7 +67,7 @@ async function getVotesByForAnswers(
   return map;
 }
 
-export async function getAnswers(): Promise<Answer[]> {
+async function _getAnswers(): Promise<Answer[]> {
   // always fetch fresh answers from DB
   await ensureConnection(); // 接続失敗時は throw
 
@@ -113,6 +114,8 @@ export async function getAnswers(): Promise<Answer[]> {
   return AnswerSchema.array().parse(normalized as unknown);
 }
 
+export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
+
 /**
  * getUserAnswerData
  * Intent: Retrieve user's votes and favorites for specific answers.
@@ -120,7 +123,7 @@ export async function getAnswers(): Promise<Answer[]> {
  * Environment: Always uses Supabase.
  * Errors: Throws on DB errors.
  */
-export async function getUserAnswerData(profileId: string, answerIds: number[]): Promise<{ votes: Record<number, number>; favorites: Set<number> }> {
+async function _getUserAnswerData(profileId: string, answerIds: number[]): Promise<{ votes: Record<number, number>; favorites: Set<number> }> {
   if (!profileId || !answerIds.length) {
     return { votes: {}, favorites: new Set() };
   }
@@ -150,13 +153,15 @@ export async function getUserAnswerData(profileId: string, answerIds: number[]):
   return { votes: userVotes, favorites: userFavorites };
 }
 
+export const getUserAnswerData = withTiming(_getUserAnswerData, 'getUserAnswerData', 'answers');
+
 /**
  * searchAnswers
  * Server-side paginated search using a materialized view for efficient filtering and sorting.
  * Supports filters on author, topic title, dates, score, and comments.
  * Returns { answers, total } where total is the total matching count.
  */
-export async function searchAnswers(opts: {
+async function _searchAnswers(opts: {
   q?: string;
   author?: string;
   topicId?: string | number;
@@ -245,6 +250,8 @@ export async function searchAnswers(opts: {
   return { answers: AnswerSchema.array().parse(normalized), total: c ?? 0 };
 }
 
+export const searchAnswers = withTiming(_searchAnswers, 'searchAnswers', 'answers');
+
 /**
  * getAnswersPageByTopic
  * Intent: Cursor based (created_at desc) pagination for answers under a topic to enable incremental loading.
@@ -264,7 +271,7 @@ export async function searchAnswers(opts: {
  * Contract: accepts answerId and level (1|2|3). Returns the updated Answer.
  * Environment: dev mutates in-memory mockAnswers and returns the parsed Answer. prod: not implemented.
  */
-export async function voteAnswer({
+async function _voteAnswer({
   answerId,
   level,
   userId,
@@ -383,3 +390,5 @@ export async function voteAnswer({
 
   return AnswerSchema.parse(result as unknown);
 }
+
+export const voteAnswer = withTiming(_voteAnswer, 'voteAnswer', 'answers');

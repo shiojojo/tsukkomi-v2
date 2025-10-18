@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { LineAnswerIngestRequestSchema, type LineAnswerIngestRequest } from '~/lib/schemas/line-sync';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
+import { withTiming } from './debug';
 
 const STORAGE_BUCKET =
   process.env.STORAGE_BUCKET ??
@@ -142,7 +143,7 @@ function normalizeLineAnswerText(text: string): string {
  * Errors: Supabase エラーやバリデーション失敗はそのまま throw (呼び出し元が 4xx/5xx を決定)。
  * SideEffects: profiles/topics/answers への insert/update。成功時に関連キャッシュキーを無効化。
  */
-export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineAnswerIngestResult> {
+async function _ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineAnswerIngestResult> {
   const payload = LineAnswerIngestRequestSchema.parse(input);
   await ensureConnection();
   const writeClient = supabaseAdmin ?? supabase;
@@ -336,3 +337,5 @@ export async function ingestLineAnswers(input: LineAnswerIngestRequest): Promise
     uploadedImagePath,
   };
 }
+
+export const ingestLineAnswers = withTiming(_ingestLineAnswers, 'ingestLineAnswers', 'lineSync');
