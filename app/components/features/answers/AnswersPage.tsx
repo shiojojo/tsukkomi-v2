@@ -5,7 +5,6 @@ import { ListPageLayout } from '~/components/layout/ListPageLayout';
 import { TopicOverviewCard } from '~/components/features/topics/TopicOverviewCard';
 import type { ReactNode } from 'react';
 import type { Answer } from '~/lib/schemas/answer';
-import type { Comment } from '~/lib/schemas/comment';
 import type { Topic } from '~/lib/schemas/topic';
 import type { User } from '~/lib/schemas/user';
 
@@ -23,7 +22,7 @@ interface AnswersPageProps {
     fromDate: string;
     toDate: string;
     topicsById: Record<string, Topic>;
-    commentsByAnswer: Record<string, Comment[]>;
+    commentCounts: Record<string, number>;
     users: User[];
     profileId?: string;
   };
@@ -35,7 +34,7 @@ interface AnswersPageProps {
 export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
   const {
     topicsById,
-    commentsByAnswer,
+    commentCounts,
     users,
     answers,
     total,
@@ -88,7 +87,7 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
     <AnswersList
       answers={answers}
       topicsById={topicsById}
-      commentsByAnswer={commentsByAnswer}
+      commentCounts={commentCounts}
       getNameByProfileId={getNameByProfileId}
       currentUserName={currentUserName}
       currentUserId={currentUserId}
@@ -100,15 +99,21 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
             ? '/answers/favorites'
             : '/answers'
       }
-      profileIdForVotes={profileId ?? currentUserId}
-      emptyMessage={
-        mode === 'topic' ? 'まだ回答が投稿されていません。' : undefined
+      profileIdForVotes={profileId}
+      pagination={
+        pageCount > 1
+          ? {
+              currentPage,
+              pageCount,
+              buildHref,
+            }
+          : undefined
       }
-      pagination={{
-        currentPage,
-        pageCount,
-        buildHref,
-      }}
+      emptyMessage={
+        mode === 'topic'
+          ? 'このお題に対する回答がまだありません。'
+          : '条件に一致する回答がありません。'
+      }
     />
   );
 

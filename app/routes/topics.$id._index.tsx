@@ -7,7 +7,7 @@ import { useQueryWithError } from '~/hooks/common/useQueryWithError';
 import {
   getTopicsByIds,
   getUsers,
-  getCommentsForAnswers,
+  getCommentCountsForAnswers,
   getFavoriteCounts,
 } from '~/lib/db';
 import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
@@ -68,9 +68,9 @@ export default function TopicDetailRoute() {
   const usersQuery = useQueryWithError(['users'], () =>
     getUsers({ limit: 200 })
   );
-  const commentsQuery = useQueryWithError(
-    ['comments', answerIds.join(',')],
-    () => getCommentsForAnswers(answerIds)
+  const commentCountsQuery = useQueryWithError(
+    ['comment-counts', answerIds.join(',')],
+    () => getCommentCountsForAnswers(answerIds)
   );
   const favCountsQuery = useQueryWithError(
     ['favorite-counts', answerIds.join(',')],
@@ -83,7 +83,7 @@ export default function TopicDetailRoute() {
         (topicsQuery.data as Topic[]).map(t => [String(t.id), t])
       )
     : {};
-  const commentsByAnswer = commentsQuery.data || {};
+  const commentCounts = commentCountsQuery.data || {};
   const users = usersQuery.data || [];
   const favCounts = favCountsQuery.data || {};
   const userAnswerData = {
@@ -101,7 +101,7 @@ export default function TopicDetailRoute() {
   const isLoading =
     topicsQuery.isLoading ||
     usersQuery.isLoading ||
-    commentsQuery.isLoading ||
+    commentCountsQuery.isLoading ||
     favCountsQuery.isLoading;
   if (isLoading) {
     return (
@@ -116,7 +116,7 @@ export default function TopicDetailRoute() {
     ...loaderData,
     answers: answersWithUserData,
     topicsById,
-    commentsByAnswer,
+    commentCounts,
     users,
     q: loaderData.q || '',
     author: loaderData.author || '',

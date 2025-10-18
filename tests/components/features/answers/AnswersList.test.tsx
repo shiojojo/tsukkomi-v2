@@ -5,7 +5,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { AnswersList } from '~/components/features/answers/AnswersList';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
-import type { Comment } from '~/lib/schemas/comment';
 
 // Create a test wrapper with QueryClient
 const createTestWrapper = () => {
@@ -47,11 +46,11 @@ vi.mock('./AnswerActionCard', () => ({
   default: ({
     answer,
     topic,
-    comments,
+    initialCommentCount,
   }: {
     answer: Answer;
     topic: Topic | null;
-    comments: Comment[];
+    initialCommentCount: number;
   }) => (
     <div data-testid={`answer-action-card-${answer.id}`}>
       <div>{topic?.title || 'お題なし（フリー回答）'}</div>
@@ -60,7 +59,7 @@ vi.mock('./AnswerActionCard', () => ({
         Score: <span>4</span>
       </div>
       <span>作者: Test User</span>
-      <div>コメント{comments.length}</div>
+      <div>コメント{initialCommentCount}</div>
     </div>
   ),
 }));
@@ -99,21 +98,11 @@ describe('AnswersList', () => {
     created_at: '2024-01-01T00:00:00Z',
   };
 
-  const mockComments: Comment[] = [
-    {
-      id: 1,
-      text: 'Test comment',
-      profileId: 'user2',
-      answerId: 1,
-      created_at: '2024-01-01T00:00:00Z',
-    },
-  ];
-
   const defaultProps = {
     answers: [mockAnswer],
     topicsById: { '1': mockTopic },
     topic: undefined as Topic | undefined,
-    commentsByAnswer: { '1': mockComments },
+    commentCounts: { '1': 1 },
     getNameByProfileId: vi.fn(id =>
       id === 'user1' ? 'Test User' : 'Other User'
     ),
@@ -151,7 +140,7 @@ describe('AnswersList', () => {
     expect(screen.getByText('Test topic title')).toBeInTheDocument();
   });
 
-  it('passes comments to AnswerActionCard', () => {
+  it('passes commentCounts to AnswerActionCard', () => {
     render(<AnswersList {...defaultProps} />, { wrapper: createTestWrapper() });
 
     expect(screen.getByText('コメント1')).toBeInTheDocument();
@@ -211,9 +200,9 @@ describe('AnswersList', () => {
     const multipleAnswersProps = {
       ...defaultProps,
       answers: [mockAnswer, mockAnswer2],
-      commentsByAnswer: {
-        '1': mockComments,
-        '2': [],
+      commentCounts: {
+        '1': 1,
+        '2': 0,
       },
     };
     render(<AnswersList {...multipleAnswersProps} />, {

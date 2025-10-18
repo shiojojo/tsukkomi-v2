@@ -10,6 +10,7 @@ interface CommentSectionProps {
   getNameByProfileId: (pid?: string | null) => string | undefined;
   actionPath: string;
   onCommentCountChange?: (count: number) => void;
+  enabled?: boolean;
 }
 
 export function CommentSection({
@@ -20,6 +21,7 @@ export function CommentSection({
   getNameByProfileId,
   actionPath,
   onCommentCountChange,
+  enabled = true,
 }: CommentSectionProps) {
   const commentFormRef = useRef<HTMLFormElement>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
@@ -35,6 +37,7 @@ export function CommentSection({
         // Restore the failed comment text to the textarea
         setCommentText(text);
       },
+      enabled,
     });
 
   // Notify parent of comment count changes

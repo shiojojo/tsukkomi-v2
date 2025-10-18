@@ -6,7 +6,6 @@ import { useFilters, type AnswersFilters } from '../../common/useFilters';
 import { useScrollReset } from '../../common/useScrollReset';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
-import type { Comment } from '~/lib/schemas/comment';
 import type { User } from '~/lib/schemas/user';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
@@ -23,7 +22,7 @@ type LoaderData = {
   fromDate?: string;
   toDate?: string;
   topicsById: Record<string, Topic>;
-  commentsByAnswer: Record<string, Comment[]>;
+  commentCounts: Record<string, number>;
   users: User[];
   profileId?: string;
 };
@@ -128,7 +127,7 @@ export function useAnswersPage(data: LoaderData) {
   return {
     // Data
     topicsById: currentData.topicsById ?? {},
-    commentsByAnswer: currentData.commentsByAnswer ?? {},
+    commentCounts: currentData.commentCounts ?? {},
     users: currentData.users ?? [],
     answers,
     total,

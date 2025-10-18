@@ -23,6 +23,7 @@ export {
 export {
   getCommentsByAnswer,
   getCommentsForAnswers,
+  getCommentCountsForAnswers,
   addComment,
 } from './db/comments';
 

@@ -102,3 +102,37 @@ async function _addComment(input: { answerId: string | number; text: string; pro
 }
 
 export const addComment = withTiming(_addComment, 'addComment', 'comments');
+
+/**
+ * getCommentCountsForAnswers
+ * Intent: fetch comment counts for multiple answer ids in a single query to avoid N+1 queries
+ * Contract:
+ *  - Input: array of answer ids (string|number)
+ *  - Output: Record<string, number> mapped by String(answerId)
+ * Environment:
+ *  - dev: filter `mockComments` and group them client-side
+ *  - prod: single Supabase query with group by
+ */
+async function _getCommentCountsForAnswers(
+  answerIds: Array<string | number>
+): Promise<Record<string, number>> {
+  const result: Record<string, number> = {};
+  if (!answerIds || answerIds.length === 0) return result;
+  await ensureConnection();
+  const numericIds = answerIds.map((id) => Number(id));
+  const { data, error } = await supabase
+    .from('comments')
+    .select('answer_id')
+    .in('answer_id', numericIds);
+  if (error) throw error;
+
+  // Count comments per answer
+  data.forEach((row) => {
+    const key = String(row.answer_id);
+    result[key] = (result[key] || 0) + 1;
+  });
+
+  return result;
+}
+
+export const getCommentCountsForAnswers = withTiming(_getCommentCountsForAnswers, 'getCommentCountsForAnswers', 'comments');

@@ -4,13 +4,12 @@ import { CommentSection } from './CommentSection';
 import { FavoriteSection } from './FavoriteSection';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
-import type { Comment } from '~/lib/schemas/comment';
 import { Button } from '~/components/ui/Button';
 
 export interface AnswerActionCardProps {
   answer: Answer & { favCount: number };
   topic: Topic | null;
-  comments: Comment[];
+  initialCommentCount?: number;
   currentUserId: string | null;
   currentUserName: string | null;
   getNameByProfileId: (pid?: string | null) => string | undefined;
@@ -34,7 +33,7 @@ export interface AnswerActionCardProps {
 export function AnswerActionCard({
   answer,
   topic,
-  comments,
+  initialCommentCount = 0,
   currentUserId,
   currentUserName,
   getNameByProfileId,
@@ -43,9 +42,8 @@ export function AnswerActionCard({
   profileIdForVotes,
 }: AnswerActionCardProps) {
   const [open, setOpen] = useState(false);
-  const [realTimeCommentCount, setRealTimeCommentCount] = useState(
-    comments.length
-  );
+  const [realTimeCommentCount, setRealTimeCommentCount] =
+    useState(initialCommentCount);
 
   // Calculate score from answer.votes
   const score = (() => {
@@ -132,13 +130,14 @@ export function AnswerActionCard({
             />
 
             <CommentSection
-              comments={comments}
+              comments={[]}
               answerId={answer.id}
               currentUserId={currentUserId}
               currentUserName={currentUserName}
               getNameByProfileId={getNameByProfileId}
               actionPath={actionPath}
               onCommentCountChange={setRealTimeCommentCount}
+              enabled={open}
             />
           </div>
         )}

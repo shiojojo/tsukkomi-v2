@@ -11,6 +11,7 @@ export type UseCommentSectionProps = {
   actionPath?: string;
   loginRedirectPath?: string;
   onError?: (error: Error, text: string) => void;
+  enabled?: boolean;
 };
 
 export function useCommentSection({
@@ -19,6 +20,7 @@ export function useCommentSection({
   actionPath,
   loginRedirectPath = '/login',
   onError,
+  enabled = true,
 }: UseCommentSectionProps) {
   const { effectiveId } = useIdentity();
   const { fetcher, performAction } = useOptimisticAction(
@@ -38,6 +40,7 @@ export function useCommentSection({
     {
       placeholderData: initialComments,
       staleTime: 5 * 60 * 1000, // 5 minutes
+      enabled,
     }
   );
 

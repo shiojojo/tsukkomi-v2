@@ -2,13 +2,12 @@ import { Pagination } from '~/components/common/Pagination';
 import AnswerActionCard from './AnswerActionCard';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
-import type { Comment } from '~/lib/schemas/comment';
 
 interface AnswersListProps {
   answers: (Answer & { favCount: number })[];
   topicsById?: Record<string, Topic>;
   topic?: Topic; // topics.$id.tsx 用
-  commentsByAnswer: Record<string, Comment[]>;
+  commentCounts: Record<string, number>;
   getNameByProfileId: (pid?: string | null) => string | undefined;
   currentUserName: string | null;
   currentUserId: string | null;
@@ -27,7 +26,7 @@ export function AnswersList({
   answers,
   topicsById,
   topic,
-  commentsByAnswer,
+  commentCounts,
   getNameByProfileId,
   currentUserName,
   currentUserId,
@@ -58,7 +57,7 @@ export function AnswersList({
                   topic ||
                   (topicsById ? topicsById[answer.topicId || ''] : null)
                 }
-                comments={commentsByAnswer[answer.id] || []}
+                initialCommentCount={commentCounts[String(answer.id)] || 0}
                 currentUserId={currentUserId}
                 currentUserName={currentUserName}
                 getNameByProfileId={getNameByProfileId}
