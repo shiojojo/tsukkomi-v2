@@ -92,13 +92,14 @@ export function useAnswersPageData(loaderData: LoaderData) {
     loaderData.profileId
   );
 
-  // ローディング状態
+  // ローディング状態 - コメントカウントのリアルタイム更新を分離
   const isLoading =
     topicsQuery.isLoading ||
     usersQuery.isLoading ||
-    commentCountsQuery.isLoading ||
     favCountsQuery.isLoading ||
     userAnswerDataQuery.isLoading;
+
+  const isLoadingCommentCounts = commentCountsQuery.isLoading;
 
   const pageData: PageData = {
     ...loaderData,
@@ -114,5 +115,5 @@ export function useAnswersPageData(loaderData: LoaderData) {
     toDate: loaderData.toDate || '',
   };
 
-  return { pageData, isLoading };
+  return { pageData, isLoading, isLoadingCommentCounts };
 }
