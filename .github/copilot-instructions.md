@@ -161,8 +161,7 @@ export default function Route() {
     : {};
   const answersWithData = mergeUserDataIntoAnswers(
     loaderData.answers,
-    userData,
-    favCounts
+    userData
   );
 
   return (
@@ -179,17 +178,7 @@ export default function Route() {
 
 localStorage は最小限に使用。サーバー同期が必要なデータ（投票、いいねなど）は loader/Action と TanStack Query で管理。
 
-### Favorite / Vote / Comment の設計パターン
-
-#### 🎯 共通アーキテクチャ原則
-
-- **Loader**: 初回データ取得（SSR対応）
-- **TanStack Query**: クライアント側データ管理・キャッシュ・同期
-- **useOptimisticAction**: 楽観的更新 + Action実行
-- **useMutationWithError**: エラーハンドリング付きミューテーション
-- **Query Key**: `['entity-type', entityId, userId]` の命名規則
-
-### Favorite / Vote / Comment の設計パターン
+### Vote / Comment の設計パターン
 
 #### 🎯 共通アーキテクチャ原則
 
@@ -198,31 +187,6 @@ localStorage は最小限に使用。サーバー同期が必要なデータ（�
 - **useOptimisticAction**: 楽観的更新 + Action実行
 - **useMutationWithError**: エラーハンドリング付きミューテーション
 - **Query Key**: `['entity-type', entityId, userId]` の命名規則
-
-#### ⭐ Favorite 機能設計
-
-**意図**: ユーザーのお気に入り状態とカウントをリアルタイム管理。トグル操作で即時反映。
-
-**動作フロー**:
-
-1. **Loader**: メイン回答データを取得
-2. **Query**: お気に入りカウントを管理 (`['favorite-count', answerIds.join(',')]`)
-3. **Query**: ユーザーのお気に入り状態を管理 (`['user-answer-data', profileId, answerIds.join(',')]`)
-4. **Mutation**: トグル操作で楽観的更新（即時UI反映）
-5. **Action**: サーバーサイドで永続化
-6. **Error**: 失敗時はロールバック + 再フェッチ
-
-**実装パターン**:
-
-```ts
-// Hook: useFavoriteButton
-const favoriteQuery = useQuery(['user-favorite', answerId, userId], ...)
-const countQuery = useQuery(['favorite-count', answerId], ...)
-const toggleMutation = useMutationWithError(..., {
-  onMutate: () => { /* 楽観的更新 */ },
-  onError: () => { /* ロールバック */ }
-})
-```
 
 #### 🗳️ Vote 機能設計
 
@@ -299,7 +263,7 @@ const addCommentMutation = useMutationWithError(..., {
 
 #### ⚡ 楽観的更新 vs DB同期
 
-- **Favorite/Vote**: 即時反映のため楽観的更新を使用
+- **Vote**: 即時反映のため楽観的更新を使用
 - **Comment**: DB遅延を考慮し、成功後に同期（`invalidateQueries`）
 - **Error Handling**: 失敗時は適切なロールバック/再フェッチ
 
@@ -324,7 +288,6 @@ const addCommentMutation = useMutationWithError(..., {
 ['topics', topicIds.join(',')]              // トピック情報
 ['users']                                   // ユーザー一覧（全回答ページ用）
 ['comment-counts', answerIds.join(',')]     // コメントカウント（リアルタイム更新）
-['favorite-counts', answerIds.join(',')]    // お気に入りカウント
 ['user-answer-data', profileId, answerIds.join(',')] // ユーザーの投票/お気に入り状態
 ```
 
@@ -409,7 +372,6 @@ export function useAnswersPageData(loaderData: LoaderData) {
   const answersWithUserData = mergeUserDataIntoAnswers(
     loaderData.answers,
     userAnswerData,
-    favCounts,
     loaderData.profileId
   );
 
@@ -654,7 +616,7 @@ export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
 - **開発環境 (`npm run dev`)**: 実行時間と引数をコンソールログ出力
 - **本番環境**: ログ出力なし、最小限のオーバーヘッドのみ
 
-**適用対象**: `lib/db/` 配下の全 DB 関数（topics.ts, answers.ts, comments.ts, favorites.ts, users.ts, votes.ts, lineSync.ts）
+**適用対象**: `lib/db/` 配下の全 DB 関数（topics.ts, answers.ts, comments.ts, users.ts, votes.ts, lineSync.ts）
 
 **ログ出力例**:
 
