@@ -4,12 +4,7 @@ import { AnswersPage } from '~/components/features/answers/AnswersPage';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import { useQueryWithError } from '~/hooks/common/useQueryWithError';
-import {
-  getTopicsByIds,
-  getUsers,
-  getCommentCountsForAnswers,
-  getFavoriteCounts,
-} from '~/lib/db';
+import { getTopicsByIds, getUsers, getCommentCountsForAnswers } from '~/lib/db';
 import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
@@ -72,10 +67,6 @@ export default function TopicDetailRoute() {
     ['comment-counts', answerIds.join(',')],
     () => getCommentCountsForAnswers(answerIds)
   );
-  const favCountsQuery = useQueryWithError(
-    ['favorite-counts', answerIds.join(',')],
-    () => getFavoriteCounts(answerIds)
-  );
 
   // データマージ
   const topicsById = topicsQuery.data
@@ -85,7 +76,6 @@ export default function TopicDetailRoute() {
     : {};
   const commentCounts = commentCountsQuery.data || {};
   const users = usersQuery.data || [];
-  const favCounts = favCountsQuery.data || {};
   const userAnswerData = {
     votes: {},
     favorites: new Set<number>(),
@@ -93,16 +83,14 @@ export default function TopicDetailRoute() {
 
   const answersWithUserData = mergeUserDataIntoAnswers(
     loaderData.answers,
-    userAnswerData,
-    favCounts
+    userAnswerData
   );
 
   // ローディング状態
   const isLoading =
     topicsQuery.isLoading ||
     usersQuery.isLoading ||
-    commentCountsQuery.isLoading ||
-    favCountsQuery.isLoading;
+    commentCountsQuery.isLoading;
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">

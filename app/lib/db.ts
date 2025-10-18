@@ -14,7 +14,6 @@ export {
   addFavorite,
   removeFavorite,
   toggleFavorite,
-  getFavoriteCounts,
   getFavoritesForProfile,
   getFavoriteAnswersForProfile,
 } from './db/favorites';

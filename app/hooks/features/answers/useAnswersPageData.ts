@@ -3,7 +3,6 @@ import {
   getTopicsByIds,
   getUsers,
   getCommentCountsForAnswers,
-  getFavoriteCounts,
   getUserAnswerData,
 } from '~/lib/db';
 import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
@@ -58,10 +57,6 @@ export function useAnswersPageData(loaderData: LoaderData) {
     () => getCommentCountsForAnswers(answerIds),
     COMMENT_COUNTS_QUERY_OPTIONS
   );
-  const favCountsQuery = useQueryWithError(
-    ['favorite-counts', answerIds.join(',')],
-    () => getFavoriteCounts(answerIds)
-  );
   const userAnswerDataQuery = useQueryWithError(
     ['user-answer-data', loaderData.profileId || 'none', answerIds.join(',')],
     () =>
@@ -79,7 +74,6 @@ export function useAnswersPageData(loaderData: LoaderData) {
     : {};
   const commentCounts = commentCountsQuery.data || {};
   const users = usersQuery.data || [];
-  const favCounts = favCountsQuery.data || {};
   const userAnswerData = userAnswerDataQuery.data || {
     votes: {},
     favorites: new Set<number>(),
@@ -88,7 +82,6 @@ export function useAnswersPageData(loaderData: LoaderData) {
   const answersWithUserData = mergeUserDataIntoAnswers(
     loaderData.answers,
     userAnswerData,
-    favCounts,
     loaderData.profileId
   );
 
@@ -96,7 +89,6 @@ export function useAnswersPageData(loaderData: LoaderData) {
   const isLoading =
     topicsQuery.isLoading ||
     usersQuery.isLoading ||
-    favCountsQuery.isLoading ||
     userAnswerDataQuery.isLoading;
 
   const isLoadingCommentCounts = commentCountsQuery.isLoading;

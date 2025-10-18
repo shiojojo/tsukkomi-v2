@@ -7,7 +7,7 @@ import type { Topic } from '~/lib/schemas/topic';
 import { Button } from '~/components/ui/Button';
 
 export interface AnswerActionCardProps {
-  answer: Answer & { favCount: number };
+  answer: Answer;
   topic: Topic | null;
   initialCommentCount?: number;
   currentUserId: string | null;

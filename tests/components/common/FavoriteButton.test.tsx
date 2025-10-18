@@ -16,35 +16,29 @@ describe('FavoriteButton', () => {
     it('renders unfavorited state correctly', () => {
       const handleToggle = vi.fn();
 
-      render(
-        <FavoriteButton favorited={false} count={5} onToggle={handleToggle} />
-      );
+      render(<FavoriteButton favorited={false} onToggle={handleToggle} />);
 
       const button = screen.getByRole('button');
       expect(button).toHaveAttribute('aria-pressed', 'false');
-      expect(button).toHaveAttribute('title', 'お気に入り (5)');
+      expect(button).toHaveAttribute('title', 'お気に入り');
       // Count is not displayed in button text, only in title
     });
 
     it('renders favorited state correctly', () => {
       const handleToggle = vi.fn();
 
-      render(
-        <FavoriteButton favorited={true} count={10} onToggle={handleToggle} />
-      );
+      render(<FavoriteButton favorited={true} onToggle={handleToggle} />);
 
       const button = screen.getByRole('button');
       expect(button).toHaveAttribute('aria-pressed', 'true');
-      expect(button).toHaveAttribute('title', 'お気に入り解除 (10)');
+      expect(button).toHaveAttribute('title', 'お気に入り解除');
       // Count is not displayed in button text, only in title
     });
 
     it('calls onToggle when clicked', () => {
       const handleToggle = vi.fn();
 
-      render(
-        <FavoriteButton favorited={false} count={3} onToggle={handleToggle} />
-      );
+      render(<FavoriteButton favorited={false} onToggle={handleToggle} />);
 
       const button = screen.getByRole('button');
       fireEvent.click(button);
@@ -57,28 +51,20 @@ describe('FavoriteButton', () => {
     it('uses hook data when answerId is provided', () => {
       mockUseFavoriteButton.mockReturnValue({
         favorited: true,
-        count: 7,
         handleToggle: vi.fn(),
         isToggling: false,
       });
 
-      render(
-        <FavoriteButton
-          answerId={123}
-          initialFavorited={false}
-          initialCount={5}
-        />
-      );
+      render(<FavoriteButton answerId={123} initialFavorited={false} />);
 
       const button = screen.getByRole('button');
       expect(button).toHaveAttribute('aria-pressed', 'true');
-      expect(button).toHaveAttribute('title', 'お気に入り解除 (7)');
+      expect(button).toHaveAttribute('title', 'お気に入り解除');
       // Count is not displayed in button text, only in title
 
       expect(mockUseFavoriteButton).toHaveBeenCalledWith({
         answerId: 123,
         initialFavorited: false,
-        initialCount: 5,
         actionPath: undefined,
         loginRedirectPath: undefined,
         onFavoritedChange: undefined,
@@ -90,7 +76,6 @@ describe('FavoriteButton', () => {
 
       mockUseFavoriteButton.mockReturnValue({
         favorited: false,
-        count: 2,
         handleToggle: vi.fn(),
         isToggling: false,
       });
@@ -99,7 +84,6 @@ describe('FavoriteButton', () => {
         <FavoriteButton
           answerId={456}
           initialFavorited={true}
-          initialCount={8}
           actionPath="/api/favorite"
           loginRedirectPath="/login"
           onFavoritedChange={onFavoritedChange}
@@ -109,7 +93,6 @@ describe('FavoriteButton', () => {
       expect(mockUseFavoriteButton).toHaveBeenCalledWith({
         answerId: 456,
         initialFavorited: true,
-        initialCount: 8,
         actionPath: '/api/favorite',
         loginRedirectPath: '/login',
         onFavoritedChange,
@@ -121,18 +104,11 @@ describe('FavoriteButton', () => {
 
       mockUseFavoriteButton.mockReturnValue({
         favorited: false,
-        count: 1,
         handleToggle,
         isToggling: false,
       });
 
-      render(
-        <FavoriteButton
-          answerId={789}
-          initialFavorited={false}
-          initialCount={1}
-        />
-      );
+      render(<FavoriteButton answerId={789} initialFavorited={false} />);
 
       const button = screen.getByRole('button');
       fireEvent.click(button);

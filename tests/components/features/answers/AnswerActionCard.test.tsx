@@ -86,7 +86,6 @@ describe('AnswerActionCard', () => {
     votes: { level1: 2, level2: 1, level3: 0 },
     votesBy: {},
     created_at: '2024-01-01T00:00:00Z',
-    favCount: 0,
   };
 
   const mockTopic: Topic = {

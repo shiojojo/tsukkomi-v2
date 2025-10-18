@@ -112,25 +112,6 @@ async function _toggleFavorite(input: { answerId: number | string; profileId: st
 
 export const toggleFavorite = withTiming(_toggleFavorite, 'toggleFavorite', 'favorites');
 
-async function _getFavoriteCounts(answerIds: Array<number | string>) {
-  const result: Record<number, number> = {};
-  const ids = (answerIds ?? []).map((v) => Number(v)).filter(Boolean);
-  if (!ids.length) return result;
-  await ensureConnection();
-  const { data, error } = await supabase
-    .from('favorites')
-    .select('answer_id')
-    .in('answer_id', ids);
-  if (error) throw error;
-  for (const r of (data ?? [])) {
-    const aid = Number(r.answer_id);
-    result[aid] = (result[aid] ?? 0) + 1;
-  }
-  return result;
-}
-
-export const getFavoriteCounts = withTiming(_getFavoriteCounts, 'getFavoriteCounts', 'favorites');
-
 async function _getFavoritesForProfile(profileId: string, answerIds?: Array<number | string>) {
   await ensureConnection();
   let q = supabase.from('favorites').select('answer_id');

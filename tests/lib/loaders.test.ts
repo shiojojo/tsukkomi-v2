@@ -13,7 +13,6 @@ vi.mock('~/lib/db', () => ({
   getUsers: vi.fn(),
   getCommentsForAnswers: vi.fn(),
   getUserAnswerData: vi.fn(),
-  getFavoriteCounts: vi.fn(),
 }));
 vi.mock('~/lib/utils/dataMerging', () => ({
   mergeUserDataIntoAnswers: vi.fn(),
@@ -61,14 +60,13 @@ describe('loaders', () => {
   describe('createAnswersListLoader', () => {
     it('should aggregate data', async () => {
       const mockRequest = new Request('http://localhost/answers');
-      const { getTopics, getUsers, getCommentsForAnswers, getUserAnswerData, getFavoriteCounts } = await import('~/lib/db');
+      const { getTopics, getUsers, getCommentsForAnswers, getUserAnswerData } = await import('~/lib/db');
       const { mergeUserDataIntoAnswers } = await import('~/lib/utils/dataMerging');
 
       vi.mocked(getTopics).mockResolvedValue([{ id: 1, title: 'Topic', created_at: '2023-01-01' }]);
       vi.mocked(getUsers).mockResolvedValue([{ id: 'user1', name: 'User' }]);
       vi.mocked(getCommentsForAnswers).mockResolvedValue({});
       vi.mocked(getUserAnswerData).mockResolvedValue({ votes: {}, favorites: new Set() });
-      vi.mocked(getFavoriteCounts).mockResolvedValue({});
       vi.mocked(mergeUserDataIntoAnswers).mockReturnValue([]);
 
       // Mock createListLoader

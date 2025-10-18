@@ -5,7 +5,6 @@ export type FavoriteButtonProps =
   | {
       answerId: number;
       initialFavorited: boolean;
-      initialCount: number;
       actionPath?: string;
       loginRedirectPath?: string;
       onFavoritedChange?: (favorited: boolean) => void;
@@ -13,30 +12,27 @@ export type FavoriteButtonProps =
     }
   | {
       favorited: boolean;
-      count: number;
       onToggle: () => void;
     };
 
 export function FavoriteButton(props: FavoriteButtonProps) {
   let favorited: boolean;
-  let count: number;
   let handleToggle: () => void;
 
   if ('favorited' in props) {
     // Controlled mode
-    ({ favorited, count, onToggle: handleToggle } = props);
+    ({ favorited, onToggle: handleToggle } = props);
   } else {
     // Hook mode
     const hookResult = useFavoriteButton({
       answerId: props.answerId,
       initialFavorited: props.initialFavorited,
-      initialCount: props.initialCount,
       actionPath: props.actionPath,
       loginRedirectPath: props.loginRedirectPath,
       onFavoritedChange: props.onFavoritedChange,
       useQuery: props.useQuery,
     });
-    ({ favorited, count, handleToggle } = hookResult);
+    ({ favorited, handleToggle } = hookResult);
   }
 
   return (
@@ -45,7 +41,7 @@ export function FavoriteButton(props: FavoriteButtonProps) {
       type="button"
       aria-pressed={favorited}
       onClick={handleToggle}
-      title={favorited ? `お気に入り解除 (${count})` : `お気に入り (${count})`}
+      title={favorited ? 'お気に入り解除' : 'お気に入り'}
     >
       {favorited ? (
         <svg

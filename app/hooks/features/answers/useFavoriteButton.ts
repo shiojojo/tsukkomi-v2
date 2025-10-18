@@ -7,7 +7,6 @@ import { useQueryWithError } from '~/hooks/common/useQueryWithError';
 export type UseFavoriteButtonProps = {
   answerId: number;
   initialFavorited: boolean;
-  initialCount: number;
   actionPath?: string;
   loginRedirectPath?: string;
   onFavoritedChange?: (favorited: boolean) => void;
@@ -17,7 +16,6 @@ export type UseFavoriteButtonProps = {
 export function useFavoriteButton({
   answerId,
   initialFavorited,
-  initialCount,
   actionPath,
   loginRedirectPath = '/login',
   onFavoritedChange,
@@ -53,24 +51,13 @@ export function useFavoriteButton({
     }
   );
 
-  // React Query for favorite count
-  const countQuery = useQueryWithError(
-    ['favorite-count', answerId.toString()],
-    async () => initialCount,
-    {
-      placeholderData: initialCount,
-      staleTime: 5 * 60 * 1000,
-    }
-  );
-
   const favorited = favoriteQuery.data ?? false;
-  const count = countQuery.data ?? initialCount;
 
   // Mutation for toggling favorite
   const toggleMutation = useMutationWithError<
     void,
     undefined,
-    { previousFavorited: boolean | undefined; previousCount: number }
+    { previousFavorited: boolean | undefined }
   >(
     async () => {
       return new Promise<void>((resolve) => {
@@ -87,29 +74,21 @@ export function useFavoriteButton({
       });
     },
     {
-      onMutate: async (): Promise<{ previousFavorited: boolean | undefined; previousCount: number }> => {
+      onMutate: async (): Promise<{ previousFavorited: boolean | undefined }> => {
         // Optimistic update
         const previousFavorited = queryClient.getQueryData([
           'user-favorite',
           answerId.toString(),
           effectiveId || 'anonymous',
         ]) as boolean | undefined;
-        const previousCount = queryClient.getQueryData([
-          'favorite-count',
-          answerId.toString(),
-        ]) as number;
 
         // Update favorite status
         const newFavorited = !favorited;
         queryClient.setQueryData(['user-favorite', answerId.toString(), effectiveId || 'anonymous'], newFavorited);
 
-        // Update favorite count
-        const newCount = newFavorited ? count + 1 : count - 1;
-        queryClient.setQueryData(['favorite-count', answerId.toString()], newCount);
-
         onFavoritedChange?.(newFavorited);
 
-        return { previousFavorited, previousCount };
+        return { previousFavorited };
       },
       onSuccess: () => {
         // 成功時は楽観的更新を維持し、リフェッチしない
@@ -119,13 +98,9 @@ export function useFavoriteButton({
         if (context?.previousFavorited !== undefined) {
           queryClient.setQueryData(['user-favorite', answerId.toString(), effectiveId || 'anonymous'], context.previousFavorited);
         }
-        if (context?.previousCount !== undefined) {
-          queryClient.setQueryData(['favorite-count', answerId.toString()], context.previousCount);
-        }
         queryClient.invalidateQueries({
           queryKey: ['user-favorite', answerId.toString(), effectiveId || 'anonymous'],
         });
-        queryClient.invalidateQueries({ queryKey: ['favorite-count', answerId.toString()] });
       },
     }
   );
@@ -136,7 +111,6 @@ export function useFavoriteButton({
 
   return {
     favorited,
-    count,
     handleToggle,
     isToggling: toggleMutation.isPending,
   };

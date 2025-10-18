@@ -91,7 +91,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: true,
-            initialCount: 5,
           }),
         { wrapper }
       );
@@ -115,7 +114,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 0,
             actionPath: '/custom-path',
             loginRedirectPath: '/custom-login',
           }),
@@ -139,7 +137,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 0,
           }),
         { wrapper }
       );
@@ -161,7 +158,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: true,
-            initialCount: 5,
           }),
         { wrapper }
       );
@@ -177,7 +173,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false, // Set initial to false
-            initialCount: 5,
           }),
         { wrapper }
       );
@@ -197,7 +192,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 0,
           }),
         { wrapper }
       );
@@ -205,24 +199,6 @@ describe('useFavoriteButton', () => {
       await waitFor(() => {
         expect(result.current.favorited).toBe(false); // Should fall back to placeholder
       });
-    });
-  });
-
-  describe('favorite count query', () => {
-    it('should use initialCount as favorite count', () => {
-      setupMocks();
-
-      const { result } = renderHook(
-        () =>
-          useFavoriteButton({
-            answerId: 123,
-            initialFavorited: false,
-            initialCount: 42,
-          }),
-        { wrapper }
-      );
-
-      expect(result.current.count).toBe(42);
     });
   });
 
@@ -235,7 +211,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 5,
           }),
         { wrapper }
       );
@@ -254,7 +229,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 5,
           }),
         { wrapper }
       );
@@ -280,7 +254,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 5,
           }),
         { wrapper }
       );
@@ -312,7 +285,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: true,
-            initialCount: 5,
           }),
         { wrapper }
       );
@@ -338,7 +310,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 5,
             onFavoritedChange,
           }),
         { wrapper }
@@ -346,7 +317,6 @@ describe('useFavoriteButton', () => {
 
       // Initially false
       expect(result.current.favorited).toBe(false);
-      expect(result.current.count).toBe(5);
 
       // The optimistic update happens in the mutation's onMutate
       // This would be tested by triggering the mutation and checking queryClient state
@@ -362,7 +332,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 5,
             onFavoritedChange,
           }),
         { wrapper }
@@ -383,7 +352,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 5,
           }),
         { wrapper }
       );
@@ -400,7 +368,6 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: false,
-            initialCount: 5,
           }),
         { wrapper }
       );
@@ -419,13 +386,11 @@ describe('useFavoriteButton', () => {
           useFavoriteButton({
             answerId: 123,
             initialFavorited: true,
-            initialCount: 10,
           }),
         { wrapper }
       );
 
       expect(result.current).toHaveProperty('favorited');
-      expect(result.current).toHaveProperty('count');
       expect(result.current).toHaveProperty('handleToggle');
       expect(result.current).toHaveProperty('isToggling');
       expect(typeof result.current.handleToggle).toBe('function');

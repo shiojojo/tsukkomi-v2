@@ -103,6 +103,7 @@ describe('AnswersPage', () => {
     fromDate: '',
     toDate: '',
     topicsById: {},
+    commentCounts: {},
     commentsByAnswer: {},
     users: [],
     profileId: undefined,

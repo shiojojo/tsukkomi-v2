@@ -59,15 +59,14 @@ export async function createAnswersListLoader(request: Request, extraParams?: Re
   const answerIds = answers.map(a => a.id);
 
   // 追加データ
-  const { getCommentsForAnswers, getUserAnswerData, getFavoriteCounts } = await import('~/lib/db');
+  const { getCommentsForAnswers, getUserAnswerData } = await import('~/lib/db');
   const commentsByAnswer = await getCommentsForAnswers(answerIds);
   const userAnswerData = profileIdQuery
     ? await getUserAnswerData(profileIdQuery, answerIds)
     : { votes: {}, favorites: new Set<number>() };
-  const favCounts = await getFavoriteCounts(answerIds);
 
   // データマージ
-  const answersWithUserData = mergeUserDataIntoAnswers(answers, userAnswerData, favCounts, profileIdQuery);
+  const answersWithUserData = mergeUserDataIntoAnswers(answers, userAnswerData, profileIdQuery);
 
   return new Response(JSON.stringify({
     ...listData,

@@ -10,7 +10,7 @@ import type { User } from '~/lib/schemas/user';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 
 type LoaderData = {
-  answers: (Answer & { favCount: number })[];
+  answers: Answer[];
   total: number;
   page: number;
   pageSize: number;

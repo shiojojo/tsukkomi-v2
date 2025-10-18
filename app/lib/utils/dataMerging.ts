@@ -3,7 +3,7 @@ import type { Answer } from '~/lib/schemas/answer';
 /**
  * 概要: answersにuser-specific dataをマージするヘルパー関数。
  * Contract:
- *   - Input: answers (Answer[]), userData ({ votes: Record<number, number>; favorites: Set<number> } | null), favCounts (Record<number, number>)
+ *   - Input: answers (Answer[]), userData ({ votes: Record<number, number>; favorites: Set<number> } | null)
  *   - Output: マージされたAnswer[]
  * Environment: サーバーサイドのみ。
  * Errors: なし（データが存在しない場合はデフォルト値）。
@@ -11,7 +11,6 @@ import type { Answer } from '~/lib/schemas/answer';
 export function mergeUserDataIntoAnswers(
   answers: Answer[],
   userData: { votes: Record<number, number>; favorites: Set<number> } | null,
-  favCounts: Record<number, number>,
   profileId?: string
 ): Answer[] {
   return answers.map(a => {
@@ -25,7 +24,6 @@ export function mergeUserDataIntoAnswers(
       ...a,
       votesBy: mergedVotesBy,
       favorited: userData?.favorites.has(a.id) ?? undefined,
-      favCount: favCounts[Number(a.id)] ?? 0,
     };
   });
 }

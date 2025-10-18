@@ -4,7 +4,7 @@ import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 
 interface AnswersListProps {
-  answers: (Answer & { favCount: number })[];
+  answers: Answer[];
   topicsById?: Record<string, Topic>;
   topic?: Topic; // topics.$id.tsx 用
   commentCounts: Record<string, number>;
