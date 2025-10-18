@@ -6,16 +6,7 @@ import type {
 import { useLoaderData } from 'react-router';
 import { AnswersPage } from '~/components/features/answers/AnswersPage';
 import type { Answer } from '~/lib/schemas/answer';
-import type { Topic } from '~/lib/schemas/topic';
-import { useQueryWithError } from '~/hooks/common/useQueryWithError';
-import {
-  getTopicsByIds,
-  getUsers,
-  getCommentCountsForAnswers,
-  getFavoriteCounts,
-  getUserAnswerData,
-} from '~/lib/db';
-import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
+import { useAnswersPageData } from '~/hooks/features/answers/useAnswersPageData';
 
 // Simple in-memory guard to suppress very short-window duplicate POSTs.
 
@@ -67,63 +58,7 @@ export default function AnswersRoute() {
     profileId?: string;
   };
 
-  const answerIds = loaderData.answers.map(a => a.id);
-  const topicIds = Array.from(
-    new Set(loaderData.answers.map(a => a.topicId).filter(Boolean) as number[])
-  );
-
-  // 個別クエリで補助データを取得
-  const topicsQuery = useQueryWithError(['topics', topicIds.join(',')], () =>
-    getTopicsByIds(topicIds)
-  );
-  const usersQuery = useQueryWithError(['users'], () =>
-    getUsers({ limit: 200 })
-  );
-  const commentCountsQuery = useQueryWithError(
-    ['comment-counts', answerIds.join(',')],
-    () => getCommentCountsForAnswers(answerIds)
-  );
-  const favCountsQuery = useQueryWithError(
-    ['favorite-counts', answerIds.join(',')],
-    () => getFavoriteCounts(answerIds)
-  );
-  const userAnswerDataQuery = useQueryWithError(
-    ['user-answer-data', loaderData.profileId || 'none', answerIds.join(',')],
-    () =>
-      loaderData.profileId
-        ? getUserAnswerData(loaderData.profileId, answerIds)
-        : Promise.resolve({ votes: {}, favorites: new Set<number>() }),
-    { enabled: !!loaderData.profileId }
-  );
-
-  // データマージ
-  const topicsById = topicsQuery.data
-    ? Object.fromEntries(
-        (topicsQuery.data as Topic[]).map(t => [String(t.id), t])
-      )
-    : {};
-  const commentCounts = commentCountsQuery.data || {};
-  const users = usersQuery.data || [];
-  const favCounts = favCountsQuery.data || {};
-  const userAnswerData = userAnswerDataQuery.data || {
-    votes: {},
-    favorites: new Set<number>(),
-  };
-
-  const answersWithUserData = mergeUserDataIntoAnswers(
-    loaderData.answers,
-    userAnswerData,
-    favCounts,
-    loaderData.profileId
-  );
-
-  // ローディング状態
-  const isLoading =
-    topicsQuery.isLoading ||
-    usersQuery.isLoading ||
-    commentCountsQuery.isLoading ||
-    favCountsQuery.isLoading ||
-    userAnswerDataQuery.isLoading;
+  const { pageData, isLoading } = useAnswersPageData(loaderData);
 
   if (isLoading) {
     return (
@@ -133,21 +68,7 @@ export default function AnswersRoute() {
     );
   }
 
-  const data = {
-    ...loaderData,
-    answers: answersWithUserData,
-    topicsById,
-    commentCounts,
-    users,
-    q: loaderData.q || '',
-    author: loaderData.author || '',
-    minScore: loaderData.minScore || 0,
-    hasComments: loaderData.hasComments || false,
-    fromDate: loaderData.fromDate || '',
-    toDate: loaderData.toDate || '',
-  };
-
-  return <AnswersPage data={data} mode="all" />;
+  return <AnswersPage data={pageData} mode="all" />;
 }
 
 import type { Route } from './+types/answers._index';

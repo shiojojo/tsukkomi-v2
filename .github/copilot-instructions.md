@@ -303,6 +303,141 @@ const addCommentMutation = useMutationWithError(..., {
 - **Comment**: DB遅延を考慮し、成功後に同期（`invalidateQueries`）
 - **Error Handling**: 失敗時は適切なロールバック/再フェッチ
 
+### 📋 回答一覧ページのデータ取得アーキテクチャ
+
+**目的**: 回答一覧ページ（全回答、お気に入り回答など）のデータ取得ロジックを共通化し、リアルタイム性を確保。
+
+#### 🎯 設計原則
+
+- **Loader**: 必須データ（回答リスト本体）のみ取得（SSR対応）
+- **TanStack Query**: 補助データ（トピック、ユーザー、コメントカウントなど）を個別取得・キャッシュ
+- **共通フック**: `useAnswersPageData` でデータ取得ロジックを統一
+- **リアルタイム更新**: コメントカウントは定期的に自動更新
+
+#### 📊 クエリKeyの役割と命名規則
+
+```ts
+// メイン回答データ（Loader経由）
+['answers', page, pageSize, filters...]
+
+// 補助データ（TanStack Query経由）
+['topics', topicIds.join(',')]              // トピック情報
+['users']                                   // ユーザー一覧（全回答ページ用）
+['comment-counts', answerIds.join(',')]     // コメントカウント（リアルタイム更新）
+['favorite-counts', answerIds.join(',')]    // お気に入りカウント
+['user-answer-data', profileId, answerIds.join(',')] // ユーザーの投票/お気に入り状態
+```
+
+#### 🔄 Loaderの役割
+
+**取得するデータ**: 回答リスト本体のみ（最小限）
+
+- 回答ID、内容、スコア、作成日時など基本情報
+- ページネーション情報（total, page, pageSize）
+- フィルター条件（q, author, sortBy, minScore, hasComments, fromDate, toDate）
+- ユーザーID（profileId） - 認証状態による
+
+**実装パターン**:
+
+```ts
+export async function loader({ request }: LoaderFunctionArgs) {
+  const { createListLoader } = await import('~/lib/loaders');
+  const listResponse = await createListLoader('answers', request, { topicId });
+  const listData = await listResponse.json();
+
+  return json({
+    ...listData,
+    profileId: profileIdQuery, // 認証ユーザーID
+  });
+}
+```
+
+#### 🎮 インタラクション設計
+
+**採点/コメントボタンの遅延読み込み**:
+
+- **初期表示**: コメントカウントのみ表示（リアルタイム更新）
+- **ボタンクリック時**: コメント一覧を個別クエリで取得
+- **目的**: 初期ローディングの高速化 + 必要な時だけ詳細データ取得
+
+**実装パターン**:
+
+```ts
+// コメントセクションコンポーネント
+const [showComments, setShowComments] = useState(false);
+const commentsQuery = useQueryWithError(
+  ['comments', answerId],
+  () => getCommentsForAnswer(answerId),
+  { enabled: showComments } // ボタンクリック時のみ実行
+);
+
+// UI
+<button onClick={() => setShowComments(true)}>
+  💬 {commentCount}件のコメント
+</button>
+{showComments && <CommentsList comments={commentsQuery.data} />}
+```
+
+#### ⚙️ 共通フック: useAnswersPageData
+
+**役割**: 回答一覧ページの補助データ取得を統一管理
+
+**取得する補助データ**:
+
+- トピック情報（回答に関連するトピック）
+- ユーザー情報（回答者情報）
+- コメントカウント（リアルタイム更新）
+- お気に入りカウント
+- ユーザーの投票/お気に入り状態（認証時のみ）
+
+**実装パターン**:
+
+```ts
+export function useAnswersPageData(loaderData: LoaderData) {
+  const answerIds = loaderData.answers.map(a => a.id);
+
+  // 補助データ取得
+  const topicsQuery = useQueryWithError(['topics', topicIds.join(',')], ...);
+  const commentCountsQuery = useQueryWithError(
+    ['comment-counts', answerIds.join(',')],
+    () => getCommentCountsForAnswers(answerIds),
+    COMMENT_COUNTS_QUERY_OPTIONS // リアルタイム更新設定
+  );
+  // ... 他のクエリ
+
+  // データマージ
+  const answersWithUserData = mergeUserDataIntoAnswers(
+    loaderData.answers,
+    userAnswerData,
+    favCounts,
+    loaderData.profileId
+  );
+
+  return { pageData: { ...loaderData, answers: answersWithUserData, ... }, isLoading };
+}
+```
+
+#### 🔄 リアルタイム更新設定
+
+**コメントカウントの自動更新**:
+
+```ts
+// app/lib/constants.ts
+export const COMMENT_COUNTS_QUERY_OPTIONS = {
+  staleTime: 30 * 1000, // 30秒間キャッシュ有効
+  refetchInterval: 60 * 1000, // 60秒ごとに自動更新
+} as const;
+```
+
+**適用箇所**: コメントカウントクエリのみ（他のデータは変更頻度が低いため）
+
+#### 📈 パフォーマンス最適化
+
+- **初期ローディング高速化**: Loaderで回答リストのみ取得、補助データは遅延読み込み
+- **必要なデータのみ取得**: トピックIDに基づいて関連トピックのみ取得
+- **キャッシュ活用**: TanStack Queryのキャッシュで再訪問時の高速化
+- **リアルタイム性**: コメントカウントのみ定期更新、他のデータは変更時のみ更新
+
 ⸻
 
 ## コンポーネント / UI 規約

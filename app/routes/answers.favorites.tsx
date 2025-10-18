@@ -8,16 +8,7 @@ import { handleAnswerActions } from '~/lib/actionHandlers';
 import { Button } from '~/components/ui/Button';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 import type { Answer } from '~/lib/schemas/answer';
-import type { Topic } from '~/lib/schemas/topic';
-import { useQueryWithError } from '~/hooks/common/useQueryWithError';
-import {
-  getTopicsByIds,
-  getUsers,
-  getCommentCountsForAnswers,
-  getFavoriteCounts,
-  getUserAnswerData,
-} from '~/lib/db';
-import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
+import { useAnswersPageData } from '~/hooks/features/answers/useAnswersPageData';
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
@@ -78,13 +69,11 @@ export default function FavoriteAnswersRoute() {
   };
 
   const requiresProfileId = loaderData.requiresProfileId;
-  const answerIds = loaderData.answers.map(a => a.id);
-  const topicIds = Array.from(
-    new Set(loaderData.answers.map(a => a.topicId).filter(Boolean) as number[])
-  );
-
   const { effectiveId: currentUserId } = useIdentity();
   const navigate = useNavigate();
+
+  // 共通フックでデータ取得
+  const { pageData, isLoading } = useAnswersPageData(loaderData);
 
   useEffect(() => {
     if (!requiresProfileId) return;
@@ -119,59 +108,6 @@ export default function FavoriteAnswersRoute() {
     );
   }
 
-  // 個別クエリで補助データを取得
-  const topicsQuery = useQueryWithError(['topics', topicIds.join(',')], () =>
-    getTopicsByIds(topicIds)
-  );
-  const usersQuery = useQueryWithError(['users'], () =>
-    getUsers({ limit: 200 })
-  );
-  const commentCountsQuery = useQueryWithError(
-    ['comment-counts', answerIds.join(',')],
-    () => getCommentCountsForAnswers(answerIds)
-  );
-  const favCountsQuery = useQueryWithError(
-    ['favorite-counts', answerIds.join(',')],
-    () => getFavoriteCounts(answerIds)
-  );
-  const userAnswerDataQuery = useQueryWithError(
-    ['user-answer-data', loaderData.profileId || 'none', answerIds.join(',')],
-    () =>
-      loaderData.profileId
-        ? getUserAnswerData(loaderData.profileId, answerIds)
-        : Promise.resolve({ votes: {}, favorites: new Set<number>() }),
-    { enabled: !!loaderData.profileId }
-  );
-
-  // データマージ
-  const topicsById = topicsQuery.data
-    ? Object.fromEntries(
-        (topicsQuery.data as Topic[]).map(t => [String(t.id), t])
-      )
-    : {};
-  const commentCounts = commentCountsQuery.data || {};
-  const users = usersQuery.data || [];
-  const favCounts = favCountsQuery.data || {};
-  const userAnswerData = userAnswerDataQuery.data || {
-    votes: {},
-    favorites: new Set<number>(),
-  };
-
-  const answersWithUserData = mergeUserDataIntoAnswers(
-    loaderData.answers,
-    userAnswerData,
-    favCounts,
-    loaderData.profileId
-  );
-
-  // ローディング状態
-  const isLoading =
-    topicsQuery.isLoading ||
-    usersQuery.isLoading ||
-    commentCountsQuery.isLoading ||
-    favCountsQuery.isLoading ||
-    userAnswerDataQuery.isLoading;
-
   if (isLoading) {
     return (
       <StickyHeaderLayout
@@ -190,19 +126,5 @@ export default function FavoriteAnswersRoute() {
     );
   }
 
-  const data = {
-    ...loaderData,
-    answers: answersWithUserData,
-    topicsById,
-    commentCounts,
-    users,
-    q: loaderData.q || '',
-    author: loaderData.author || '',
-    minScore: loaderData.minScore || 0,
-    hasComments: loaderData.hasComments || false,
-    fromDate: loaderData.fromDate || '',
-    toDate: loaderData.toDate || '',
-  };
-
-  return <AnswersPage data={data} mode="favorites" />;
+  return <AnswersPage data={pageData} mode="favorites" />;
 }
