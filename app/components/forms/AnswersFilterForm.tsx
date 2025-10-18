@@ -65,7 +65,12 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
           <select
             name="author"
             value={authorQuery}
-            onChange={e => setAuthorQuery(e.target.value)}
+            onChange={e => {
+              setAuthorQuery(e.target.value);
+              // Trigger form submission for immediate filtering
+              const form = e.target.form;
+              if (form) form.requestSubmit();
+            }}
             className="form-select w-full text-sm"
           >
             <option value="">{mode === 'favorites' ? '回答' : '全員'}</option>
@@ -81,9 +86,12 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
           <select
             name="sortBy"
             value={sortBy}
-            onChange={e =>
-              setSortBy(e.target.value as 'newest' | 'oldest' | 'scoreDesc')
-            }
+            onChange={e => {
+              setSortBy(e.target.value as 'newest' | 'oldest' | 'scoreDesc');
+              // Trigger form submission for immediate filtering
+              const form = e.target.form;
+              if (form) form.requestSubmit();
+            }}
             className="form-select w-full text-sm"
           >
             <option value="newest">新着</option>

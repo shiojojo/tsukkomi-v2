@@ -1090,3 +1090,115 @@ test('comment submission with valid length', async ({ page }) => {
     console.log('No answers found on answers page - skipping comment submission test as no data available');
   }
 });
+
+test('search and filter answers by author', async ({ page }) => {
+  console.log('Starting author filter test');
+  await page.waitForTimeout(200);
+
+  // Switch to HS user first
+  await page.goto('/login');
+  console.log('Navigated to login page');
+  await page.waitForTimeout(200);
+
+  const hsUserContainer = page.locator(`text=${HS_USER}`).locator('xpath=ancestor::li');
+  const selectButton = hsUserContainer.locator(`button:has-text("${SELECT_BUTTON}")`);
+  await selectButton.click();
+  console.log('Selected HS user');
+  await page.waitForTimeout(200);
+
+  await expect(page.locator(`nav[aria-label="Main"] span:has-text("${HS_USER}")`).first()).toBeVisible();
+  console.log('HS user confirmed in header');
+  await page.waitForTimeout(200);
+
+  // Navigate to answers page
+  await page.goto('/answers');
+  console.log('Navigated to answers page');
+  await page.waitForTimeout(500);
+
+  await expect(page.locator(`text=${ANSWER_LIST}`)).toBeVisible();
+  console.log('Answers page loaded');
+  await page.waitForTimeout(200);
+
+  // Set author filter to HS
+  await page.selectOption('select[name="author"]', HS_USER);
+  console.log('Set author filter to HS');
+  await page.waitForTimeout(200);
+
+  // Click search button to apply filter
+  await page.click('button:has-text("検索")');
+  console.log('Clicked search button');
+  await page.waitForTimeout(500);
+
+  // Wait for URL to update with author parameter
+  await page.waitForURL((url) => url.searchParams.has('author'), { timeout: 5000 });
+  console.log('URL updated with author parameter');
+  await page.waitForTimeout(200);
+
+  // Check if author=HS is in the URL
+  const finalURL = page.url();
+  const hasAuthorParam = finalURL.includes('author=HS');
+  expect(hasAuthorParam).toBe(true);
+  console.log('Confirmed author=HS in URL');
+  await page.waitForTimeout(200);
+
+  // Wait for filtered results to load
+  await page.waitForTimeout(1000);
+  console.log('Waiting for filtered results');
+  await page.waitForTimeout(200);
+
+  // Function to check all answers on current page are from HS user
+  const checkAllAnswersFromHS = async () => {
+    const answerElements = page.locator('ul li');
+    const answerCount = await answerElements.count();
+    console.log(`Checking ${answerCount} answers on current page`);
+    await page.waitForTimeout(200);
+
+    // Check up to 20 answers to avoid timeout, but ensure we check a reasonable sample
+    const checkCount = Math.min(answerCount, 20);
+    console.log(`Will check first ${checkCount} answers`);
+    await page.waitForTimeout(100);
+
+    for (let i = 0; i < checkCount; i++) {
+      const answer = answerElements.nth(i);
+      // Look for author name in the format "作者: HS"
+      const userNameElement = answer.locator('span').filter({ hasText: '作者: HS' }).first();
+      await expect(userNameElement).toBeVisible();
+      console.log(`Answer ${i + 1}: Confirmed HS user`);
+      await page.waitForTimeout(100); // Small delay between checks to avoid timeout
+    }
+
+    // Also check that no other users appear anywhere on the page
+    const otherUserElements = page.locator('span').filter({ hasText: '作者: test' });
+    const otherUserCount = await otherUserElements.count();
+    expect(otherUserCount).toBe(0);
+    console.log('Confirmed no other users (test) appear anywhere on this page');
+    await page.waitForTimeout(200);
+  };
+
+  // Check page 1
+  console.log('Checking page 1 answers');
+  await checkAllAnswersFromHS();
+  console.log('Page 1 check completed');
+
+  // Try to navigate to page 2
+  const page2Link = page.locator('a[href*="page=2"]').first();
+  if (await page2Link.isVisible()) {
+    console.log('Page 2 link found, navigating to page 2');
+    await page2Link.click();
+    await page.waitForTimeout(500);
+
+    // Wait for page 2 to load
+    await page.waitForURL((url) => url.searchParams.get('page') === '2', { timeout: 5000 });
+    console.log('Navigated to page 2');
+    await page.waitForTimeout(500);
+
+    // Check page 2
+    console.log('Checking page 2 answers');
+    await checkAllAnswersFromHS();
+    console.log('Page 2 check completed');
+  } else {
+    console.log('No page 2 link found - only one page of results');
+  }
+
+  console.log('Author filter test completed successfully');
+});

@@ -47,7 +47,7 @@ export function parseAnswersFilterParams(request: LoaderFunctionArgs['request'])
   const params = url.searchParams;
   return {
     ...common,
-    author: params.get('authorName') ?? undefined,
+    author: params.get('author') ?? undefined,
     sortBy: (params.get('sortBy') as SortBy) ?? 'newest',
     minScore: params.get('minScore') ? Number(params.get('minScore')) : undefined,
     hasComments: params.get('hasComments') === '1' || params.get('hasComments') === 'true',

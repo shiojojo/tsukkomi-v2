@@ -63,7 +63,7 @@ describe('queryParser', () => {
   describe('parseAnswersFilterParams', () => {
     it('should parse answers specific filters', () => {
       const mockRequest = {
-        url: 'http://example.com?q=test&authorName=user&sortBy=scoreDesc&minScore=5&hasComments=1',
+        url: 'http://example.com?q=test&author=user&sortBy=scoreDesc&minScore=5&hasComments=1',
       } as Request;
 
       const result = parseAnswersFilterParams(mockRequest);
@@ -107,7 +107,7 @@ describe('queryParser', () => {
 
     it('should return AnswersFilterParams for answers', () => {
       const mockRequest = {
-        url: 'http://example.com?q=test&authorName=user&sortBy=newest',
+        url: 'http://example.com?q=test&author=user&sortBy=newest',
       } as Request;
 
       const result = parseFilterParams(mockRequest, 'answers');
