@@ -48,7 +48,7 @@ export function useAnswersPage(data: LoaderData) {
 
   // Client-side user data sync for answers
   const answerIds = data.answers?.map((a: Answer) => a.id) ?? [];
-  const { data: userAnswerData } = useAnswerUserData(answerIds);
+  const { data: userAnswerData } = useAnswerUserData(answerIds, false); // Disable since we use loader data
 
   // Use loader data directly (no need for client-side refetch)
   const currentData = data;

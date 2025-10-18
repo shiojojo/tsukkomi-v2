@@ -7,7 +7,7 @@ interface FavoriteSectionProps {
 }
 
 export function FavoriteSection({ answer }: FavoriteSectionProps) {
-  const initialFavorited = false; // Will be fetched by useFavoriteButton
+  const initialFavorited = answer.favorited ?? false; // Use loader data instead of fetching
 
   const initialCount = useMemo(() => {
     return answer.favCount ?? 0;
@@ -18,6 +18,7 @@ export function FavoriteSection({ answer }: FavoriteSectionProps) {
       answerId={answer.id}
       initialFavorited={initialFavorited}
       initialCount={initialCount}
+      useQuery={false} // Use loader data only, no client-side query
     />
   );
 }

@@ -98,6 +98,7 @@ export function VoteSection({
     initialVotes: votesCounts,
     votesBy,
     actionPath,
+    useQuery: false, // Use loader data only
     onSelectionChange: level => {
       setVotesBy(prev => {
         const newVotesBy = { ...(prev || {}) };

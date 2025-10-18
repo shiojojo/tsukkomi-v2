@@ -11,6 +11,7 @@ export type UseNumericVoteButtonsProps = {
   actionPath?: string;
   loginRedirectPath?: string;
   onSelectionChange?: (level: number | null) => void;
+  useQuery?: boolean; // Whether to use React Query for syncing (default: true)
 };
 
 export function useNumericVoteButtons({
@@ -20,6 +21,7 @@ export function useNumericVoteButtons({
   actionPath,
   loginRedirectPath = '/login',
   onSelectionChange,
+  useQuery = true,
 }: UseNumericVoteButtonsProps) {
   const { effectiveId } = useIdentity();
   const { fetcher, performAction } = useOptimisticAction(
@@ -36,6 +38,7 @@ export function useNumericVoteButtons({
     {
       placeholderData: votesBy?.[effectiveId || ''] || null,
       staleTime: Infinity, // loader dataなのでstaleにしない
+      enabled: useQuery,
     }
   );
 
@@ -46,6 +49,7 @@ export function useNumericVoteButtons({
     {
       placeholderData: initialVotes,
       staleTime: 5 * 60 * 1000,
+      enabled: useQuery,
     }
   );
 

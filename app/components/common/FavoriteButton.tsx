@@ -9,6 +9,7 @@ export type FavoriteButtonProps =
       actionPath?: string;
       loginRedirectPath?: string;
       onFavoritedChange?: (favorited: boolean) => void;
+      useQuery?: boolean;
     }
   | {
       favorited: boolean;
@@ -33,6 +34,7 @@ export function FavoriteButton(props: FavoriteButtonProps) {
       actionPath: props.actionPath,
       loginRedirectPath: props.loginRedirectPath,
       onFavoritedChange: props.onFavoritedChange,
+      useQuery: props.useQuery,
     });
     ({ favorited, count, handleToggle } = hookResult);
   }

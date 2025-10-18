@@ -11,6 +11,7 @@ export type UseFavoriteButtonProps = {
   actionPath?: string;
   loginRedirectPath?: string;
   onFavoritedChange?: (favorited: boolean) => void;
+  useQuery?: boolean; // Whether to use React Query for syncing (default: true)
 };
 
 export function useFavoriteButton({
@@ -20,6 +21,7 @@ export function useFavoriteButton({
   actionPath,
   loginRedirectPath = '/login',
   onFavoritedChange,
+  useQuery = true,
 }: UseFavoriteButtonProps) {
   const { effectiveId } = useIdentity();
   const { fetcher, performAction } = useOptimisticAction(
@@ -47,7 +49,7 @@ export function useFavoriteButton({
     {
       placeholderData: initialFavorited,
       staleTime: 5 * 60 * 1000, // 5 minutes
-      enabled: !!effectiveId,
+      enabled: useQuery && !!effectiveId,
     }
   );
 
