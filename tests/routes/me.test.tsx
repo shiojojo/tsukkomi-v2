@@ -79,14 +79,14 @@ describe('me route', () => {
         body: formData,
       });
       const { removeSubUser } = await import('~/lib/db');
-      vi.mocked(removeSubUser).mockResolvedValue(true);
+      vi.mocked(removeSubUser).mockResolvedValue(undefined);
 
       const result = await action({
         request: mockRequest,
       } as ActionFunctionArgs);
-      expect(removeSubUser).toHaveBeenCalledWith('parent1', 'sub1');
+      expect(removeSubUser).toHaveBeenCalledWith({ id: 'sub1' });
       const data = await result.json();
-      expect(data).toEqual({ ok: true, parentId: 'parent1', subId: 'sub1' });
+      expect(data).toEqual({ parentId: 'parent1', subId: 'sub1' });
     });
 
     it('should return rate limited error', async () => {

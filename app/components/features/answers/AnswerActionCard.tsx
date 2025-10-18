@@ -8,7 +8,7 @@ import type { Comment } from '~/lib/schemas/comment';
 import { Button } from '~/components/ui/Button';
 
 export interface AnswerActionCardProps {
-  answer: Answer;
+  answer: Answer & { favCount: number };
   topic: Topic | null;
   comments: Comment[];
   currentUserId: string | null;

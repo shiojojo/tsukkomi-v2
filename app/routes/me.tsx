@@ -72,7 +72,7 @@ export async function action({ request }: ActionFunctionArgs) {
     const parentId = String(form.get('parentId') || '');
     const subId = String(form.get('subId') || '');
     const { removeSubUser } = await import('~/lib/db');
-    const ok = await removeSubUser(parentId, subId);
+    const ok = await removeSubUser({ id: subId });
     return Response.json({ ok, parentId, subId });
   }
 

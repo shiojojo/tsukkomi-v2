@@ -26,6 +26,6 @@ export function mergeUserDataIntoAnswers(
       votesBy: mergedVotesBy,
       favorited: userData?.favorites.has(a.id) ?? undefined,
       favCount: favCounts[Number(a.id)] ?? 0,
-    } as Answer & { favCount: number };
+    };
   });
 }

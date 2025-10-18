@@ -23,6 +23,7 @@ type AnswersListData = {
 // Mock loaders and actionHandlers
 vi.mock('~/lib/loaders', () => ({
   createAnswersListLoader: vi.fn(),
+  createListLoader: vi.fn(),
 }));
 vi.mock('~/lib/actionHandlers', () => ({
   handleAnswerActions: vi.fn(),
@@ -47,6 +48,7 @@ describe('answers._index route', () => {
             profileId: undefined,
             topicId: 1,
             favorited: undefined,
+            favCount: 0,
           },
         ],
         total: 1,
@@ -64,18 +66,26 @@ describe('answers._index route', () => {
         users: [],
         profileId: null,
       } as AnswersListData;
-      const { createAnswersListLoader } = await import('~/lib/loaders');
+      const { createAnswersListLoader, createListLoader } = await import(
+        '~/lib/loaders'
+      );
       vi.mocked(createAnswersListLoader).mockResolvedValue(
+        new Response(JSON.stringify(mockData))
+      );
+      vi.mocked(createListLoader).mockResolvedValue(
         new Response(JSON.stringify(mockData))
       );
 
       const result = await loader({
         request: mockRequest,
       } as LoaderFunctionArgs);
-      expect(createAnswersListLoader).toHaveBeenCalledWith(mockRequest, {
+      expect(createListLoader).toHaveBeenCalledWith('answers', mockRequest, {
         topicId: undefined,
       });
-      expect(await result.json()).toEqual(mockData);
+      expect(await result.json()).toEqual({
+        ...mockData,
+        profileId: undefined,
+      });
     });
   });
 

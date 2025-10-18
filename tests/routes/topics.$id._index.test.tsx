@@ -4,6 +4,7 @@ import { loader, action } from '~/routes/topics.$id._index';
 // Mock db
 vi.mock('~/lib/loaders', () => ({
   createAnswersListLoader: vi.fn(),
+  createListLoader: vi.fn(),
 }));
 
 vi.mock('~/lib/actionHandlers', () => ({
@@ -20,31 +21,37 @@ describe('topics.$id._index route', () => {
       const mockResult = new Response(JSON.stringify({ answers: [] }), {
         status: 200,
       });
-      const { createAnswersListLoader } = await import('~/lib/loaders');
+      const { createAnswersListLoader, createListLoader } = await import(
+        '~/lib/loaders'
+      );
       vi.mocked(createAnswersListLoader).mockResolvedValue(mockResult);
+      vi.mocked(createListLoader).mockResolvedValue(mockResult);
 
       const request = new Request('http://localhost/topics/123');
       const params = { id: '123' };
       const result = await loader({ request, params, context: undefined });
 
-      expect(createAnswersListLoader).toHaveBeenCalledWith(request, {
+      expect(createListLoader).toHaveBeenCalledWith('answers', request, {
         topicId: '123',
       });
-      expect(result).toBe(mockResult);
+      expect(await result.json()).toEqual({ answers: [], topicId: '123' });
     });
 
     it('should handle undefined topicId', async () => {
       const mockResult = new Response(JSON.stringify({ answers: [] }), {
         status: 200,
       });
-      const { createAnswersListLoader } = await import('~/lib/loaders');
+      const { createAnswersListLoader, createListLoader } = await import(
+        '~/lib/loaders'
+      );
       vi.mocked(createAnswersListLoader).mockResolvedValue(mockResult);
+      vi.mocked(createListLoader).mockResolvedValue(mockResult);
 
       const request = new Request('http://localhost/topics/undefined');
       const params = { id: undefined };
       await loader({ request, params, context: undefined });
 
-      expect(createAnswersListLoader).toHaveBeenCalledWith(request, {
+      expect(createListLoader).toHaveBeenCalledWith('answers', request, {
         topicId: undefined,
       });
     });

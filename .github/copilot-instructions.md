@@ -120,10 +120,62 @@ export default function Route() {
 
 ### データ取得・更新アーキテクチャ
 
-- **Loader**: 初回/SSRデータ取得（`useLoaderData` でコンポーネントに渡す）
-- **TanStack Query**: クライアント更新/キャッシュ（初期データとして Loader データを活用、`useMutation` で Action をトリガー）
+パフォーマンス最適化のため、以下のハイブリッドアプローチを採用：
+
+- **Loader**: 必須データ（メインエンティティ）の初回/SSR取得（例: `searchAnswers()` の結果）
+- **TanStack Query**: 補助データ（関連エンティティ）の個別取得・キャッシュ・同期
+  - 初期データとして Loader データを活用
+  - `useMutation` で Action をトリガー
 - **Action**: 書き込み処理（サーバーサイドでのバリデーションと永続化）
 - **useQueryWithError / useMutationWithError**: エラーハンドリング付きの Query/Mutation フック
+
+**実装パターン**:
+
+```tsx
+// Loader: 必須データだけ取得
+export async function loader({ request }: LoaderFunctionArgs) {
+  const { createListLoader } = await import('~/lib/loaders');
+  return await createListLoader('answers', request, extraParams);
+}
+
+// コンポーネント: TanStack Queryで補助データを個別取得
+export default function Route() {
+  const loaderData = useLoaderData<typeof loader>();
+  const answerIds = loaderData.answers.map(a => a.id);
+  const topicIds = Array.from(
+    new Set(loaderData.answers.map(a => a.topicId).filter(Boolean))
+  );
+
+  const topicsQuery = useQueryWithError(['topics', topicIds.join(',')], () =>
+    getTopicsByIds(topicIds)
+  );
+  const commentsQuery = useQueryWithError(
+    ['comments', answerIds.join(',')],
+    () => getCommentsForAnswers(answerIds)
+  );
+  // ... 他の補助データ
+
+  // データマージ
+  const topicsById = topicsQuery.data
+    ? Object.fromEntries(topicsQuery.data.map(t => [String(t.id), t]))
+    : {};
+  const answersWithData = mergeUserDataIntoAnswers(
+    loaderData.answers,
+    userData,
+    favCounts
+  );
+
+  return (
+    <Component data={{ ...loaderData, answers: answersWithData, topicsById }} />
+  );
+}
+```
+
+**利点**:
+
+- 初回ローディングの高速化（UI即時表示 + データ遅延読み込み）
+- 必要なデータだけ取得（例: 全topics取得 → 表示topicsだけ）
+- TanStack Queryのキャッシュ活用
 
 localStorage は最小限に使用。サーバー同期が必要なデータ（投票、いいねなど）は loader/Action と TanStack Query で管理。
 
@@ -137,15 +189,25 @@ localStorage は最小限に使用。サーバー同期が必要なデータ（�
 - **useMutationWithError**: エラーハンドリング付きミューテーション
 - **Query Key**: `['entity-type', entityId, userId]` の命名規則
 
+### Favorite / Vote / Comment の設計パターン
+
+#### 🎯 共通アーキテクチャ原則
+
+- **Loader**: 必須データ（メインエンティティ）の初回取得
+- **TanStack Query**: 補助データ（関連エンティティ）の個別取得・キャッシュ・同期
+- **useOptimisticAction**: 楽観的更新 + Action実行
+- **useMutationWithError**: エラーハンドリング付きミューテーション
+- **Query Key**: `['entity-type', entityId, userId]` の命名規則
+
 #### ⭐ Favorite 機能設計
 
 **意図**: ユーザーのお気に入り状態とカウントをリアルタイム管理。トグル操作で即時反映。
 
 **動作フロー**:
 
-1. **Loader**: 初期お気に入り状態とカウントを取得
-2. **Query**: ユーザーのお気に入り状態を管理 (`['user-favorite', answerId, userId]`)
-3. **Query**: お気に入りカウントを管理 (`['favorite-count', answerId]`)
+1. **Loader**: メイン回答データを取得
+2. **Query**: お気に入りカウントを管理 (`['favorite-count', answerIds.join(',')]`)
+3. **Query**: ユーザーのお気に入り状態を管理 (`['user-answer-data', profileId, answerIds.join(',')]`)
 4. **Mutation**: トグル操作で楽観的更新（即時UI反映）
 5. **Action**: サーバーサイドで永続化
 6. **Error**: 失敗時はロールバック + 再フェッチ
@@ -168,12 +230,26 @@ const toggleMutation = useMutationWithError(..., {
 
 **動作フロー**:
 
-1. **Loader**: 初期投票状態とカウントを取得
-2. **Query**: ユーザーの投票状態を管理 (`['user-vote', answerId, userId]`)
-3. **Query**: 投票カウントを管理 (`['vote-counts', answerId]`)
+1. **Loader**: メイン回答データを取得
+2. **Query**: ユーザーの投票状態を管理 (`['user-answer-data', profileId, answerIds.join(',')]`)
+3. **Query**: 投票カウントを管理（回答データに含まれる）
 4. **Mutation**: 投票操作で楽観的更新（カウント増減計算）
 5. **Action**: サーバーサイドで永続化
-6. **Error**: 失敗時は再フェッチ
+
+#### 💬 Comment 機能設計
+
+**意図**: コメント一覧の取得・追加・同期。DB遅延を考慮した読み込み状態表示。
+
+**動作フロー**:
+
+1. **Loader**: メイン回答データを取得
+2. **Query**: コメント一覧を管理 (`['comments', answerIds.join(',')]`)
+3. **Mutation**: コメント追加（楽観的更新なし、DB同期を待つ）
+4. **Action**: サーバーサイドで永続化
+5. **Error**: 失敗時はフォーム内容復元 + 再フェッチ
+6. **Loading**: DB同期中のスピナー表示
+
+**DB同期の考慮**: Comment追加成功時は、DB反映完了を待ってからinvalidateQueriesを実行。目安として500msの待機時間を推奨（DBレイテンシによる調整が必要）。6. **Error**: 失敗時は再フェッチ
 
 **実装パターン**:
 
@@ -459,8 +535,8 @@ export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
 ## ✅ 追加時チェックリスト（開発者向け）
 
 1. 新規エンティティ: `schemas/xxx.ts` に zod スキーマ & 型 export
-2. ルートファイル: `loader` で取得 / `action` で mutate
-3. 必要なら `useQueryWithError` を補助的に追加（キー命名: `['entity', id]`）
+2. ルートファイル: `loader` でメインエンティティを取得 / `action` で mutate
+3. 必要なら `useQueryWithError` を補助データ取得に追加（キー命名: `['entity', ids.join(',')]`）
 4. UI コンポーネントは props 経由
 5. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
 6. エラーハンドリング: `lib/errors.ts` のクラスを使用し、適切なエラーレスポンスを throw
@@ -482,7 +558,7 @@ export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
 ## 🚀 最重要原則
 
 1. Supabase 直呼び禁止 → 100% `lib/db/` ディレクトリ経由
-2. **Loader**: 初回/SSRデータ取得 / **TanStack Query**: クライアント更新/キャッシュ / **Action**: 書き込み処理
+2. **Loader**: 必須データ（メインエンティティ）の初回取得 / **TanStack Query**: 補助データ（関連エンティティ）の個別取得・キャッシュ / **Action**: 書き込み処理
 3. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
 4. エラーハンドリング: `lib/errors.ts` のクラスを使用し、エラーを握りつぶさず適切に伝播
 5. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）

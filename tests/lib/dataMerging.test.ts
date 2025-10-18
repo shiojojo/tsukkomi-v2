@@ -12,6 +12,7 @@ describe('mergeUserDataIntoAnswers', () => {
       created_at: '2024-01-01T00:00:00Z',
       votes: { level1: 0, level2: 0, level3: 0 },
       votesBy: {},
+      favCount: 0,
     },
     {
       id: 2,
@@ -21,6 +22,7 @@ describe('mergeUserDataIntoAnswers', () => {
       created_at: '2024-01-01T00:00:00Z',
       votes: { level1: 0, level2: 0, level3: 0 },
       votesBy: { user3: 1 },
+      favCount: 0,
     },
   ];
 

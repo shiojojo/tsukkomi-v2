@@ -30,6 +30,7 @@ export {
 export {
   getTopics,
   getTopicsPaged,
+  getTopicsByIds,
   getLatestTopic,
 } from './db/topics';
 

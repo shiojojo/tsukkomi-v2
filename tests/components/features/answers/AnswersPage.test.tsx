@@ -121,7 +121,11 @@ describe('AnswersPage', () => {
   });
 
   it('renders correctly in topic mode with topic', () => {
-    const mockTopic = { id: 1, title: 'Test Topic' };
+    const mockTopic = {
+      id: 1,
+      title: 'Test Topic',
+      created_at: '2024-01-01T00:00:00Z',
+    };
     render(
       <QueryClientProvider client={queryClient}>
         <AnswersPage

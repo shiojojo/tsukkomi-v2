@@ -5,6 +5,7 @@ import { loader, action } from '~/routes/answers.favorites';
 // Mock db
 vi.mock('~/lib/loaders', () => ({
   createAnswersListLoader: vi.fn(),
+  createListLoader: vi.fn(),
 }));
 
 vi.mock('~/lib/actionHandlers', () => ({
@@ -34,11 +35,8 @@ describe('answers.favorites route', () => {
         hasComments: false,
         fromDate: '',
         toDate: '',
-        topicsById: {},
-        commentsByAnswer: {},
-        users: [],
-        requiresProfileId: true,
         profileId: null,
+        requiresProfileId: true,
       });
     });
 
@@ -49,15 +47,18 @@ describe('answers.favorites route', () => {
           total: 1,
         })
       );
-      const { createAnswersListLoader } = await import('~/lib/loaders');
+      const { createAnswersListLoader, createListLoader } = await import(
+        '~/lib/loaders'
+      );
       vi.mocked(createAnswersListLoader).mockResolvedValue(mockResponse);
+      vi.mocked(createListLoader).mockResolvedValue(mockResponse);
 
       const request = new Request(
         'http://localhost:3000/answers/favorites?profileId=user123'
       );
       const result = await loader({ request } as LoaderFunctionArgs);
 
-      expect(createAnswersListLoader).toHaveBeenCalledWith(request, {
+      expect(createListLoader).toHaveBeenCalledWith('answers', request, {
         favorite: true,
         profileId: 'user123',
       });

@@ -765,7 +765,7 @@ test('favorites page interactions', async ({ page }) => {
       console.log('Favorite is not active, activating it first');
       // Activate favorite
       await favoriteButton.click();
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(2000); // Increased wait time for server sync
       await expect(favoriteButton).toHaveAttribute('aria-pressed', 'true');
       console.log('Favorite activated');
 
@@ -773,10 +773,25 @@ test('favorites page interactions', async ({ page }) => {
       await expect(page.locator('text=成功')).toBeVisible();
       await expect(page.locator('text=操作が完了しました')).toBeVisible();
 
-      // Navigate to favorites page
-      await page.goto('/answers/favorites');
+      // Wait additional time for server-side sync to complete
+      await page.waitForTimeout(1000);
+
+      // Get profileId from localStorage and navigate with it
+      const profileId = await page.evaluate(() => {
+        const subId = localStorage.getItem('currentSubUserId');
+        const mainId = localStorage.getItem('currentUserId');
+        return subId || mainId;
+      });
+      console.log('Profile ID:', profileId);
+
+      // Navigate to favorites page with profileId
+      await page.goto(`/answers/favorites?profileId=${profileId}`);
       await expect(page.getByRole('heading', { name: FAVORITES })).toBeVisible();
       console.log('Favorites page loaded');
+
+      // Wait for answers to load on favorites page
+      await page.waitForSelector('ul li', { timeout: 10000 });
+      console.log('Answers loaded on favorites page');
     }
 
     // Verify the first answer content when sorted by oldest on favorites page

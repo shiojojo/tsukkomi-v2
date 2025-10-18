@@ -55,7 +55,8 @@ describe('actionHandlers', () => {
         votesBy: {},
         profileId: 'user1',
         topicId: 1,
-        favorited: false
+        favorited: false,
+        favCount: 0
       });
 
       const result = await handleAnswerActions({ request } as ActionFunctionArgs);

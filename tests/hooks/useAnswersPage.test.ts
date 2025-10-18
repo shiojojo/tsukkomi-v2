@@ -56,6 +56,7 @@ describe('useAnswersPage', () => {
         votes: { level1: 0, level2: 0, level3: 0 },
         votesBy: {},
         favorited: false,
+        favCount: 0,
       },
     ],
     total: 1,

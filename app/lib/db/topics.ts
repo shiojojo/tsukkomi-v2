@@ -71,6 +71,29 @@ async function _getTopicsPaged(opts: {
 export const getTopicsPaged = withTiming(_getTopicsPaged, 'getTopicsPaged', 'topics');
 
 /**
+ * getTopicsByIds
+ * Intent: fetch specific topics by their IDs for efficient loading.
+ * Contract: returns Topic[] for the given ids, in the order they appear in the DB.
+ * Environment: always queries Supabase.
+ * Errors: throws on DB errors.
+ */
+async function _getTopicsByIds(ids: number[]): Promise<Topic[]> {
+  if (!ids.length) return [];
+
+  await ensureConnection();
+
+  const { data, error } = await supabase
+    .from('topics')
+    .select('id, title, created_at, image')
+    .in('id', ids);
+  if (error) throw new ServerError(`Failed to fetch topics by ids: ${error.message}`);
+
+  return TopicSchema.array().parse(data ?? []);
+}
+
+export const getTopicsByIds = withTiming(_getTopicsByIds, 'getTopicsByIds', 'topics');
+
+/**
  * getLatestTopic
  * Intent: return the single latest Topic (by created_at desc) used on home screens.
  * Contract: returns Topic or null when none exist.

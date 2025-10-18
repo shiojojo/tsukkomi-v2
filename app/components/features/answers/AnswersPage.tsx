@@ -11,7 +11,7 @@ import type { User } from '~/lib/schemas/user';
 
 interface AnswersPageProps {
   data: {
-    answers: Answer[];
+    answers: (Answer & { favCount: number })[];
     total: number;
     page: number;
     pageSize: number;
