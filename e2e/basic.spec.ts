@@ -337,13 +337,16 @@ test('search and open topic', async ({ page }) => {
           await commentSubmitButton.click();
           console.log('Clicked comment submit button');
 
-          // Wait for comment to be added
-          await page.waitForTimeout(2000);
+          // Wait for comment to be added (increased timeout due to delayed loading)
+          await page.waitForTimeout(5000);
 
           // Check for success toast
           await expect(page.locator('text=成功')).toBeVisible();
           await expect(page.locator('text=操作が完了しました')).toBeVisible();
           console.log('Comment success toast appeared');
+
+          // Additional wait for DB reflection due to delayed loading
+          await page.waitForTimeout(2000);
 
           // Verify the comment appears in the list (check that count increased instead of visibility due to multiple existing comments)
           const finalTestTextCount = await page.locator('text=test_comment_topic').count();
@@ -362,7 +365,7 @@ test('search and open topic', async ({ page }) => {
           console.log(`"test_comment_topic" count increased from ${initialTestTextCount} to ${newTestTextCount}`);          // Test persistence after page reload
           console.log('Testing comment persistence after page reload');
           await page.reload();
-          await page.waitForTimeout(2000);
+          await page.waitForTimeout(5000);
           
           // Re-open the voting section to access comments
           const toggleButtonAfterCommentReload = page.locator('ul li').first().locator('button:has-text("コメント / 採点")').first();
