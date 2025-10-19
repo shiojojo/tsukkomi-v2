@@ -1,7 +1,5 @@
 import { parsePaginationParams, parseFilterParams } from '~/lib/queryParser';
 import { getTopicsPaged, searchAnswers } from '~/lib/db';
-import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
-import type { Answer } from '~/lib/schemas/answer';
 
 /**
  * 概要: リストページの loader を共通化するためのヘルパー関数。
@@ -23,60 +21,10 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
 }
 
 /**
- * 概要: answersリストページのloaderを共通化。topics, users, comments, user data, fav countsを含む。
+ * 概要: リストページの loader を共通化するためのヘルパー関数。
  * Contract:
- *   - Input: request (Request), extraParams (optional, e.g. { topicId })
- *   - Output: 完全なloaderデータ（answers, topicsById, commentsByAnswer, etc.）
- * Environment: サーバーサイドのみ。
- * Errors: DBエラー時は throw。
+ *   - Input: entityType ('topics' | 'answers'), request (Request), extraParams (optional)
+ *   - Output: JSON response with data, pagination, and filters
+ * Environment: サーバーサイドのみ。db.ts 関数を呼び出す。
+ * Errors: DBエラー時は throw（呼び出し側 loader が捕捉）。
  */
-export async function createAnswersListLoader(request: Request, extraParams?: Record<string, unknown>): Promise<Response> {
-  const url = new URL(request.url);
-  const profileIdQuery = url.searchParams.get('profileId') ?? undefined;
-
-  // 共通データ取得
-  const { getTopics, getUsers } = await import('~/lib/db');
-  const topics = await getTopics();
-  const topicsById = Object.fromEntries(topics.map(t => [String(t.id), t]));
-  const users = await getUsers({ limit: 200 });
-
-  // answersリストデータ
-  const listResponse = await createListLoader('answers', request, extraParams);
-  const listData = await listResponse.json() as {
-    answers: Answer[];
-    total: number;
-    page: number;
-    pageSize: number;
-    q?: string;
-    author?: string;
-    sortBy: string;
-    minScore?: number;
-    hasComments?: boolean;
-    fromDate?: string;
-    toDate?: string;
-  };
-  const answers = listData.answers;
-  const answerIds = answers.map(a => a.id);
-
-  // 追加データ
-  const { getCommentsForAnswers, getUserAnswerData } = await import('~/lib/db');
-  const commentsByAnswer = await getCommentsForAnswers(answerIds);
-  const userAnswerData = profileIdQuery
-    ? await getUserAnswerData(profileIdQuery, answerIds)
-    : { votes: {}, favorites: new Set<number>() };
-
-  // データマージ
-  const answersWithUserData = mergeUserDataIntoAnswers(answers, userAnswerData, profileIdQuery);
-
-  return new Response(JSON.stringify({
-    ...listData,
-    answers: answersWithUserData,
-    topicsById,
-    commentsByAnswer,
-    users,
-    profileId: profileIdQuery,
-  }), {
-    status: 200,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}

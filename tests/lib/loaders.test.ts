@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createListLoader, createAnswersListLoader } from '~/lib/loaders';
+import { createListLoader } from '~/lib/loaders';
 
 // Mock dependencies
 vi.mock('~/lib/queryParser', () => ({
@@ -9,13 +9,6 @@ vi.mock('~/lib/queryParser', () => ({
 vi.mock('~/lib/db', () => ({
   getTopicsPaged: vi.fn(),
   searchAnswers: vi.fn(),
-  getTopics: vi.fn(),
-  getUsers: vi.fn(),
-  getCommentsForAnswers: vi.fn(),
-  getUserAnswerData: vi.fn(),
-}));
-vi.mock('~/lib/utils/dataMerging', () => ({
-  mergeUserDataIntoAnswers: vi.fn(),
 }));
 
 describe('loaders', () => {
@@ -54,36 +47,6 @@ describe('loaders', () => {
       expect(result).toBeInstanceOf(Response);
       const resultData = await result.json();
       expect(resultData).toEqual({ answers: [], total: 0, page: 1, pageSize: 10, q: 'test', sortBy: 'newest' });
-    });
-  });
-
-  describe('createAnswersListLoader', () => {
-    it('should aggregate data', async () => {
-      const mockRequest = new Request('http://localhost/answers');
-      const { getTopics, getUsers, getCommentsForAnswers, getUserAnswerData } = await import('~/lib/db');
-      const { mergeUserDataIntoAnswers } = await import('~/lib/utils/dataMerging');
-
-      vi.mocked(getTopics).mockResolvedValue([{ id: 1, title: 'Topic', created_at: '2023-01-01' }]);
-      vi.mocked(getUsers).mockResolvedValue([{ id: 'user1', name: 'User' }]);
-      vi.mocked(getCommentsForAnswers).mockResolvedValue({});
-      vi.mocked(getUserAnswerData).mockResolvedValue({ votes: {}, favorites: new Set() });
-      vi.mocked(mergeUserDataIntoAnswers).mockReturnValue([]);
-
-      // Mock createListLoader
-      const mockListData = { answers: [], total: 0, page: 1, pageSize: 10 };
-      vi.doMock('~/lib/loaders', () => ({
-        createListLoader: vi.fn().mockResolvedValue(mockListData),
-      }));
-
-      const result = await createAnswersListLoader(mockRequest);
-      expect(getTopics).toHaveBeenCalled();
-      expect(getUsers).toHaveBeenCalledWith({ limit: 200 });
-      expect(result).toBeInstanceOf(Response);
-      const resultData = await result.json();
-      expect(resultData).toHaveProperty('answers');
-      expect(resultData).toHaveProperty('topicsById');
-      expect(resultData).toHaveProperty('commentsByAnswer');
-      expect(resultData).toHaveProperty('users');
     });
   });
 });
