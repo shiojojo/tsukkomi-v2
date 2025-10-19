@@ -11,6 +11,7 @@ interface CommentSectionProps {
   actionPath: string;
   onCommentCountChange?: (count: number) => void;
   enabled?: boolean;
+  initialCommentCount?: number;
 }
 
 export function CommentSection({
@@ -22,6 +23,7 @@ export function CommentSection({
   actionPath,
   onCommentCountChange,
   enabled = true,
+  initialCommentCount = 0,
 }: CommentSectionProps) {
   const commentFormRef = useRef<HTMLFormElement>(null);
   const commentInputRef = useRef<HTMLTextAreaElement>(null);
@@ -41,9 +43,13 @@ export function CommentSection({
     });
 
   // Notify parent of comment count changes
+  // Only update if the actual comment count is greater than the initial count from answer_search_view
+  // This prevents flickering from 0 when lazy loading comments
   useEffect(() => {
-    onCommentCountChange?.(comments.length);
-  }, [comments.length, onCommentCountChange]);
+    if (comments.length > initialCommentCount) {
+      onCommentCountChange?.(comments.length);
+    }
+  }, [comments.length, initialCommentCount, onCommentCountChange]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();

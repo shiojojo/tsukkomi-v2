@@ -137,6 +137,7 @@ export function AnswerActionCard({
               actionPath={actionPath}
               onCommentCountChange={setRealTimeCommentCount}
               enabled={open}
+              initialCommentCount={answer.commentCount || 0}
             />
           </div>
         )}
