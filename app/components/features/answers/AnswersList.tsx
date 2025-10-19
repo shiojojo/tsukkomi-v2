@@ -7,7 +7,6 @@ interface AnswersListProps {
   answers: Answer[];
   topicsById?: Record<string, Topic>;
   topic?: Topic; // topics.$id.tsx 用
-  commentCounts: Record<string, number>;
   getNameByProfileId: (pid?: string | null) => string | undefined;
   currentUserName: string | null;
   currentUserId: string | null;
@@ -26,7 +25,6 @@ export function AnswersList({
   answers,
   topicsById,
   topic,
-  commentCounts,
   getNameByProfileId,
   currentUserName,
   currentUserId,
@@ -57,7 +55,6 @@ export function AnswersList({
                   topic ||
                   (topicsById ? topicsById[answer.topicId || ''] : null)
                 }
-                initialCommentCount={commentCounts[String(answer.id)] || 0}
                 currentUserId={currentUserId}
                 currentUserName={currentUserName}
                 getNameByProfileId={getNameByProfileId}

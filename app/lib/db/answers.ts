@@ -15,7 +15,7 @@ interface DatabaseAnswerRow {
   topic_id: number | null;
   created_at: string;
   score?: number;
-  has_comments?: boolean;
+  comment_count?: number;
 }
 
 // Search view row type (includes aggregated vote counts)
@@ -23,6 +23,7 @@ interface SearchViewRow extends DatabaseAnswerRow {
   level1: number;
   level2: number;
   level3: number;
+  comment_count: number;
 }
 
 // Partial answer type without votes
@@ -218,7 +219,7 @@ async function _searchAnswers(opts: {
 
   if (minScore != null) baseQuery = baseQuery.gte('score', minScore);
 
-  if (hasComments) baseQuery = baseQuery.eq('has_comments', true);
+  if (hasComments) baseQuery = baseQuery.gt('comment_count', 0);
 
   if (sortBy === 'scoreDesc') baseQuery = baseQuery.order('score', { ascending: false });
   else if (sortBy === 'oldest') baseQuery = baseQuery.order('created_at', { ascending: true });
@@ -235,6 +236,7 @@ async function _searchAnswers(opts: {
     topicId: a.topic_id,
     created_at: a.created_at,
     votes: { level1: a.level1, level2: a.level2, level3: a.level3 },
+    commentCount: a.comment_count,
   }));
 
   const ids = answers.map((a) => Number(a.id)).filter(Number.isFinite);

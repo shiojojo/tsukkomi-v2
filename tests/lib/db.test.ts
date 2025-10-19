@@ -153,6 +153,7 @@ describe('db functions', () => {
         created_at: '2024-01-01T00:00:00Z',
         votes: { level1: 5, level2: 3, level3: 1 },
         votesBy: {},
+        commentCount: 0,
       });
       expect(result[1]).toEqual({
         id: 2,
@@ -162,6 +163,7 @@ describe('db functions', () => {
         created_at: '2024-01-02T00:00:00Z',
         votes: { level1: 2, level2: 1, level3: 0 },
         votesBy: {},
+        commentCount: 0,
       });
     });
 

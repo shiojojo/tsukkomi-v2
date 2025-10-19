@@ -22,7 +22,6 @@ interface AnswersPageProps {
     fromDate: string;
     toDate: string;
     topicsById: Record<string, Topic>;
-    commentCounts: Record<string, number>;
     users: User[];
     profileId?: string;
   };
@@ -34,7 +33,6 @@ interface AnswersPageProps {
 export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
   const {
     topicsById,
-    commentCounts,
     users,
     answers,
     total,
@@ -87,7 +85,6 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
     <AnswersList
       answers={answers}
       topicsById={topicsById}
-      commentCounts={commentCounts}
       getNameByProfileId={getNameByProfileId}
       currentUserName={currentUserName}
       currentUserId={currentUserId}

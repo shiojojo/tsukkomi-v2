@@ -2,11 +2,9 @@ import { useQueryWithError } from '~/hooks/common/useQueryWithError';
 import {
   getTopicsByIds,
   getUsers,
-  getCommentCountsForAnswers,
   getUserAnswerData,
 } from '~/lib/db';
 import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
-import { COMMENT_COUNTS_QUERY_OPTIONS } from '~/lib/constants';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { User } from '~/lib/schemas/user';
@@ -29,7 +27,6 @@ type LoaderData = {
 type PageData = LoaderData & {
   answers: Answer[];
   topicsById: Record<string, Topic>;
-  commentCounts: Record<string, number>;
   users: User[];
   q: string;
   author: string;
@@ -52,11 +49,6 @@ export function useAnswersPageData(loaderData: LoaderData) {
   const usersQuery = useQueryWithError(['users'], () =>
     getUsers({ limit: 200 })
   );
-  const commentCountsQuery = useQueryWithError(
-    ['comment-counts', answerIds.join(',')],
-    () => getCommentCountsForAnswers(answerIds),
-    COMMENT_COUNTS_QUERY_OPTIONS
-  );
   const userAnswerDataQuery = useQueryWithError(
     ['user-answer-data', loaderData.profileId || 'none', answerIds.join(',')],
     () =>
@@ -72,7 +64,6 @@ export function useAnswersPageData(loaderData: LoaderData) {
         (topicsQuery.data as Topic[]).map(t => [String(t.id), t])
       )
     : {};
-  const commentCounts = commentCountsQuery.data || {};
   const users = usersQuery.data || [];
   const userAnswerData = userAnswerDataQuery.data || {
     votes: {},
@@ -85,19 +76,16 @@ export function useAnswersPageData(loaderData: LoaderData) {
     loaderData.profileId
   );
 
-  // ローディング状態 - コメントカウントのリアルタイム更新を分離
+  // ローディング状態
   const isLoading =
     topicsQuery.isLoading ||
     usersQuery.isLoading ||
     userAnswerDataQuery.isLoading;
 
-  const isLoadingCommentCounts = commentCountsQuery.isLoading;
-
   const pageData: PageData = {
     ...loaderData,
     answers: answersWithUserData,
     topicsById,
-    commentCounts,
     users,
     q: loaderData.q || '',
     author: loaderData.author || '',
@@ -107,5 +95,5 @@ export function useAnswersPageData(loaderData: LoaderData) {
     toDate: loaderData.toDate || '',
   };
 
-  return { pageData, isLoading, isLoadingCommentCounts };
+  return { pageData, isLoading };
 }

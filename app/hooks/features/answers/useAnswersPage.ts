@@ -22,7 +22,6 @@ type LoaderData = {
   fromDate?: string;
   toDate?: string;
   topicsById: Record<string, Topic>;
-  commentCounts: Record<string, number>;
   users: User[];
   profileId?: string;
 };
@@ -127,7 +126,6 @@ export function useAnswersPage(data: LoaderData) {
   return {
     // Data
     topicsById: currentData.topicsById ?? {},
-    commentCounts: currentData.commentCounts ?? {},
     users: currentData.users ?? [],
     answers,
     total,

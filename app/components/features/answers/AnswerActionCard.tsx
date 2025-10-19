@@ -9,7 +9,6 @@ import { Button } from '~/components/ui/Button';
 export interface AnswerActionCardProps {
   answer: Answer;
   topic: Topic | null;
-  initialCommentCount?: number;
   currentUserId: string | null;
   currentUserName: string | null;
   getNameByProfileId: (pid?: string | null) => string | undefined;
@@ -33,7 +32,6 @@ export interface AnswerActionCardProps {
 export function AnswerActionCard({
   answer,
   topic,
-  initialCommentCount = 0,
   currentUserId,
   currentUserName,
   getNameByProfileId,
@@ -42,8 +40,9 @@ export function AnswerActionCard({
   profileIdForVotes,
 }: AnswerActionCardProps) {
   const [open, setOpen] = useState(false);
-  const [realTimeCommentCount, setRealTimeCommentCount] =
-    useState(initialCommentCount);
+  const [realTimeCommentCount, setRealTimeCommentCount] = useState(
+    answer.commentCount || 0
+  );
 
   // Calculate score from answer.votes
   const score = (() => {

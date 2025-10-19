@@ -57,6 +57,7 @@ describe('useAnswersPage', () => {
         votesBy: {},
         favorited: false,
         favCount: 0,
+        commentCount: 1,
       },
     ],
     total: 1,
@@ -72,9 +73,6 @@ describe('useAnswersPage', () => {
     topicsById: {
       '1': { id: 1, title: 'Test Topic', created_at: '2024-01-01T00:00:00Z', image: null },
     },
-    commentCounts: {
-      '1': 1,
-    },
     users: [
       { id: 'user-1', name: 'Test User' },
     ],
@@ -89,7 +87,6 @@ describe('useAnswersPage', () => {
     const { result } = renderHook(() => useAnswersPage(mockData));
 
     expect(result.current).toHaveProperty('topicsById');
-    expect(result.current).toHaveProperty('commentCounts');
     expect(result.current).toHaveProperty('users');
     expect(result.current).toHaveProperty('answers');
     expect(result.current).toHaveProperty('total');
@@ -111,7 +108,6 @@ describe('useAnswersPage', () => {
     const { result } = renderHook(() => useAnswersPage(mockData));
 
     expect(result.current.topicsById).toEqual(mockData.topicsById);
-    expect(result.current.commentCounts).toEqual(mockData.commentCounts);
     expect(result.current.users).toEqual(mockData.users);
     expect(result.current.answers).toEqual(mockData.answers);
     expect(result.current.total).toBe(mockData.total);
@@ -126,9 +122,10 @@ describe('useAnswersPage', () => {
       total: 0,
       page: 1,
       pageSize: 20,
+      q: '',
+      author: '',
       sortBy: 'newest',
       topicsById: {},
-      commentCounts: {},
       users: [],
     };
 
@@ -137,7 +134,6 @@ describe('useAnswersPage', () => {
     expect(result.current.answers).toEqual([]);
     expect(result.current.total).toBe(0);
     expect(result.current.topicsById).toEqual({});
-    expect(result.current.commentCounts).toEqual({});
     expect(result.current.users).toEqual([]);
   });
 });

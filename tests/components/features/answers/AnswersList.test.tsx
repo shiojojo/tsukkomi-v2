@@ -43,15 +43,7 @@ vi.mock('react-router', () => ({
 
 // Mock child components
 vi.mock('./AnswerActionCard', () => ({
-  default: ({
-    answer,
-    topic,
-    initialCommentCount,
-  }: {
-    answer: Answer;
-    topic: Topic | null;
-    initialCommentCount: number;
-  }) => (
+  default: ({ answer, topic }: { answer: Answer; topic: Topic | null }) => (
     <div data-testid={`answer-action-card-${answer.id}`}>
       <div>{topic?.title || 'お題なし（フリー回答）'}</div>
       <p>{answer.text}</p>
@@ -59,7 +51,7 @@ vi.mock('./AnswerActionCard', () => ({
         Score: <span>4</span>
       </div>
       <span>作者: Test User</span>
-      <div>コメント{initialCommentCount}</div>
+      <div>コメント{answer.commentCount || 0}</div>
     </div>
   ),
 }));
@@ -87,6 +79,7 @@ describe('AnswersList', () => {
     topicId: 1,
     votes: { level1: 2, level2: 1, level3: 0 },
     votesBy: {},
+    commentCount: 1,
     created_at: '2024-01-01T00:00:00Z',
   };
 
@@ -101,7 +94,6 @@ describe('AnswersList', () => {
     answers: [mockAnswer],
     topicsById: { '1': mockTopic },
     topic: undefined as Topic | undefined,
-    commentCounts: { '1': 1 },
     getNameByProfileId: vi.fn(id =>
       id === 'user1' ? 'Test User' : 'Other User'
     ),
@@ -139,7 +131,7 @@ describe('AnswersList', () => {
     expect(screen.getByText('Test topic title')).toBeInTheDocument();
   });
 
-  it('passes commentCounts to AnswerActionCard', () => {
+  it('passes comment count from answer to AnswerActionCard', () => {
     render(<AnswersList {...defaultProps} />, { wrapper: createTestWrapper() });
 
     expect(screen.getByText('コメント1')).toBeInTheDocument();

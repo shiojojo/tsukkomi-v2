@@ -103,11 +103,16 @@ SELECT
   COALESCE(vc.level2, 0) AS level2,
   COALESCE(vc.level3, 0) AS level3,
   (COALESCE(vc.level1, 0) * 1 + COALESCE(vc.level2, 0) * 2 + COALESCE(vc.level3, 0) * 3) AS score,
-  CASE WHEN EXISTS (SELECT 1 FROM comments c WHERE c.answer_id = a.id) THEN true ELSE false END AS has_comments
+  COALESCE(cc.comment_count, 0) AS comment_count
 FROM answers a
 LEFT JOIN profiles p ON a.profile_id = p.id
 LEFT JOIN topics t ON a.topic_id = t.id
-LEFT JOIN answer_vote_counts vc ON a.id = vc.answer_id;
+LEFT JOIN answer_vote_counts vc ON a.id = vc.answer_id
+LEFT JOIN (
+  SELECT answer_id, COUNT(*) AS comment_count
+  FROM comments
+  GROUP BY answer_id
+) cc ON a.id = cc.answer_id;
 
 CREATE INDEX IF NOT EXISTS profiles_name_trgm_idx ON public.profiles USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS topics_title_trgm_idx ON public.topics USING gin (title gin_trgm_ops);

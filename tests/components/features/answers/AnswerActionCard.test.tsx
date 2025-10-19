@@ -85,6 +85,7 @@ describe('AnswerActionCard', () => {
     topicId: 1,
     votes: { level1: 2, level2: 1, level3: 0 },
     votesBy: {},
+    commentCount: 1,
     created_at: '2024-01-01T00:00:00Z',
   };
 
@@ -98,7 +99,6 @@ describe('AnswerActionCard', () => {
   const defaultProps = {
     answer: mockAnswer,
     topic: mockTopic,
-    initialCommentCount: 1,
     currentUserId: 'user1',
     currentUserName: 'Test User',
     getNameByProfileId: vi.fn(id =>

@@ -7,12 +7,16 @@ import { DEFAULT_PAGE_SIZE } from '../constants';
 import { withTiming } from './debug';
 
 // Database row types for type safety
-interface DatabaseAnswerRow {
+interface SearchViewRow {
   id: number;
   text: string;
   profile_id: string | null;
   topic_id: number | null;
   created_at: string;
+  level1: number;
+  level2: number;
+  level3: number;
+  comment_count: number;
 }
 
 async function getVotesByForAnswers(
@@ -159,43 +163,35 @@ async function _getFavoriteAnswersForProfile(profileId: string, opts?: { page?: 
   });
   const uniqueIds = Array.from(idOrder.keys());
 
+  // Use answer_search_view to get answers with comment_count
   const { data: answerRows, error: answerErr } = await supabase
-    .from('answers')
-    .select('id, text, profile_id, topic_id, created_at')
+    .from('answer_search_view')
+    .select('id, text, profile_id, topic_id, created_at, level1, level2, level3, comment_count')
     .in('id', uniqueIds);
   if (answerErr) throw answerErr;
 
-  const answers = (answerRows ?? []).map((a: DatabaseAnswerRow) => ({
+  const answers = (answerRows ?? []).map((a: SearchViewRow) => ({
     id: typeof a.id === 'string' ? Number(a.id) : a.id,
     text: a.text,
     profileId: a.profile_id ?? undefined,
     topicId: a.topic_id ?? undefined,
     created_at: a.created_at,
+    commentCount: Number(a.comment_count ?? 0),
+    level1: Number(a.level1 ?? 0),
+    level2: Number(a.level2 ?? 0),
+    level3: Number(a.level3 ?? 0),
   }));
 
-  const ids = answers.map((a) => Number(a.id)).filter(Number.isFinite);
-  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
-  if (ids.length) {
-    const { data: countsData, error: countsErr } = await supabase
-      .from('answer_vote_counts')
-      .select('answer_id, level1, level2, level3')
-      .in('answer_id', ids);
-    if (countsErr) throw countsErr;
-    for (const c of countsData ?? []) {
-      countsMap[Number(c.answer_id)] = {
-        level1: Number(c.level1 ?? 0),
-        level2: Number(c.level2 ?? 0),
-        level3: Number(c.level3 ?? 0),
-      };
-    }
-  }
-
-  const votesByMap = await getVotesByForAnswers(ids);
+  const votesByMap = await getVotesByForAnswers(uniqueIds);
 
   const normalized = answers
     .map((a) => ({
       ...a,
-      votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
+      votes: {
+        level1: a.level1,
+        level2: a.level2,
+        level3: a.level3,
+      },
       votesBy: votesByMap[a.id] ?? {},
       favorited: true,
     }))
