@@ -5,6 +5,7 @@ import {
   getUserAnswerData,
 } from '~/lib/db';
 import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
+import { useIdentity } from '~/hooks/common/useIdentity';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { User } from '~/lib/schemas/user';
@@ -37,6 +38,9 @@ type PageData = LoaderData & {
 };
 
 export function useAnswersPageData(loaderData: LoaderData) {
+  const { effectiveId: clientProfileId } = useIdentity();
+  const profileId = loaderData.profileId || clientProfileId;
+
   const answerIds = loaderData.answers.map(a => a.id);
   const topicIds = Array.from(
     new Set(loaderData.answers.map(a => a.topicId).filter(Boolean) as number[])
@@ -50,12 +54,12 @@ export function useAnswersPageData(loaderData: LoaderData) {
     getUsers({ limit: 200 })
   );
   const userAnswerDataQuery = useQueryWithError(
-    ['user-answer-data', loaderData.profileId || 'none', answerIds.join(',')],
+    ['user-answer-data', profileId || 'none', answerIds.join(',')],
     () =>
-      loaderData.profileId
-        ? getUserAnswerData(loaderData.profileId, answerIds)
+      profileId
+        ? getUserAnswerData(profileId, answerIds)
         : Promise.resolve({ votes: {}, favorites: new Set<number>() }),
-    { enabled: !!loaderData.profileId }
+    { enabled: !!profileId }
   );
 
   // データマージ
@@ -73,7 +77,7 @@ export function useAnswersPageData(loaderData: LoaderData) {
   const answersWithUserData = mergeUserDataIntoAnswers(
     loaderData.answers,
     userAnswerData,
-    loaderData.profileId
+    profileId || undefined
   );
 
   // ローディング状態
