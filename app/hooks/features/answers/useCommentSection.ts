@@ -84,6 +84,18 @@ export function useCommentSection({
       },
       onSuccess: (_data, _variables, _context) => {
         console.log('[DEBUG] Comment addition successful, waiting for DB sync before refetching for answerId:', answerId);
+        // Immediately update the comment count in the UI
+        queryClient.setQueryData(['comments', answerId.toString()], (oldData: Comment[] | undefined) => {
+          // Add a temporary comment to show immediate feedback
+          const tempComment: Comment = {
+            id: Date.now(), // Temporary ID
+            answerId,
+            text: _variables.text,
+            profileId: effectiveId || '',
+            created_at: new Date().toISOString(),
+          };
+          return [...(oldData || []), tempComment];
+        });
         // Wait for DB to sync before refetching to ensure new comment is reflected
         setTimeout(() => {
           console.log('[DEBUG] DB sync wait complete, invalidating queries for answerId:', answerId);
