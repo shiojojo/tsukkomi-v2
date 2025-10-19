@@ -287,7 +287,6 @@ const addCommentMutation = useMutationWithError(..., {
 // 補助データ（TanStack Query経由）
 ['topics', topicIds.join(',')]              // トピック情報
 ['users']                                   // ユーザー一覧（全回答ページ用）
-['comment-counts', answerIds.join(',')]     // コメントカウント（リアルタイム更新）
 ['user-answer-data', profileId, answerIds.join(',')] // ユーザーの投票/お気に入り状態
 ```
 
@@ -295,7 +294,7 @@ const addCommentMutation = useMutationWithError(..., {
 
 **取得するデータ**: 回答リスト本体のみ（最小限）
 
-- 回答ID、内容、スコア、作成日時など基本情報
+- 回答ID、内容、スコア、作成日時、コメントカウントなど基本情報
 - ページネーション情報（total, page, pageSize）
 - フィルター条件（q, author, sortBy, minScore, hasComments, fromDate, toDate）
 - ユーザーID（profileId） - 認証状態による
@@ -349,7 +348,6 @@ const commentsQuery = useQueryWithError(
 
 - トピック情報（回答に関連するトピック）
 - ユーザー情報（回答者情報）
-- コメントカウント（リアルタイム更新）
 - お気に入りカウント
 - ユーザーの投票/お気に入り状態（認証時のみ）
 
@@ -361,11 +359,7 @@ export function useAnswersPageData(loaderData: LoaderData) {
 
   // 補助データ取得
   const topicsQuery = useQueryWithError(['topics', topicIds.join(',')], ...);
-  const commentCountsQuery = useQueryWithError(
-    ['comment-counts', answerIds.join(',')],
-    () => getCommentCountsForAnswers(answerIds),
-    COMMENT_COUNTS_QUERY_OPTIONS // リアルタイム更新設定
-  );
+  // コメントカウントは loaderData.answers から直接取得されるため個別クエリ不要
   // ... 他のクエリ
 
   // データマージ
@@ -379,26 +373,12 @@ export function useAnswersPageData(loaderData: LoaderData) {
 }
 ```
 
-#### 🔄 リアルタイム更新設定
-
-**コメントカウントの自動更新**:
-
-```ts
-// app/lib/constants.ts
-export const COMMENT_COUNTS_QUERY_OPTIONS = {
-  staleTime: 30 * 1000, // 30秒間キャッシュ有効
-  refetchInterval: 60 * 1000, // 60秒ごとに自動更新
-} as const;
-```
-
-**適用箇所**: コメントカウントクエリのみ（他のデータは変更頻度が低いため）
-
 #### 📈 パフォーマンス最適化
 
 - **初期ローディング高速化**: Loaderで回答リストのみ取得、補助データは遅延読み込み
 - **必要なデータのみ取得**: トピックIDに基づいて関連トピックのみ取得
 - **キャッシュ活用**: TanStack Queryのキャッシュで再訪問時の高速化
-- **リアルタイム性**: コメントカウントのみ定期更新、他のデータは変更時のみ更新
+- **コメントカウント**: `answer_search_view` から直接取得（コメント追加時にはビューが適切に更新される）
 
 ⸻
 
@@ -638,6 +618,7 @@ export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
 5. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
 6. エラーハンドリング: `lib/errors.ts` のクラスを使用し、適切なエラーレスポンスを throw
 7. ESLint / TypeScript エラー 0 を確認
+8. **フィルター機能**: hasComments などのフィルターを追加する場合、e2eテストを追加して正しく動作することを確認
 
 ⸻
 
@@ -658,7 +639,8 @@ export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
 2. **Loader**: 必須データ（メインエンティティ）の初回取得 / **TanStack Query**: 補助データ（関連エンティティ）の個別取得・キャッシュ / **Action**: 書き込み処理
 3. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
 4. エラーハンドリング: `lib/errors.ts` のクラスを使用し、エラーを握りつぶさず適切に伝播
-5. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
+5. **コメントカウント**: `answer_search_view` から直接取得し、個別のクエリを排除（コメント追加時にはビューが適切に更新される）
+6. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
 
 ⸻
 
