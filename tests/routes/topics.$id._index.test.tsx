@@ -21,10 +21,7 @@ describe('topics.$id._index route', () => {
       const mockResult = new Response(JSON.stringify({ answers: [] }), {
         status: 200,
       });
-      const { createAnswersListLoader, createListLoader } = await import(
-        '~/lib/loaders'
-      );
-      vi.mocked(createAnswersListLoader).mockResolvedValue(mockResult);
+      const { createListLoader } = await import('~/lib/loaders');
       vi.mocked(createListLoader).mockResolvedValue(mockResult);
 
       const request = new Request('http://localhost/topics/123');
@@ -41,10 +38,7 @@ describe('topics.$id._index route', () => {
       const mockResult = new Response(JSON.stringify({ answers: [] }), {
         status: 200,
       });
-      const { createAnswersListLoader, createListLoader } = await import(
-        '~/lib/loaders'
-      );
-      vi.mocked(createAnswersListLoader).mockResolvedValue(mockResult);
+      const { createListLoader } = await import('~/lib/loaders');
       vi.mocked(createListLoader).mockResolvedValue(mockResult);
 
       const request = new Request('http://localhost/topics/undefined');

@@ -20,7 +20,7 @@ export const AnswerSchema = z
       .default({ level1: 0, level2: 0, level3: 0 }),
     votesBy: z.record(z.number().int()).optional().default({}),
     favorited: z.boolean().optional(), // whether the current user has favorited this answer
-    commentCount: z.number().int().nonnegative().optional().default(0), // number of comments
+    commentCount: z.number().int().nonnegative().default(0), // number of comments
   })
 
 export type Answer = z.infer<typeof AnswerSchema>;

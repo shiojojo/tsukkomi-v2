@@ -66,12 +66,7 @@ describe('answers._index route', () => {
         users: [],
         profileId: null,
       } as AnswersListData;
-      const { createAnswersListLoader, createListLoader } = await import(
-        '~/lib/loaders'
-      );
-      vi.mocked(createAnswersListLoader).mockResolvedValue(
-        new Response(JSON.stringify(mockData))
-      );
+      const { createListLoader } = await import('~/lib/loaders');
       vi.mocked(createListLoader).mockResolvedValue(
         new Response(JSON.stringify(mockData))
       );

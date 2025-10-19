@@ -47,10 +47,7 @@ describe('answers.favorites route', () => {
           total: 1,
         })
       );
-      const { createAnswersListLoader, createListLoader } = await import(
-        '~/lib/loaders'
-      );
-      vi.mocked(createAnswersListLoader).mockResolvedValue(mockResponse);
+      const { createListLoader } = await import('~/lib/loaders');
       vi.mocked(createListLoader).mockResolvedValue(mockResponse);
 
       const request = new Request(
