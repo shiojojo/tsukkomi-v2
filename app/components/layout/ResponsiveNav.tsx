@@ -28,8 +28,6 @@ export default function ResponsiveNav() {
     const mq = window.matchMedia('(min-width:48rem)');
 
     let rafId: number;
-    let resizeObserver: ResizeObserver | undefined;
-
     const update = () => {
       // Cancel previous animation frame to avoid multiple updates
       cancelAnimationFrame(rafId);
@@ -42,21 +40,18 @@ export default function ResponsiveNav() {
       });
     };
 
-    // 初期化を遅延させて初回レンダリングをブロックしない
-    const timeoutId = setTimeout(() => {
-      update();
+    // Initial update
+    update();
 
-      // ResizeObserver for efficient size monitoring
-      resizeObserver = new ResizeObserver(update);
-      resizeObserver.observe(el);
+    // Use ResizeObserver for efficient size monitoring
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(el);
 
-      // Media query change listener
-      mq.addEventListener('change', update);
-    }, 0);
+    // Media query change listener
+    mq.addEventListener('change', update);
 
     return () => {
-      clearTimeout(timeoutId);
-      resizeObserver?.disconnect();
+      resizeObserver.disconnect();
       mq.removeEventListener('change', update);
       cancelAnimationFrame(rafId);
     };

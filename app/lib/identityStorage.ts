@@ -1,20 +1,13 @@
 // Fallback storage helper: prefer localStorage, fall back to cookies when unavailable.
-// Cache localStorage availability to avoid repeated checks
-let localStorageAvailable: boolean | null = null;
-
 function isLocalStorageAvailable() {
-  if (localStorageAvailable !== null) return localStorageAvailable;
-
   try {
-    if (typeof window === 'undefined' || !window.localStorage) {
-      return localStorageAvailable = false;
-    }
+    if (typeof window === 'undefined' || !window.localStorage) return false;
     const key = '__storage_test__';
     window.localStorage.setItem(key, '1');
     window.localStorage.removeItem(key);
-    return localStorageAvailable = true;
+    return true;
   } catch {
-    return localStorageAvailable = false;
+    return false;
   }
 }
 

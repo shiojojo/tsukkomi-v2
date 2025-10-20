@@ -41,13 +41,10 @@ export const useIdentityStore = create<IdentityState>((set) => ({
 
 // 初期化とイベントリスナー
 if (typeof window !== 'undefined') {
-  // 初期化を非同期で遅延実行
-  setTimeout(() => {
-    useIdentityStore.getState().refresh();
-    const apply = () => useIdentityStore.getState().refresh();
-    window.addEventListener('storage', apply);
-    window.addEventListener('identity-change', apply);
-  }, 0);
+  useIdentityStore.getState().refresh();
+  const apply = () => useIdentityStore.getState().refresh();
+  window.addEventListener('storage', apply);
+  window.addEventListener('identity-change', apply);
 }
 
 // テーマ管理ストア
@@ -101,16 +98,13 @@ export const useThemeStore = create<ThemeState>((set) => ({
 
 // 初期テーマ適用
 if (typeof window !== 'undefined') {
-  // 初期化を非同期で遅延実行
-  setTimeout(() => {
-    const initialTheme = getStoredTheme();
-    applyTheme(initialTheme);
+  const initialTheme = getStoredTheme();
+  applyTheme(initialTheme);
 
-    // systemテーマの場合、システム設定の変更を監視
-    if (initialTheme === 'system' && window.matchMedia) {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = () => applyTheme('system');
-      mediaQuery.addEventListener('change', handleChange);
-    }
-  }, 0);
+  // systemテーマの場合、システム設定の変更を監視
+  if (initialTheme === 'system' && window.matchMedia) {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => applyTheme('system');
+    mediaQuery.addEventListener('change', handleChange);
+  }
 }
