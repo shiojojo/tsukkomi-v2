@@ -57,21 +57,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <script
             dangerouslySetInnerHTML={{
               __html: `
-                try {
-                  const theme = localStorage.getItem('theme') || 'system';
-                  const root = document.documentElement;
-                  if (theme === 'dark') {
-                    root.classList.add('dark');
-                  } else if (theme === 'light') {
-                    root.classList.remove('dark');
-                  } else {
-                    // system: メディアクエリに従う
-                    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    root.classList.toggle('dark', prefersDark);
+                (function() {
+                  try {
+                    const theme = localStorage.getItem('theme') || 'system';
+                    const root = document.documentElement;
+                    if (theme === 'dark') {
+                      root.classList.add('dark');
+                    } else if (theme === 'light') {
+                      root.classList.remove('dark');
+                    } else {
+                      // system: メディアクエリに従う
+                      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                      root.classList.toggle('dark', prefersDark);
+                    }
+                  } catch (e) {
+                    // localStorageが利用できない場合、デフォルトはライト
                   }
-                } catch (e) {
-                  // localStorageが利用できない場合、デフォルトはライト
-                }
+                })();
               `,
             }}
           />
