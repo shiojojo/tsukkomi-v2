@@ -285,10 +285,45 @@ describe('db functions', () => {
   });
 
   describe('searchAnswers', () => {
-    it('should delegate to getFavoriteAnswersForProfile when favorite is true', async () => {
-      const mockResult = { answers: [], total: 0 };
-      const { getFavoriteAnswersForProfile } = await import('~/lib/db/favorites');
-      vi.mocked(getFavoriteAnswersForProfile).mockResolvedValue(mockResult);
+    it('should apply favorite filter using getFavoritesForProfile', async () => {
+      // Mock supabaseAdmin
+      const supabaseModule = await import('~/lib/supabase');
+      const mockQuery = {
+        in: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        ilike: vi.fn().mockReturnThis(),
+        gte: vi.fn().mockReturnThis(),
+        lt: vi.fn().mockReturnThis(),
+        lte: vi.fn().mockReturnThis(),
+        gt: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: vi.fn().mockResolvedValue({
+          data: [{
+            id: 1,
+            text: 'answer 1',
+            profile_id: 'user-1',
+            topic_id: 1,
+            created_at: '2023-01-01',
+            level1: 1,
+            level2: 0,
+            level3: 0,
+            comment_count: 0
+          }],
+          error: null,
+          count: 1
+        })
+      };
+
+      const mockSupabaseAdmin = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue(mockQuery)
+        })
+      };
+      (supabaseModule as any).supabaseAdmin = mockSupabaseAdmin;
+
+      // Mock getFavoritesForProfile
+      const { getFavoritesForProfile } = await import('~/lib/db/favorites');
+      vi.mocked(getFavoritesForProfile).mockResolvedValue([1]);
 
       const result = await searchAnswers({
         favorite: true,
@@ -297,8 +332,10 @@ describe('db functions', () => {
         pageSize: 10,
       });
 
-      expect(result).toEqual(mockResult);
-      expect(getFavoriteAnswersForProfile).toHaveBeenCalledWith('user-1', { page: 1, pageSize: 10 });
+      expect(getFavoritesForProfile).toHaveBeenCalledWith('user-1');
+      expect(mockQuery.in).toHaveBeenCalledWith('id', [1]);
+      expect(result.answers).toHaveLength(1);
+      expect(result.total).toBe(1);
     });
 
     it('should throw error when supabaseAdmin is not available', async () => {

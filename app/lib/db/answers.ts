@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { AnswerSchema } from '~/lib/schemas/answer';
 import type { Answer } from '~/lib/schemas/answer';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
-import { getFavoritesForProfile, getFavoriteAnswersForProfile } from './favorites';
+import { getFavoritesForProfile } from './favorites';
 import { ServerError } from '../errors';
 import { DEFAULT_PAGE_SIZE } from '../constants';
 import { withTiming } from './debug';
@@ -178,10 +178,6 @@ async function _searchAnswers(opts: {
 }): Promise<{ answers: Answer[]; total: number }> {
   const { q, author, topicId, page = 1, pageSize = DEFAULT_PAGE_SIZE, sortBy = 'newest', minScore, hasComments, fromDate, toDate, favorite, profileId } = opts;
 
-  if (favorite && profileId) {
-    return await getFavoriteAnswersForProfile(profileId, { page, pageSize });
-  }
-
   await ensureConnection();
   if (!supabaseAdmin) {
     throw new Error('Admin client required for search operations');
@@ -190,6 +186,15 @@ async function _searchAnswers(opts: {
   let baseQuery = supabaseAdmin
     .from('answer_search_view')
     .select('*', { count: 'exact' });
+
+  // Apply favorite filter first (if specified)
+  if (favorite && profileId) {
+    const favoriteIds = await getFavoritesForProfile(profileId);
+    if (favoriteIds.length === 0) {
+      return { answers: [], total: 0 };
+    }
+    baseQuery = baseQuery.in('id', favoriteIds);
+  }
 
   if (topicId != null) baseQuery = baseQuery.eq('topic_id', Number(topicId));
 
