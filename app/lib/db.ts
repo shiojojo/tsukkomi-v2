@@ -15,7 +15,6 @@ export {
   removeFavorite,
   toggleFavorite,
   getFavoritesForProfile,
-  getFavoriteAnswersForProfile,
 } from './db/favorites';
 
 // Comments domain

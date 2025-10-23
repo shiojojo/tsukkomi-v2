@@ -52,7 +52,6 @@ vi.mock('~/lib/supabase', () => ({
 // Mock favorites module
 vi.mock('~/lib/db/favorites', () => ({
   getFavoritesForProfile: vi.fn(),
-  getFavoriteAnswersForProfile: vi.fn(),
   addFavorite: vi.fn(),
 }));
 
