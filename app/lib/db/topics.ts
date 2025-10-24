@@ -99,19 +99,22 @@ export const getTopicsByIds = withTiming(_getTopicsByIds, 'getTopicsByIds', 'top
  * Contract: returns Topic or null when none exist.
  * Environment:
  *  - dev: returns the first topic from sorted mockTopics (or null)
- *  - prod: queries DB with ORDER BY created_at DESC LIMIT 1
+ *  - prod: queries DB with ORDER BY id DESC LIMIT 1 (ID is auto-incrementing, so max ID = latest)
  * Errors: zod parsing errors or Supabase errors will throw.
+ * Performance: Optimized to use ID-based ordering for fastest retrieval since ID is indexed primary key
  */
 async function _getLatestTopic(): Promise<Topic | null> {
   // NOTE: avoid a separate connection probe on the hot path to reduce initial
   // request latency. We rely on the actual topics query to surface network
   // errors quickly; callers receive null only if no topic exists.
 
+  // Use ID-based ordering for optimal performance (ID is primary key, auto-incrementing)
   const { data, error } = await supabase
     .from('topics')
     .select('id, title, created_at, image')
-    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(1);
+
   if (error) throw new ServerError(`Failed to fetch latest topic: ${error.message}`);
 
   const row = (data ?? [])[0] ?? null;
