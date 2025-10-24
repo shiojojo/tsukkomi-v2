@@ -8,18 +8,7 @@ declare global {
 }
 
 /**
- * 概要: 回答関連アクション（お気に入り  const { addComment } = await import('~/lib/db');
-  try {
-    const comment = await addComment({
-      answerId: String(answerId),
-      text,
-      profileId,
-    });
-    return Response.json({ comment });
-  } catch (e: any) {
-    logger.error('addComment failed', String(e?.message ?? e));
-    throw Response.json({ ok: false, error: String(e?.message ?? e) }, { status: 500 });
-  }ー。
+ * 概要: 回答関連アクション（お気に入り、投票、コメント）を処理するハンドラー。
  * Contract:
  *   - Input: ActionFunctionArgs (request)
  *   - Output: Response (JSON)

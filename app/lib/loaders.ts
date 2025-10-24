@@ -19,12 +19,3 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
 
   return Response.json({ ...data, page, pageSize, ...filters });
 }
-
-/**
- * 概要: リストページの loader を共通化するためのヘルパー関数。
- * Contract:
- *   - Input: entityType ('topics' | 'answers'), request (Request), extraParams (optional)
- *   - Output: JSON response with data, pagination, and filters
- * Environment: サーバーサイドのみ。db.ts 関数を呼び出す。
- * Errors: DBエラー時は throw（呼び出し側 loader が捕捉）。
- */
