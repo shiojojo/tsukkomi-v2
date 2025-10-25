@@ -185,7 +185,7 @@ async function _searchAnswers(opts: {
 
   let baseQuery = supabaseAdmin
     .from('answer_search_view')
-    .select('*', { count: 'exact' });
+    .select('*', { count: 'estimated' });
 
   // Apply favorite filter first (if specified)
   if (favorite && profileId) {

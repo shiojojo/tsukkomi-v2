@@ -44,7 +44,7 @@ async function _getTopicsPaged(opts: {
 
   let query = supabase
     .from('topics')
-    .select('id, title, created_at, image', { count: 'exact' });
+    .select('id, title, created_at, image', { count: 'estimated' });
 
   if (q) query = query.ilike('title', `%${String(q).trim()}%`);
   if (fromDate) query = query.gte('created_at', fromDate.includes('T') ? fromDate : `${fromDate}T00:00:00.000Z`);
