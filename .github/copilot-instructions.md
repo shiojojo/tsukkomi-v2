@@ -176,6 +176,12 @@ export default function Route() {
 - 必要なデータだけ取得（例: 全topics取得 → 表示topicsだけ）
 - TanStack Queryのキャッシュ活用
 
+**データアクセス原則**:
+
+- **APIレイヤー経由禁止**: クライアントサイドでは直接DB関数を呼ぶ（`lib/db/` 経由）
+- **例外**: サーバーサイドAPIが必要な場合のみ（LINE syncなど）
+- **理由**: APIレイヤーのオーバーヘッドを排除し、パフォーマンスを最適化
+
 localStorage は最小限に使用。サーバー同期が必要なデータ（投票、いいねなど）は loader/Action と TanStack Query で管理。
 
 ### Vote / Comment の設計パターン
@@ -199,6 +205,11 @@ localStorage は最小限に使用。サーバー同期が必要なデータ（�
 3. **Query**: 投票カウントを管理（回答データに含まれる）
 4. **Mutation**: 投票操作で楽観的更新（カウント増減計算）
 5. **Action**: サーバーサイドで永続化
+
+**Query Key の役割分担**:
+
+- `['user-answer-data', profileId, answerIds.join(',')]`: 回答一覧ページでユーザーの投票・お気に入りデータをまとめて取得
+- `['user-favorite', answerId, userId]`: 個別回答に対するfavorite状態を管理（即時反映用）
 
 #### 💬 Comment 機能設計
 
@@ -287,7 +298,13 @@ const addCommentMutation = useMutationWithError(..., {
 // 補助データ（TanStack Query経由）
 ['topics', topicIds.join(',')]              // トピック情報
 ['user-answer-data', profileId, answerIds.join(',')] // ユーザーの投票/お気に入り状態
+['user-favorite', answerId, userId]         // 個別回答のfavorite状態（即時反映用）
 ```
+
+**データ取得原則**:
+
+- **API経由禁止**: クライアントサイドでは直接DB関数を呼ぶ（`lib/db/` 経由）
+- **理由**: APIレイヤーのオーバーヘッドを排除し、パフォーマンスを最適化
 
 #### 🔄 Loaderの役割
 
@@ -621,10 +638,11 @@ export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
 2. ルートファイル: `loader` でメインエンティティを取得 / `action` で mutate
 3. 必要なら `useQueryWithError` を補助データ取得に追加（キー命名: `['entity', ids.join(',')]`）
 4. UI コンポーネントは props 経由
-5. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
-6. エラーハンドリング: `lib/errors.ts` のクラスを使用し、適切なエラーレスポンスを throw
-7. ESLint / TypeScript エラー 0 を確認
-8. **フィルター機能**: hasComments などのフィルターを追加する場合、e2eテストを追加して正しく動作することを確認
+5. **データ取得**: APIを経由せず、直接DB関数を呼ぶ（`lib/db/` 経由）
+6. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
+7. エラーハンドリング: `lib/errors.ts` のクラスを使用し、適切なエラーレスポンスを throw
+8. ESLint / TypeScript エラー 0 を確認
+9. **フィルター機能**: hasComments などのフィルターを追加する場合、e2eテストを追加して正しく動作することを確認
 
 ⸻
 
@@ -642,11 +660,12 @@ export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
 ## 🚀 最重要原則
 
 1. Supabase 直呼び禁止 → 100% `lib/db/` ディレクトリ経由
-2. **Loader**: 必須データ（メインエンティティ + 静的補助データ）の初回取得 / **TanStack Query**: 動的補助データ（ユーザー固有の状態など）の個別取得・キャッシュ / **Action**: 書き込み処理
-3. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
-4. エラーハンドリング: `lib/errors.ts` のクラスを使用し、エラーを握りつぶさず適切に伝播
-5. **コメントカウント**: `answer_search_view` から直接取得し、個別のクエリを排除（コメント追加時にはビューが適切に更新される）
-6. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
+2. **APIレイヤー経由禁止**: クライアントサイドでは直接DB関数を呼ぶ（`lib/db/` 経由）。APIはサーバーサイド処理（LINE syncなど）のみ使用
+3. **Loader**: 必須データ（メインエンティティ + 静的補助データ）の初回取得 / **TanStack Query**: 動的補助データ（ユーザー固有の状態など）の個別取得・キャッシュ / **Action**: 書き込み処理
+4. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
+5. エラーハンドリング: `lib/errors.ts` のクラスを使用し、エラーを握りつぶさず適切に伝播
+6. **コメントカウント**: `answer_search_view` から直接取得し、個別のクエリを排除（コメント追加時にはビューが適切に更新される）
+7. ルールに従わない提案は受け入れない（Copilot は本ファイルを優先参照）
 
 ⸻
 

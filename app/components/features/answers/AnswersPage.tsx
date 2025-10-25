@@ -1,3 +1,4 @@
+import { useAnswersPageData } from '~/hooks/features/answers/useAnswersPageData';
 import { useAnswersPage } from '~/hooks/features/answers/useAnswersPage';
 import { FilterForm } from '~/components/forms/FilterForm';
 import { AnswersList } from '~/components/features/answers/AnswersList';
@@ -31,6 +32,7 @@ interface AnswersPageProps {
 }
 
 export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
+  const { pageData, userAnswerData } = useAnswersPageData(data);
   const {
     topicsById,
     users,
@@ -39,7 +41,6 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
     getNameByProfileId,
     currentUserId,
     currentUserName,
-    userAnswerData,
     profileId,
     filters,
     updateFilter,
@@ -49,7 +50,7 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
     pageCount,
     buildHref,
     answersContainerRef,
-  } = useAnswersPage(data);
+  } = useAnswersPage(pageData);
 
   const filtersComponent = (
     <div className="mt-3">

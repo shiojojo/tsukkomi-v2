@@ -34,15 +34,9 @@ export function useFavoriteButton({
     ['user-favorite', answerId.toString(), effectiveId || 'anonymous'],
     async () => {
       if (!effectiveId) return false;
-      const params = new URLSearchParams();
-      params.set('profileId', effectiveId);
-      params.append('answerIds', answerId.toString());
-      const response = await fetch(`/api/user-data?${params.toString()}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch user data (status ${response.status})`);
-      }
-      const payload = await response.json();
-      return (payload?.favorites ?? []).includes(answerId);
+      const { getProfileAnswerData } = await import('~/lib/db');
+      const data = await getProfileAnswerData(effectiveId, [answerId]);
+      return data.favorites.has(answerId);
     },
     {
       placeholderData: initialFavorited,

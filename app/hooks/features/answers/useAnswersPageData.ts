@@ -80,5 +80,5 @@ export function useAnswersPageData(loaderData: LoaderData) {
     toDate: loaderData.toDate || '',
   };
 
-  return { pageData, isLoading };
+  return { pageData, isLoading, userAnswerData };
 }

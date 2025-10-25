@@ -7,6 +7,7 @@ import { useFavoriteButton } from '~/hooks/features/answers/useFavoriteButton';
 import { useIdentity } from '~/hooks/common/useIdentity';
 import { useOptimisticAction } from '~/hooks/common/useOptimisticAction';
 import { useMutationWithError } from '~/hooks/common/useMutationWithError';
+import { getProfileAnswerData } from '~/lib/db';
 
 // Mock dependencies
 vi.mock('~/hooks/common/useIdentity', () => ({
@@ -21,9 +22,10 @@ vi.mock('~/hooks/common/useMutationWithError', () => ({
   useMutationWithError: vi.fn(),
 }));
 
-// Mock fetch
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// Mock DB function
+vi.mock('~/lib/db', () => ({
+  getProfileAnswerData: vi.fn(),
+}));
 
 // Mock window.location
 Object.defineProperty(window, 'location', {
@@ -36,6 +38,7 @@ describe('useFavoriteButton', () => {
   let mockUseIdentity: any;
   let mockUseOptimisticAction: any;
   let mockUseMutationWithError: any;
+  let mockGetProfileAnswerData: any;
 
   beforeEach(() => {
     queryClient = new QueryClient({
@@ -49,10 +52,10 @@ describe('useFavoriteButton', () => {
     mockUseIdentity = vi.mocked(useIdentity);
     mockUseOptimisticAction = vi.mocked(useOptimisticAction);
     mockUseMutationWithError = vi.mocked(useMutationWithError);
+    mockGetProfileAnswerData = vi.mocked(getProfileAnswerData);
 
     // Reset mocks
     vi.clearAllMocks();
-    mockFetch.mockReset();
   });
 
   afterEach(() => {
@@ -125,11 +128,11 @@ describe('useFavoriteButton', () => {
   });
 
   describe('favorite status query', () => {
-    it('should load favorite status using API', async () => {
+    it('should load favorite status using DB function', async () => {
       setupMocks();
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve({ favorites: [123] }),
+      mockGetProfileAnswerData.mockResolvedValueOnce({
+        votes: {},
+        favorites: new Set([123])
       });
 
       const { result } = renderHook(
@@ -145,8 +148,8 @@ describe('useFavoriteButton', () => {
         expect(result.current.favorited).toBe(true);
       });
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        '/api/user-data?profileId=user123&answerIds=123'
+      expect(mockGetProfileAnswerData).toHaveBeenCalledWith(
+        'user123', [123]
       );
     });
 
@@ -180,12 +183,9 @@ describe('useFavoriteButton', () => {
       expect(result.current.favorited).toBe(false);
     });
 
-    it('should handle API error', async () => {
+    it('should handle DB function error', async () => {
       setupMocks();
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-      });
+      mockGetProfileAnswerData.mockRejectedValueOnce(new Error('DB error'));
 
       const { result } = renderHook(
         () =>

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useAnswerUserData } from './useAnswerUserData';
 import { useIdentity } from '../../common/useIdentity';
 import { useNameByProfileId } from '../../common/useNameByProfileId';
 import { useFilters, type AnswersFilters } from '../../common/useFilters';
@@ -43,10 +42,6 @@ export function useAnswersPage(data: LoaderData) {
 
   const { getNameByProfileId } = useNameByProfileId(users);
   const { effectiveId: currentUserId, effectiveName: currentUserName } = useIdentity();
-
-  // Client-side user data sync for answers
-  const answerIds = data.answers?.map((a: Answer) => a.id) ?? [];
-  const { data: userAnswerData } = useAnswerUserData(answerIds, false); // Disable since we use loader data
 
   // Use loader data directly (no need for client-side refetch)
   const currentData = data;
@@ -133,7 +128,6 @@ export function useAnswersPage(data: LoaderData) {
     getNameByProfileId,
     currentUserId,
     currentUserName,
-    userAnswerData,
     profileId: currentData.profileId,
     // Filters
     filters,
