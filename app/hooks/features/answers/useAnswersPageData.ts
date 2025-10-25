@@ -1,6 +1,5 @@
 import { useQueryWithError } from '~/hooks/common/useQueryWithError';
 import {
-  getTopicsByIds,
   getUsers,
   getUserAnswerData,
 } from '~/lib/db';
@@ -23,6 +22,7 @@ type LoaderData = {
   fromDate?: string;
   toDate?: string;
   profileId?: string;
+  topicsById: Record<string, Topic>;
 };
 
 type PageData = LoaderData & {
@@ -42,14 +42,8 @@ export function useAnswersPageData(loaderData: LoaderData) {
   const profileId = loaderData.profileId || clientProfileId;
 
   const answerIds = loaderData.answers.map(a => a.id);
-  const topicIds = Array.from(
-    new Set(loaderData.answers.map(a => a.topicId).filter(Boolean) as number[])
-  );
 
-  // 個別クエリで補助データを取得
-  const topicsQuery = useQueryWithError(['topics', topicIds.join(',')], () =>
-    getTopicsByIds(topicIds)
-  );
+  // 個別クエリで補助データを取得（トピックはLoaderから直接使用）
   const usersQuery = useQueryWithError(['users'], () =>
     getUsers({ limit: 200 })
   );
@@ -62,12 +56,7 @@ export function useAnswersPageData(loaderData: LoaderData) {
     { enabled: !!profileId }
   );
 
-  // データマージ
-  const topicsById = topicsQuery.data
-    ? Object.fromEntries(
-        (topicsQuery.data as Topic[]).map(t => [String(t.id), t])
-      )
-    : {};
+  // データマージ（トピックはLoaderから直接使用）
   const users = usersQuery.data || [];
   const userAnswerData = userAnswerDataQuery.data || {
     votes: {},
@@ -80,16 +69,14 @@ export function useAnswersPageData(loaderData: LoaderData) {
     profileId || undefined
   );
 
-  // ローディング状態
+  // ローディング状態（トピックのQueryは削除）
   const isLoading =
-    topicsQuery.isLoading ||
     usersQuery.isLoading ||
     userAnswerDataQuery.isLoading;
 
   const pageData: PageData = {
     ...loaderData,
     answers: answersWithUserData,
-    topicsById,
     users,
     q: loaderData.q || '',
     author: loaderData.author || '',

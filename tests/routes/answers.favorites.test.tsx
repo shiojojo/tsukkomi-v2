@@ -7,7 +7,9 @@ vi.mock('~/lib/loaders', () => ({
   createAnswersListLoader: vi.fn(),
   createListLoader: vi.fn(),
 }));
-
+vi.mock('~/lib/loaders/answersLoader', () => ({
+  createAnswersLoader: vi.fn(),
+}));
 vi.mock('~/lib/actionHandlers', () => ({
   handleAnswerActions: vi.fn(),
 }));
@@ -19,8 +21,36 @@ describe('answers.favorites route', () => {
 
   describe('loader', () => {
     it('should return default data when profileId is not provided', async () => {
+      const mockResponse = new Response(
+        JSON.stringify({
+          answers: [],
+          total: 0,
+          page: 1,
+          pageSize: 20,
+          q: '',
+          author: '',
+          sortBy: 'newest',
+          minScore: 0,
+          hasComments: false,
+          fromDate: '',
+          toDate: '',
+          profileId: null,
+          requiresProfileId: true,
+          topicsById: {},
+        })
+      );
+      const { createAnswersLoader } = await import(
+        '~/lib/loaders/answersLoader'
+      );
+      vi.mocked(createAnswersLoader).mockResolvedValue(mockResponse);
+
       const request = new Request('http://localhost:3000/answers/favorites');
       const result = await loader({ request } as LoaderFunctionArgs);
+
+      expect(createAnswersLoader).toHaveBeenCalledWith(
+        { request },
+        { favorite: true, requiresAuth: true }
+      );
 
       const data = await result.json();
       expect(data).toEqual({
@@ -37,6 +67,7 @@ describe('answers.favorites route', () => {
         toDate: '',
         profileId: null,
         requiresProfileId: true,
+        topicsById: {},
       });
     });
 
@@ -45,20 +76,25 @@ describe('answers.favorites route', () => {
         JSON.stringify({
           answers: [{ id: 1 }],
           total: 1,
+          requiresProfileId: false,
+          profileId: 'user123',
+          topicsById: {},
         })
       );
-      const { createListLoader } = await import('~/lib/loaders');
-      vi.mocked(createListLoader).mockResolvedValue(mockResponse);
+      const { createAnswersLoader } = await import(
+        '~/lib/loaders/answersLoader'
+      );
+      vi.mocked(createAnswersLoader).mockResolvedValue(mockResponse);
 
       const request = new Request(
         'http://localhost:3000/answers/favorites?profileId=user123'
       );
       const result = await loader({ request } as LoaderFunctionArgs);
 
-      expect(createListLoader).toHaveBeenCalledWith('answers', request, {
-        favorite: true,
-        profileId: 'user123',
-      });
+      expect(createAnswersLoader).toHaveBeenCalledWith(
+        { request },
+        { favorite: true, requiresAuth: true }
+      );
 
       const data = await result.json();
       expect(data).toEqual({
@@ -66,6 +102,7 @@ describe('answers.favorites route', () => {
         total: 1,
         requiresProfileId: false,
         profileId: 'user123',
+        topicsById: {},
       });
     });
   });

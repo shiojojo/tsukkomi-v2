@@ -1,5 +1,7 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
+import { getTopicsByIds } from '~/lib/db/topics';
+import type { Answer } from '~/lib/schemas/answer';
 
 export interface CreateAnswersLoaderOptions {
   topicId?: string;
@@ -31,6 +33,7 @@ export async function createAnswersLoader(
       toDate: '',
       requiresProfileId: true,
       profileId: null,
+      topicsById: {},
     });
   }
 
@@ -43,9 +46,19 @@ export async function createAnswersLoader(
   });
   const listData = await listResponse.json();
 
+  // 回答に含まれる全トピックIDを取得してトピック情報を取得
+  const topicIds = Array.from(
+    new Set((listData.answers as Answer[]).map(a => a.topicId).filter(Boolean) as number[])
+  );
+  const topics = topicIds.length > 0 ? await getTopicsByIds(topicIds) : [];
+  const topicsById = Object.fromEntries(
+    topics.map(t => [String(t.id), t])
+  );
+
   const responseData = {
     ...listData,
     profileId: profileIdQuery,
+    topicsById,
     ...(options.topicId && { topicId: options.topicId }),
     ...(options.requiresAuth && { requiresProfileId: false }),
   };

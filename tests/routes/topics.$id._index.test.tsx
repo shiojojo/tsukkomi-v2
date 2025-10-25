@@ -6,7 +6,9 @@ vi.mock('~/lib/loaders', () => ({
   createAnswersListLoader: vi.fn(),
   createListLoader: vi.fn(),
 }));
-
+vi.mock('~/lib/loaders/answersLoader', () => ({
+  createAnswersLoader: vi.fn(),
+}));
 vi.mock('~/lib/actionHandlers', () => ({
   handleAnswerActions: vi.fn(),
 }));
@@ -18,36 +20,47 @@ describe('topics.$id._index route', () => {
 
   describe('loader', () => {
     it('should call createAnswersListLoader with topicId from params', async () => {
-      const mockResult = new Response(JSON.stringify({ answers: [] }), {
-        status: 200,
-      });
-      const { createListLoader } = await import('~/lib/loaders');
-      vi.mocked(createListLoader).mockResolvedValue(mockResult);
+      const mockResult = new Response(
+        JSON.stringify({ answers: [], topicId: '123', topicsById: {} }),
+        { status: 200 }
+      );
+      const { createAnswersLoader } = await import(
+        '~/lib/loaders/answersLoader'
+      );
+      vi.mocked(createAnswersLoader).mockResolvedValue(mockResult);
 
       const request = new Request('http://localhost/topics/123');
       const params = { id: '123' };
       const result = await loader({ request, params, context: undefined });
 
-      expect(createListLoader).toHaveBeenCalledWith('answers', request, {
+      expect(createAnswersLoader).toHaveBeenCalledWith(
+        { request, params, context: undefined },
+        { topicId: '123' }
+      );
+      expect(await result.json()).toEqual({
+        answers: [],
         topicId: '123',
+        topicsById: {},
       });
-      expect(await result.json()).toEqual({ answers: [], topicId: '123' });
     });
 
     it('should handle undefined topicId', async () => {
       const mockResult = new Response(JSON.stringify({ answers: [] }), {
         status: 200,
       });
-      const { createListLoader } = await import('~/lib/loaders');
-      vi.mocked(createListLoader).mockResolvedValue(mockResult);
+      const { createAnswersLoader } = await import(
+        '~/lib/loaders/answersLoader'
+      );
+      vi.mocked(createAnswersLoader).mockResolvedValue(mockResult);
 
       const request = new Request('http://localhost/topics/undefined');
       const params = { id: undefined };
       await loader({ request, params, context: undefined });
 
-      expect(createListLoader).toHaveBeenCalledWith('answers', request, {
-        topicId: undefined,
-      });
+      expect(createAnswersLoader).toHaveBeenCalledWith(
+        { request, params, context: undefined },
+        { topicId: undefined }
+      );
     });
   });
 
