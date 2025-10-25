@@ -201,19 +201,6 @@ async function _searchAnswers(opts: {
 export const searchAnswers = withTiming(_searchAnswers, 'searchAnswers', 'answers');
 
 /**
- * getAnswersPageByTopic
- * Intent: Cursor based (created_at desc) pagination for answers under a topic to enable incremental loading.
- * Contract:
- *  - Input: { topicId: string|number; cursor: string | null; pageSize?: number }
- *  - Output: { answers: Answer[]; nextCursor: string | null }
- *    answers sorted desc by created_at. nextCursor = 最後の要素の created_at (次ページ条件 < cursor)。
- * Environment:
- *  - dev: in-memory filter + sort + slice
- *  - prod: Supabase query with .lt('created_at', cursor) when cursor provided
- * Errors: Supabase error そのまま throw。
- */
-
-/**
  * voteAnswer
  * Intent: record a three-level vote for an answer.
  * Contract: accepts answerId and level (1|2|3). Returns the updated Answer.
