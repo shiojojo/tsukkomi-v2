@@ -3,7 +3,6 @@
 
 // Answers domain
 export {
-  getAnswers,
   getUserAnswerData,
   searchAnswers,
   voteAnswer,

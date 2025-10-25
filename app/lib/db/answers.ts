@@ -3,7 +3,6 @@ import { AnswerSchema } from '~/lib/schemas/answer';
 import type { Answer } from '~/lib/schemas/answer';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 import { getFavoritesForProfile } from './favorites';
-import { ServerError } from '../errors';
 import { DEFAULT_PAGE_SIZE } from '../constants';
 import { withTiming } from './debug';
 
@@ -24,15 +23,6 @@ interface SearchViewRow extends DatabaseAnswerRow {
   level2: number;
   level3: number;
   comment_count: number;
-}
-
-// Partial answer type without votes
-interface PartialAnswer {
-  id: number;
-  text: string;
-  profileId?: string;
-  topicId?: number;
-  created_at: string;
 }
 
 async function getVotesByForAnswers(
@@ -68,55 +58,6 @@ async function getVotesByForAnswers(
   return map;
 }
 
-async function _getAnswers(): Promise<Answer[]> {
-  // always fetch fresh answers from DB
-  await ensureConnection(); // 接続失敗時は throw
-
-  const { data: answerRows, error: answerErr } = await supabase
-    .from('answers')
-    .select('id, text, profile_id, topic_id, created_at')
-    .order('created_at', { ascending: false });
-  if (answerErr) throw new ServerError(`Failed to fetch answers: ${answerErr.message}`);
-
-  const answers = (answerRows ?? []).map((a: DatabaseAnswerRow) => ({
-    id: typeof a.id === 'string' ? Number(a.id) : a.id,
-    text: a.text,
-    profileId: a.profile_id ?? undefined,
-    topicId: a.topic_id ?? undefined,
-    created_at: a.created_at,
-  }));
-
-    // collect ids and fetch aggregated counts using the view
-  const ids = (answerRows ?? []).map((r: DatabaseAnswerRow) => Number(r.id)).filter(Boolean);
-  const countsMap: Record<number, { level1: number; level2: number; level3: number }> = {};
-  if (ids.length) {
-    const { data: countsData, error: countsErr } = await supabase
-      .from('answer_vote_counts')
-      .select('answer_id, level1, level2, level3')
-      .in('answer_id', ids);
-    if (countsErr) throw countsErr;
-    for (const c of countsData ?? []) {
-      countsMap[Number(c.answer_id)] = {
-        level1: Number(c.level1 ?? 0),
-        level2: Number(c.level2 ?? 0),
-        level3: Number(c.level3 ?? 0),
-      };
-    }
-  }
-
-  const votesByMap = await getVotesByForAnswers(ids);
-
-  const normalized = answers.map((a: PartialAnswer) => ({
-    ...a,
-    votes: countsMap[a.id] ?? { level1: 0, level2: 0, level3: 0 },
-    votesBy: votesByMap[a.id] ?? {},
-  }));
-
-  return AnswerSchema.array().parse(normalized as unknown);
-}
-
-export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
-
 /**
  * getUserAnswerData
  * Intent: Retrieve user's votes and favorites for specific answers.
@@ -124,6 +65,8 @@ export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
  * Environment: Always uses Supabase.
  * Errors: Throws on DB errors.
  */
+
+export const getUserAnswerData = withTiming(_getUserAnswerData, 'getUserAnswerData', 'answers');
 async function _getUserAnswerData(profileId: string, answerIds: number[]): Promise<{ votes: Record<number, number>; favorites: Set<number> }> {
   if (!profileId || !answerIds.length) {
     return { votes: {}, favorites: new Set() };
@@ -153,8 +96,6 @@ async function _getUserAnswerData(profileId: string, answerIds: number[]): Promi
 
   return { votes: userVotes, favorites: userFavorites };
 }
-
-export const getUserAnswerData = withTiming(_getUserAnswerData, 'getUserAnswerData', 'answers');
 
 /**
  * searchAnswers
