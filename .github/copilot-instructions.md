@@ -273,8 +273,8 @@ const addCommentMutation = useMutationWithError(..., {
 
 #### 🎯 設計原則
 
-- **Loader**: 必須データ（回答リスト本体）のみ取得（SSR対応）
-- **TanStack Query**: 補助データ（トピック、ユーザー、コメントカウントなど）を個別取得・キャッシュ
+- **Loader**: 必須データ（回答リスト本体 + ユーザー情報 + トピック情報）を取得（SSR対応）
+- **TanStack Query**: 補助データ（ユーザーの投票/お気に入り状態など）を個別取得・キャッシュ
 - **共通フック**: `useAnswersPageData` でデータ取得ロジックを統一
 - **リアルタイム更新**: コメントカウントは定期的に自動更新
 
@@ -286,31 +286,26 @@ const addCommentMutation = useMutationWithError(..., {
 
 // 補助データ（TanStack Query経由）
 ['topics', topicIds.join(',')]              // トピック情報
-['users']                                   // ユーザー一覧（全回答ページ用）
 ['user-answer-data', profileId, answerIds.join(',')] // ユーザーの投票/お気に入り状態
 ```
 
 #### 🔄 Loaderの役割
 
-**取得するデータ**: 回答リスト本体のみ（最小限）
+**取得するデータ**: 回答リスト本体 + ユーザー情報 + トピック情報
 
 - 回答ID、内容、スコア、作成日時、コメントカウントなど基本情報
 - ページネーション情報（total, page, pageSize）
 - フィルター条件（q, author, sortBy, minScore, hasComments, fromDate, toDate）
 - ユーザーID（profileId） - 認証状態による
+- ユーザー一覧（回答者情報解決用）
+- トピック情報（回答に関連するトピック）
 
 **実装パターン**:
 
 ```ts
 export async function loader({ request }: LoaderFunctionArgs) {
-  const { createListLoader } = await import('~/lib/loaders');
-  const listResponse = await createListLoader('answers', request, { topicId });
-  const listData = await listResponse.json();
-
-  return json({
-    ...listData,
-    profileId: profileIdQuery, // 認証ユーザーID
-  });
+  const { createAnswersLoader } = await import('~/lib/loaders/answersLoader');
+  return createAnswersLoader({ request });
 }
 ```
 
@@ -346,10 +341,8 @@ const commentsQuery = useQueryWithError(
 
 **取得する補助データ**:
 
-- トピック情報（回答に関連するトピック）
-- ユーザー情報（回答者情報）
-- お気に入りカウント
 - ユーザーの投票/お気に入り状態（認証時のみ）
+- ※ トピック情報とユーザー情報はLoaderから直接取得
 
 **実装パターン**:
 
@@ -357,25 +350,38 @@ const commentsQuery = useQueryWithError(
 export function useAnswersPageData(loaderData: LoaderData) {
   const answerIds = loaderData.answers.map(a => a.id);
 
-  // 補助データ取得
-  const topicsQuery = useQueryWithError(['topics', topicIds.join(',')], ...);
-  // コメントカウントは loaderData.answers から直接取得されるため個別クエリ不要
-  // ... 他のクエリ
+  // 補助データ取得（トピックとユーザーはLoaderから直接使用）
+  const userAnswerDataQuery = useQueryWithError(
+    ['user-answer-data', profileId || 'none', answerIds.join(',')],
+    () =>
+      profileId
+        ? getUserAnswerData(profileId, answerIds)
+        : Promise.resolve({ votes: {}, favorites: new Set<number>() }),
+    { enabled: !!profileId }
+  );
 
-  // データマージ
+  // データマージ（トピックとユーザーはLoaderから直接使用）
+  const userAnswerData = userAnswerDataQuery.data || {
+    votes: {},
+    favorites: new Set<number>(),
+  };
+
   const answersWithUserData = mergeUserDataIntoAnswers(
     loaderData.answers,
     userAnswerData,
-    loaderData.profileId
+    profileId || undefined
   );
 
-  return { pageData: { ...loaderData, answers: answersWithUserData, ... }, isLoading };
+  return {
+    pageData: { ...loaderData, answers: answersWithUserData },
+    isLoading: userAnswerDataQuery.isLoading,
+  };
 }
 ```
 
 #### 📈 パフォーマンス最適化
 
-- **初期ローディング高速化**: Loaderで回答リストのみ取得、補助データは遅延読み込み
+- **初期ローディング高速化**: Loaderで回答リスト + ユーザー情報 + トピック情報を取得、補助データは遅延読み込み
 - **必要なデータのみ取得**: トピックIDに基づいて関連トピックのみ取得
 - **キャッシュ活用**: TanStack Queryのキャッシュで再訪問時の高速化
 - **コメントカウント**: `answer_search_view` から直接取得（コメント追加時にはビューが適切に更新される）
@@ -636,7 +642,7 @@ export const getAnswers = withTiming(_getAnswers, 'getAnswers', 'answers');
 ## 🚀 最重要原則
 
 1. Supabase 直呼び禁止 → 100% `lib/db/` ディレクトリ経由
-2. **Loader**: 必須データ（メインエンティティ）の初回取得 / **TanStack Query**: 補助データ（関連エンティティ）の個別取得・キャッシュ / **Action**: 書き込み処理
+2. **Loader**: 必須データ（メインエンティティ + 静的補助データ）の初回取得 / **TanStack Query**: 動的補助データ（ユーザー固有の状態など）の個別取得・キャッシュ / **Action**: 書き込み処理
 3. TanStack Query: loaderデータから初期状態を取得し、`useQueryWithError`/`useMutationWithError`を使用
 4. エラーハンドリング: `lib/errors.ts` のクラスを使用し、エラーを握りつぶさず適切に伝播
 5. **コメントカウント**: `answer_search_view` から直接取得し、個別のクエリを排除（コメント追加時にはビューが適切に更新される）

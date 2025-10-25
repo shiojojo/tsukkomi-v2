@@ -1,6 +1,5 @@
 import { useQueryWithError } from '~/hooks/common/useQueryWithError';
 import {
-  getUsers,
   getUserAnswerData,
 } from '~/lib/db';
 import { mergeUserDataIntoAnswers } from '~/lib/utils/dataMerging';
@@ -23,6 +22,7 @@ type LoaderData = {
   toDate?: string;
   profileId?: string;
   topicsById: Record<string, Topic>;
+  users: User[];
 };
 
 type PageData = LoaderData & {
@@ -43,10 +43,7 @@ export function useAnswersPageData(loaderData: LoaderData) {
 
   const answerIds = loaderData.answers.map(a => a.id);
 
-  // 個別クエリで補助データを取得（トピックはLoaderから直接使用）
-  const usersQuery = useQueryWithError(['users'], () =>
-    getUsers({ limit: 200 })
-  );
+  // 個別クエリで補助データを取得（トピックとユーザーはLoaderから直接使用）
   const userAnswerDataQuery = useQueryWithError(
     ['user-answer-data', profileId || 'none', answerIds.join(',')],
     () =>
@@ -56,8 +53,7 @@ export function useAnswersPageData(loaderData: LoaderData) {
     { enabled: !!profileId }
   );
 
-  // データマージ（トピックはLoaderから直接使用）
-  const users = usersQuery.data || [];
+  // データマージ（トピックとユーザーはLoaderから直接使用）
   const userAnswerData = userAnswerDataQuery.data || {
     votes: {},
     favorites: new Set<number>(),
@@ -69,15 +65,13 @@ export function useAnswersPageData(loaderData: LoaderData) {
     profileId || undefined
   );
 
-  // ローディング状態（トピックのQueryは削除）
+  // ローディング状態（トピックとユーザーのQueryは削除）
   const isLoading =
-    usersQuery.isLoading ||
     userAnswerDataQuery.isLoading;
 
   const pageData: PageData = {
     ...loaderData,
     answers: answersWithUserData,
-    users,
     q: loaderData.q || '',
     author: loaderData.author || '',
     minScore: loaderData.minScore || 0,

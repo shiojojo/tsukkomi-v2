@@ -1,6 +1,7 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 import { getTopicsByIds } from '~/lib/db/topics';
+import { getUsers } from '~/lib/db/users';
 import type { Answer } from '~/lib/schemas/answer';
 
 export interface CreateAnswersLoaderOptions {
@@ -55,10 +56,14 @@ export async function createAnswersLoader(
     topics.map(t => [String(t.id), t])
   );
 
+  // ユーザー情報を取得（回答一覧表示に必要）
+  const users = await getUsers();
+
   const responseData = {
     ...listData,
     profileId: profileIdQuery,
     topicsById,
+    users,
     ...(options.topicId && { topicId: options.topicId }),
     ...(options.requiresAuth && { requiresProfileId: false }),
   };

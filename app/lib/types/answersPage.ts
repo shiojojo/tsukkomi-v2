@@ -1,5 +1,6 @@
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
+import type { User } from '~/lib/schemas/user';
 
 export type AnswersPageLoaderData = {
   answers: Answer[];
@@ -15,6 +16,7 @@ export type AnswersPageLoaderData = {
   toDate?: string;
   profileId?: string;
   topicsById: Record<string, Topic>;
+  users: User[];
 };
 
 export type AnswersPageMode = 'all' | 'favorites' | 'topic';
