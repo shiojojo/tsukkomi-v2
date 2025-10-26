@@ -100,8 +100,6 @@ export function useCommentSection({
         setTimeout(() => {
           console.log('[DEBUG] DB sync wait complete, invalidating queries for answerId:', answerId);
           queryClient.invalidateQueries({ queryKey: ['comments', answerId.toString()] });
-          // Also invalidate comment counts to update the count display
-          queryClient.invalidateQueries({ queryKey: ['comment-counts'], exact: false });
         }, 500); // Wait 500ms for DB sync
       },
       onError: (error, variables, _context) => {

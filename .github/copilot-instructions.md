@@ -296,7 +296,6 @@ const addCommentMutation = useMutationWithError(..., {
 ['answers', page, pageSize, filters...]
 
 // 補助データ（TanStack Query経由）
-['topics', topicIds.join(',')]              // トピック情報
 ['user-answer-data', profileId, answerIds.join(',')] // ユーザーの投票/お気に入り状態
 ['user-favorite', answerId, userId]         // 個別回答のfavorite状態（即時反映用）
 ```
