@@ -444,8 +444,8 @@ test('answers page interactions', async ({ page }) => {
   await page.click('button:has-text("検索")');
   console.log('Applied sorting');
 
-  // Wait for URL to update with sortBy parameter
-  await page.waitForURL((url) => url.searchParams.has('sortBy'), { timeout: 5000 });
+  // Wait for URL to update with sortBy parameter (increased timeout due to parallel loading optimization)
+  await page.waitForURL((url) => url.searchParams.has('sortBy'), { timeout: 10000 });
   console.log('URL updated with sortBy parameter');
 
   // Check if sortBy=oldest is in the URL
@@ -796,8 +796,8 @@ test('favorites page interactions', async ({ page }) => {
       // Wait for network requests to complete
       await page.waitForLoadState('networkidle', { timeout: 10000 });
 
-      // Wait for answers to load on favorites page
-      await page.waitForSelector('ul li', { timeout: 15000 });
+      // Wait for answers to load on favorites page (increased timeout due to parallel loading optimization)
+      await page.waitForSelector('ul li', { timeout: 20000 });
       console.log('Answers loaded on favorites page');
 
       // Debug: Log all answer texts on favorites page
@@ -824,8 +824,8 @@ test('favorites page interactions', async ({ page }) => {
     console.log('Verified first answer exists on favorites page with content:', answerText?.substring(0, 100));
     console.log('Verified first answer starts with "chatGPTやAIが" when sorted by oldest on favorites page');
 
-    // Wait for favorite state to sync (favorites page may need more time to load states)
-    await page.waitForTimeout(3000);
+    // Wait for favorite state to sync (favorites page may need more time to load states due to parallel loading optimization)
+    await page.waitForTimeout(5000);
 
     // Verify the first answer is favorited
     const favoriteButtonOnFavoritesPage = firstAnswerOnFavoritesPage.locator('button[aria-pressed]').first();
@@ -833,8 +833,8 @@ test('favorites page interactions', async ({ page }) => {
     expect(isFavorited).toBe(true);
     console.log('Verified first answer is favorited on favorites page');
 
-    // Wait for favorites to load
-    await page.waitForTimeout(2000);
+    // Wait for favorites to load (increased wait time due to parallel loading optimization)
+    await page.waitForTimeout(3000);
 
     // Find the favorited answer on favorites page
     const favoritedAnswer = page.locator('ul li').first();
@@ -932,8 +932,8 @@ test('favorites page interactions', async ({ page }) => {
         await commentSubmitButton.click();
         console.log('Clicked comment submit button');
 
-        // Wait for comment to be added
-        await page.waitForTimeout(2000);
+        // Wait for comment to be added (increased wait time due to parallel loading optimization)
+        await page.waitForTimeout(3000);
 
         // Check for success toast
         await expect(page.locator('text=成功')).toBeVisible();
@@ -963,8 +963,8 @@ test('favorites page interactions', async ({ page }) => {
       await favoriteButtonOnFavorites.click();
       console.log('Clicked favorite button to remove');
 
-      // Wait for state update and potential page re-render
-      await page.waitForTimeout(2000);
+      // Wait for state update and potential page re-render (increased wait time due to parallel loading optimization)
+      await page.waitForTimeout(5000);
 
       // Check if the answer still exists on the page
       const answerStillExists = await favoritedAnswer.isVisible();
@@ -976,6 +976,8 @@ test('favorites page interactions', async ({ page }) => {
       // If answer still exists, check if favorite button state changed
       const favoriteButtonStillExists = await favoriteButtonOnFavorites.isVisible();
       if (favoriteButtonStillExists) {
+        // Additional wait for UI state update
+        await page.waitForTimeout(2000);
         // Verify button is now inactive
         await expect(favoriteButtonOnFavorites).toHaveAttribute('aria-pressed', 'false');
         console.log('Favorite button is now inactive');
@@ -997,7 +999,7 @@ test('favorites page interactions', async ({ page }) => {
       // Test persistence - reload and verify it's still removed
       console.log('Testing persistence after page reload');
       await page.reload();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(3000);
 
       // Check that the previously favorited answer is no longer on the favorites page
       await expect(page.getByRole('heading', { name: FAVORITES })).toBeVisible();

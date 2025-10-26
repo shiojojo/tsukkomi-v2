@@ -51,13 +51,16 @@ export async function createAnswersLoader(
   const topicIds = Array.from(
     new Set((listData.answers as Answer[]).map(a => a.topicId).filter(Boolean) as number[])
   );
-  const topics = topicIds.length > 0 ? await getTopicsByIds(topicIds) : [];
+
+  // 並列実行: トピック情報とユーザー情報を同時に取得
+  const [topics, users] = await Promise.all([
+    topicIds.length > 0 ? getTopicsByIds(topicIds) : Promise.resolve([]),
+    getUsers()
+  ]);
+
   const topicsById = Object.fromEntries(
     topics.map(t => [String(t.id), t])
   );
-
-  // ユーザー情報を取得（回答一覧表示に必要）
-  const users = await getUsers();
 
   const responseData = {
     ...listData,
