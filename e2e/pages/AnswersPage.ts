@@ -80,11 +80,21 @@ export class AnswersPage extends BasePage {
   }
 
   /**
-   * 詳細フィルタボタンをクリック
+   * 詳細フィルタボタンをクリック（閉じている場合のみ開く）
    */
   async openAdvancedFilters(): Promise<void> {
-    const advancedFilterButton = this.page.locator('button:has-text("詳細フィルタ")');
-    await this.clickWhenReady(advancedFilterButton);
+    const closeButton = this.page.locator('button:has-text("詳細を閉じる")');
+    const openButton = this.page.locator('button:has-text("詳細フィルタ")');
+
+    // すでに開いている場合は何もしない
+    if (await closeButton.isVisible()) {
+      return;
+    }
+
+    // 閉じている場合は開く
+    if (await openButton.isVisible()) {
+      await this.clickWhenReady(openButton);
+    }
   }
 
   /**
@@ -225,5 +235,13 @@ export class AnswerCard {
   async getAnswerText(): Promise<string> {
     const answerElement = this.element.locator('p').first();
     return await answerElement.textContent() || '';
+  }
+
+  /**
+   * 作者テキストを取得
+   */
+  async getAuthorText(): Promise<string> {
+    const authorElement = this.element.locator('text=/作者:/').first();
+    return await authorElement.textContent() || '';
   }
 }
