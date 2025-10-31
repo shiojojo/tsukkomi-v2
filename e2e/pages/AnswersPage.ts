@@ -5,7 +5,7 @@ import { BasePage } from './BasePage';
  * 回答一覧ページのPage Object
  */
 export class AnswersPage extends BasePage {
-  // ページ要素のセレクター
+  // ページ要素のセレクター（テキストベースに戻す - データ属性はUI実装後に変更）
   private readonly answerListText = '回答一覧';
   private readonly searchButton = '検索';
   private readonly oldestOption = 'oldest';

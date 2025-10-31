@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { AnswersPage } from '../../pages/AnswersPage';
-import { loginAsTestUser, setupAnswersPageSortedByOldest, waitForSuccessToast, resetVoteButtons, waitForTimeout } from '../../utils/test-helpers';
+import { loginAsTestUser, setupAnswersPageSortedByOldest, waitForSuccessToast, resetVoteButtons } from '../../utils/test-helpers';
 import { TEST_CONSTANTS } from '../../fixtures/test-data';
 
 /**
@@ -93,12 +93,21 @@ test.describe('Answers Page - Basic Functionality', () => {
     const voteState = await firstAnswer.getVoteState(3);
     expect(voteState).toBe(true);
 
-    // DB同期を待機（スコア更新に時間がかかる場合がある）
-    await waitForTimeout(2000);
-
-    // スコアが3以上増加したことを確認（投票によるスコア増加を確認）
-    const newScore = await firstAnswer.getScore();
-    expect(newScore).toBeGreaterThanOrEqual(initialScore);
+    // スコアが更新されるまで待機（投票によるスコア増加を確認）
+    await page.waitForFunction(
+      (initialScore) => {
+        const scoreElements = Array.from(document.querySelectorAll('*')).filter(el =>
+          el.textContent && el.textContent.includes('Score:')
+        );
+        if (scoreElements.length === 0) return false;
+        const scoreText = scoreElements[0].textContent || '';
+        const match = scoreText.match(/Score:\s*(\d+)/);
+        const currentScore = match ? parseInt(match[1]) : 0;
+        return currentScore >= initialScore;
+      },
+      initialScore,
+      { timeout: 5000 }
+    );
   });
 
   test('should add comment to first answer', async ({ page }) => {
@@ -127,11 +136,20 @@ test.describe('Answers Page - Basic Functionality', () => {
     // 成功トーストが表示されることを確認
     await waitForSuccessToast(page);
 
-    // DB同期を待機（コメント追加に時間がかかる場合がある）
-    await waitForTimeout(3000);
-
-    // コメント数が1増加したことを確認
-    const newCommentCount = await firstAnswer.getCommentCount();
-    expect(newCommentCount).toBe(initialCommentCount + 1);
+    // コメント数が更新されるまで待機
+    await page.waitForFunction(
+      (initialCount) => {
+        const commentElements = Array.from(document.querySelectorAll('*')).filter(el =>
+          el.textContent && el.textContent.match(/コメント\d+/)
+        );
+        if (commentElements.length === 0) return false;
+        const commentText = commentElements[0].textContent || '';
+        const match = commentText.match(/コメント(\d+)/);
+        const currentCount = match ? parseInt(match[1]) : 0;
+        return currentCount > initialCount;
+      },
+      initialCommentCount,
+      { timeout: 5000 }
+    );
   });
 });

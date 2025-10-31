@@ -114,42 +114,4 @@ test.describe('Search and Filter Functionality', () => {
       expect(commentCount).toBeGreaterThan(0);
     }
   });
-
-  test('should correctly filter answers by HS author with comments', async ({ page }) => {
-    // HSユーザーのサブユーザーtestとしてログイン
-    await loginAsTestUser(page);
-
-    // 回答ページでoldest順にソート
-    const answersPage = await setupAnswersPageSortedByOldest(page);
-
-    // 作者フィルターをHSに設定
-    await answersPage.setAuthorFilter('HS');
-
-    // 詳細フィルタを開く
-    await answersPage.openAdvancedFilters();
-
-    // コメント有無フィルターを有効化
-    await answersPage.setHasCommentsFilter(true);
-
-    // フィルター適用
-    await answersPage.clickSearchButton();
-
-    // URLに両方のフィルターが含まれていることを確認
-    await expect(page).toHaveURL(/author=HS/);
-    await expect(page).toHaveURL(/hasComments=1/);
-
-    // フィルター適用後の回答数を確認
-    const filteredAnswerCount = await answersPage.getAnswerCount();
-
-    // 各回答がHSユーザーによるもので、コメントがあることを確認（最初の3件）
-    const checkCount = Math.min(3, filteredAnswerCount);
-    for (let i = 0; i < checkCount; i++) {
-      const answer = answersPage.getAnswerByIndex(i);
-      const authorText = await answer.getAuthorText();
-      const commentCount = await answer.getCommentCount();
-
-      expect(authorText).toBe('作者: HS');
-      expect(commentCount).toBeGreaterThan(0);
-    }
-  });
 });

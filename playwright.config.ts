@@ -41,10 +41,10 @@ export default defineConfig({
     // コンソール出力も有効化
     ['line'],
   ],
-  // 並列実行を無効化（安定性確保のため）
-  workers: 1,
+  // 並列実行を有効化（CPUコア数に基づく）
+  workers: process.env.CI ? 2 : undefined, // CIでは2並列、本地では自動
   // リトライ設定
   retries: process.env.CI ? 2 : 0,
   // テスト実行順序を固定
-  fullyParallel: false,
+  fullyParallel: true,
 });

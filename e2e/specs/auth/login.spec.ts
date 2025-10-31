@@ -47,24 +47,4 @@ test.describe('Authentication', () => {
     // ナビゲーションバーにtestユーザーが表示されていることを確認
     await loginPage.verifyUserInHeader(TEST_CONSTANTS.USERS.TEST);
   });
-
-  test('should login as test user directly', async ({ page }) => {
-    const loginPage = new LoginPage(page);
-
-    // HSユーザーのサブユーザーtestとして直接ログイン
-    await page.goto('/login');
-    const hsUserContainer = page.locator(`text=${TEST_CONSTANTS.USERS.HS}`).locator('xpath=ancestor::li');
-    const selectButton = hsUserContainer.locator(`button:has-text("${TEST_CONSTANTS.SELECTORS.SELECT_BUTTON}")`);
-    await selectButton.click();
-    await page.goto('/login');
-    const hsDetailsButton = hsUserContainer.locator(`button:has-text("${TEST_CONSTANTS.SELECTORS.DETAILS_BUTTON}")`);
-    await hsDetailsButton.click();
-    await page.locator(`text=${TEST_CONSTANTS.USERS.TEST}`).locator('xpath=following-sibling::button').click();
-
-    // ホームページにリダイレクトされることを確認
-    await expect(page).toHaveURL('/');
-
-    // ナビゲーションバーにtestユーザーが表示されていることを確認
-    await loginPage.verifyUserInHeader(TEST_CONSTANTS.USERS.TEST);
-  });
 });

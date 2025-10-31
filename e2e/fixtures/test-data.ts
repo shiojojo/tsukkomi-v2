@@ -35,9 +35,10 @@ export const TEST_CONSTANTS = {
  * テスト実行前に必要なデータを準備する
  */
 export async function setupTestData(): Promise<void> {
-  // 現在の実装では、実際のDB操作は行わず、
-  // テスト内で必要なデータが既に存在することを前提とする
-  // 将来的に実際のテストデータ投入が必要になった場合はここに実装
+  // TODO: テスト用DBの分離実装
+  // - テスト実行前にテストデータを投入
+  // - 各テスト後にデータをクリーンアップ
+  // - 本番DBを汚さないようにする
 
   console.log('Test data setup completed');
 }
@@ -47,9 +48,9 @@ export async function setupTestData(): Promise<void> {
  * テスト実行後にデータを元に戻す
  */
 export async function cleanupTestData(): Promise<void> {
-  // 現在の実装では、実際のDB操作は行わず、
-  // テスト内で変更したデータはテスト終了後に自然にリセットされることを前提とする
-  // 将来的に実際のデータクリーンアップが必要になった場合はここに実装
+  // TODO: テストデータのクリーンアップ実装
+  // - テスト中に作成されたデータを削除
+  // - 投票、コメント、お気に入りをリセット
 
   console.log('Test data cleanup completed');
 }
