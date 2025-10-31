@@ -10,8 +10,11 @@ test.describe('Authentication', () => {
   test('should login as HS user', async ({ page }) => {
     const loginPage = new LoginPage(page);
 
-    // HSユーザーを選択
-    await loginPage.selectUser(TEST_CONSTANTS.USERS.HS);
+    // HSユーザーを選択（直接page.locatorを使用）
+    await page.goto('/login');
+    const hsUserContainer = page.locator(`text=${TEST_CONSTANTS.USERS.HS}`).locator('xpath=ancestor::li');
+    const selectButton = hsUserContainer.locator(`button:has-text("${TEST_CONSTANTS.SELECTORS.SELECT_BUTTON}")`);
+    await selectButton.click();
 
     // ホームページにリダイレクトされることを確認
     await expect(page).toHaveURL('/');
@@ -24,15 +27,19 @@ test.describe('Authentication', () => {
     const loginPage = new LoginPage(page);
 
     // まずHSユーザーを選択
-    await loginPage.selectUser(TEST_CONSTANTS.USERS.HS);
+    await page.goto('/login');
+    const hsUserContainer = page.locator(`text=${TEST_CONSTANTS.USERS.HS}`).locator('xpath=ancestor::li');
+    const selectButton = hsUserContainer.locator(`button:has-text("${TEST_CONSTANTS.SELECTORS.SELECT_BUTTON}")`);
+    await selectButton.click();
     await expect(page).toHaveURL('/');
 
     // HSユーザーの詳細を開く
-    await loginPage.gotoLoginPage();
-    await loginPage.openHSUserDetails();
+    await page.goto('/login');
+    const hsDetailsButton = hsUserContainer.locator(`button:has-text("${TEST_CONSTANTS.SELECTORS.DETAILS_BUTTON}")`);
+    await hsDetailsButton.click();
 
     // testサブユーザーを選択
-    await loginPage.selectSubUser(TEST_CONSTANTS.USERS.TEST);
+    await page.locator(`text=${TEST_CONSTANTS.USERS.TEST}`).locator('xpath=following-sibling::button').click();
 
     // ホームページにリダイレクトされることを確認
     await expect(page).toHaveURL('/');
@@ -45,7 +52,14 @@ test.describe('Authentication', () => {
     const loginPage = new LoginPage(page);
 
     // HSユーザーのサブユーザーtestとして直接ログイン
-    await loginPage.loginAsTestUser();
+    await page.goto('/login');
+    const hsUserContainer = page.locator(`text=${TEST_CONSTANTS.USERS.HS}`).locator('xpath=ancestor::li');
+    const selectButton = hsUserContainer.locator(`button:has-text("${TEST_CONSTANTS.SELECTORS.SELECT_BUTTON}")`);
+    await selectButton.click();
+    await page.goto('/login');
+    const hsDetailsButton = hsUserContainer.locator(`button:has-text("${TEST_CONSTANTS.SELECTORS.DETAILS_BUTTON}")`);
+    await hsDetailsButton.click();
+    await page.locator(`text=${TEST_CONSTANTS.USERS.TEST}`).locator('xpath=following-sibling::button').click();
 
     // ホームページにリダイレクトされることを確認
     await expect(page).toHaveURL('/');
