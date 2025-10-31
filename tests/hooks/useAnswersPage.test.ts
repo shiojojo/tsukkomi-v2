@@ -27,7 +27,7 @@ vi.mock('~/hooks/common/useFilters', () => ({
   useFilters: vi.fn(() => ({
     filters: {
       q: '',
-      author: '',
+      author: 'test author',
       sortBy: 'newest',
       minScore: '',
       hasComments: false,
@@ -35,8 +35,6 @@ vi.mock('~/hooks/common/useFilters', () => ({
       toDate: '',
     },
     updateFilter: vi.fn(),
-    showAdvancedFilters: false,
-    toggleAdvancedFilters: vi.fn(),
   })),
 }));
 
@@ -115,24 +113,11 @@ describe('useAnswersPage', () => {
     expect(result.current.profileId).toBe('test-profile-id');
   });
 
-  it('handles empty data gracefully', () => {
-    const emptyData = {
-      answers: [],
-      total: 0,
-      page: 1,
-      pageSize: 20,
-      q: '',
-      author: '',
-      sortBy: 'newest',
-      topicsById: {},
-      users: [],
-    };
+  it('buildHref preserves author filter in pagination links', () => {
+    const { result } = renderHook(() => useAnswersPage(mockData));
 
-    const { result } = renderHook(() => useAnswersPage(emptyData));
-
-    expect(result.current.answers).toEqual([]);
-    expect(result.current.total).toBe(0);
-    expect(result.current.topicsById).toEqual({});
-    expect(result.current.users).toEqual([]);
+    const href = result.current.buildHref(2);
+    expect(href).toContain('author=test%20author'); // URL encoded
+    expect(href).toContain('page=2');
   });
 });

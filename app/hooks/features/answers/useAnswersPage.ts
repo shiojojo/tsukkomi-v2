@@ -59,7 +59,7 @@ export function useAnswersPage(data: LoaderData) {
 
   const urlKeys: Record<keyof AnswersFilters, string> = {
     q: 'q',
-    author: 'authorName',
+    author: 'author',
     sortBy: 'sortBy',
     minScore: 'minScore',
     hasComments: 'hasComments',
@@ -107,7 +107,7 @@ export function useAnswersPage(data: LoaderData) {
   const buildHref = (p: number) => {
     const parts: string[] = [];
     if (filters.q) parts.push(`q=${encodeURIComponent(filters.q)}`);
-    if (filters.author) parts.push(`authorName=${encodeURIComponent(filters.author)}`);
+    if (filters.author) parts.push(`author=${encodeURIComponent(filters.author)}`);
     parts.push(`sortBy=${encodeURIComponent(String(filters.sortBy))}`);
     parts.push(`page=${p}`);
     parts.push(`pageSize=${serverPageSize}`);
