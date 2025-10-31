@@ -1,7 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { AnswersPage } from '../../pages/AnswersPage';
 import { loginAsTestUser, setupAnswersPageSortedByOldest } from '../../utils/test-helpers';
-import { TEST_CONSTANTS } from '../../fixtures/test-data';
 
 /**
  * 検索・フィルター機能テスト
