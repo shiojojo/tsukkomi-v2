@@ -51,7 +51,7 @@ test.describe('Answers Page - Basic Functionality', () => {
     const firstAnswer = answersPage.getFirstAnswer();
 
     // お気に入りボタンの初期状態を取得
-    const initialState = await firstAnswer.getFavoriteState();
+    const initialState = await firstAnswer.isFavorited();
 
     // お気に入りボタンをクリック
     await firstAnswer.clickFavoriteButton();
@@ -60,7 +60,7 @@ test.describe('Answers Page - Basic Functionality', () => {
     await waitForSuccessToast(page);
 
     // 状態が変化したことを確認
-    const newState = await firstAnswer.getFavoriteState();
+    const newState = await firstAnswer.isFavorited();
     expect(newState).not.toBe(initialState);
   });
 
@@ -126,6 +126,9 @@ test.describe('Answers Page - Basic Functionality', () => {
 
     // 成功トーストが表示されることを確認
     await waitForSuccessToast(page);
+
+    // DB同期を待機（コメント追加に時間がかかる場合がある）
+    await waitForTimeout(3000);
 
     // コメント数が1増加したことを確認
     const newCommentCount = await firstAnswer.getCommentCount();
