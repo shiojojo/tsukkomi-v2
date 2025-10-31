@@ -144,18 +144,18 @@ export class AnswerCard {
    * お気に入りボタンをクリック
    */
   async clickFavoriteButton(): Promise<void> {
-    const favoriteButton = this.element.locator('button[aria-pressed]').first();
+    const favoriteButton = this.element.locator('button:has(img)').first();
     await favoriteButton.waitFor({ state: 'visible' });
     await favoriteButton.click();
   }
 
   /**
-   * お気に入りボタンの状態を取得
+   * お気に入り状態を取得
    */
-  async getFavoriteState(): Promise<boolean> {
-    const favoriteButton = this.element.locator('button[aria-pressed]').first();
-    const ariaPressed = await favoriteButton.getAttribute('aria-pressed');
-    return ariaPressed === 'true';
+  async isFavorited(): Promise<boolean> {
+    const favoriteButton = this.element.locator('button:has(img)').first();
+    const buttonText = await favoriteButton.textContent();
+    return buttonText === 'お気に入り解除';
   }
 
   /**
