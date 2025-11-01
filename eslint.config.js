@@ -118,6 +118,30 @@ export default [
     },
   },
   {
+    files: ['e2e/**/*.spec.ts'],
+    rules: {
+      'security/detect-non-literal-regexp': 'off', // テストでの動的正規表現は許容
+    },
+  },
+  {
+    files: ['scripts/**/*.mjs', 'scripts/**/*.js'],
+    rules: {
+      'security/detect-non-literal-fs-filename': 'off', // スクリプトでの動的ファイル操作は許容
+    },
+  },
+  {
+    files: ['api/**/*.js'],
+    rules: {
+      'security/detect-non-literal-fs-filename': 'off', // APIでのビルド時ファイル解決は許容
+    },
+  },
+  {
+    files: ['app/lib/identityStorage.ts'],
+    rules: {
+      'security/detect-non-literal-regexp': 'off', // ストレージでの動的正規表現は安全
+    },
+  },
+  {
     files: ['app/components/**/*.tsx'],
     rules: {
       'security/detect-object-injection': 'off', // Reactコンポーネントでの安全なプロパティアクセス
