@@ -1,9 +1,11 @@
 import js from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
+import security from 'eslint-plugin-security';
 
 export default [
   js.configs.recommended,
+  security.configs.recommended,
   {
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: {
@@ -56,6 +58,20 @@ export default [
         { argsIgnorePattern: '^_' },
       ],
       'no-unused-vars': 'off',
+      // セキュリティ関連の追加ルール
+      'security/detect-object-injection': 'warn',
+      'security/detect-eval-with-expression': 'error',
+      'security/detect-no-csrf-before-method-override': 'warn',
+      'security/detect-possible-timing-attacks': 'warn',
+      'security/detect-buffer-noassert': 'error',
+      'security/detect-child-process': 'warn',
+      'security/detect-disable-mustache-escape': 'error',
+      'security/detect-new-buffer': 'error',
+      'security/detect-non-literal-fs-filename': 'warn',
+      'security/detect-non-literal-regexp': 'warn',
+      'security/detect-non-literal-require': 'error',
+      'security/detect-pseudoRandomBytes': 'warn',
+      'security/detect-unsafe-regex': 'error',
     },
   },
   {
@@ -78,6 +94,33 @@ export default [
         Headers: 'readonly',
         fetch: 'readonly',
       },
+    },
+    rules: {
+      // Node.jsファイルでのセキュリティルール強化
+      'security/detect-eval-with-expression': 'error',
+      'security/detect-non-literal-require': 'error',
+      'security/detect-unsafe-regex': 'error',
+      'security/detect-buffer-noassert': 'error',
+      'security/detect-new-buffer': 'error',
+      'security/detect-child-process': 'warn',
+    },
+  },
+  {
+    files: ['app/lib/db/*.ts', 'app/lib/utils/dataMerging.ts'],
+    rules: {
+      'security/detect-object-injection': 'off', // DB操作での安全なオブジェクトアクセス
+    },
+  },
+  {
+    files: ['app/hooks/common/useFilters.ts'],
+    rules: {
+      'security/detect-object-injection': 'off', // 型安全なフィルター操作
+    },
+  },
+  {
+    files: ['app/components/**/*.tsx'],
+    rules: {
+      'security/detect-object-injection': 'off', // Reactコンポーネントでの安全なプロパティアクセス
     },
   },
   {
