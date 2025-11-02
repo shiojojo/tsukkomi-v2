@@ -1,12 +1,19 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, Form, useNavigate } from 'react-router';
-import { useEffect } from 'react';
-import { AnswersRoute } from '~/components/common/AnswersRoute';
+import { useEffect, lazy, Suspense } from 'react';
 import { useIdentity } from '~/hooks/common/useIdentity';
 import { handleAnswerActions } from '~/lib/actionHandlers';
 import { Button } from '~/components/ui/Button';
+import { LoadingState } from '~/components/common/LoadingState';
 import { createAnswersLoader } from '~/lib/loaders/answersLoader';
 import type { Answer } from '~/lib/schemas/answer';
+
+// Lazy load the main component to reduce initial bundle size
+const AnswersRoute = lazy(() =>
+  import('~/components/common/AnswersRoute').then(module => ({
+    default: module.AnswersRoute,
+  }))
+);
 
 export async function loader(args: LoaderFunctionArgs) {
   return createAnswersLoader(args, { requiresAuth: true, favorite: true });
@@ -60,5 +67,9 @@ export default function FavoriteAnswersRoute() {
     );
   }
 
-  return <AnswersRoute mode="favorites" />;
+  return (
+    <Suspense fallback={<LoadingState message="Loading favorites..." />}>
+      <AnswersRoute mode="favorites" />
+    </Suspense>
+  );
 }
