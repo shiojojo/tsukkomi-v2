@@ -10,10 +10,7 @@
 • Tailwind CSS + shadcn/ui  
 • Zustand（グローバル状態）  
 • TanStack Query（クライアントサイドのデータ取得/キャッシュ/同期）  
-• date-fns（日付フォーマット/計算）  
 • zod（スキーマ & バリデーション）  
-• react-hook-form（複雑フォーム。単純送信は <Form> と action）  
-• framer-motion（インタラクション / アニメーション）  
 • lucide-react（アイコン）  
 • @radix-ui/react-toast（トースト通知）
 
@@ -409,7 +406,7 @@ export function useAnswersPageData(loaderData: LoaderData) {
 • `components/` = ロジック最小。データ取得フックを直接呼ばず、親から props。
 • 状態はできるだけ局所化。グローバルは認証ユーザー、テーマ、トーストなどに限定。
 • **スタイル適用**: CSS クラス（例: `className="error-page-container"`）を使用。TypeScript 定数は廃止。
-• アニメーションは `framer-motion`。Tailwind ユーティリティを使用。モバイルファースト。
+• アニメーションは CSS transition/animation。Tailwind ユーティリティを使用。モバイルファースト。
 
 ### スタイル定義規約
 

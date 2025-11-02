@@ -9,7 +9,7 @@ export default defineConfig({
     exclude: ["sharp"],
   },
   build: {
-    sourcemap: true,
+    sourcemap: false, // Disable sourcemaps in production for smaller bundle size
     rollupOptions: {
       output: {
         sourcemapExcludeSources: true,

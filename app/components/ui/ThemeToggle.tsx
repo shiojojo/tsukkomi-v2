@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Moon, Sun, Monitor } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  MoonIcon as Moon,
+  SunIcon as Sun,
+  MonitorIcon as Monitor,
+} from 'lucide-react';
 import { Button } from '~/components/ui/Button';
 import { useThemeStore } from '~/lib/store';
 
@@ -56,18 +59,12 @@ export function ThemeToggle() {
       className="h-9 w-9"
       aria-label="テーマを切り替え"
     >
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={theme}
-          initial={{ opacity: 0, rotate: -90 }}
-          animate={{ opacity: 1, rotate: 0 }}
-          exit={{ opacity: 0, rotate: 90 }}
-          transition={{ duration: 0.15 }}
-          style={{ willChange: 'transform, opacity' }}
-        >
-          {getIcon()}
-        </motion.div>
-      </AnimatePresence>
+      <div
+        key={theme}
+        className="transition-all duration-150 ease-out opacity-100 rotate-0"
+      >
+        {getIcon()}
+      </div>
     </Button>
   );
 }
