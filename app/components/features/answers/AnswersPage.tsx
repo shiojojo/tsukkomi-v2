@@ -1,13 +1,30 @@
 import { useAnswersPageData } from '~/hooks/features/answers/useAnswersPageData';
 import { useAnswersPage } from '~/hooks/features/answers/useAnswersPage';
-import { FilterForm } from '~/components/forms/FilterForm';
-import { AnswersList } from '~/components/features/answers/AnswersList';
+import { lazy, Suspense } from 'react';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';
-import { TopicOverviewCard } from '~/components/features/topics/TopicOverviewCard';
 import type { ReactNode } from 'react';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import type { User } from '~/lib/schemas/user';
+
+// Lazy load components to reduce initial bundle size
+const FilterForm = lazy(() =>
+  import('~/components/forms/FilterForm').then(module => ({
+    default: module.FilterForm,
+  }))
+);
+
+const AnswersList = lazy(() =>
+  import('~/components/features/answers/AnswersList').then(module => ({
+    default: module.AnswersList,
+  }))
+);
+
+const TopicOverviewCard = lazy(() =>
+  import('~/components/features/topics/TopicOverviewCard').then(module => ({
+    default: module.TopicOverviewCard,
+  }))
+);
 
 interface AnswersPageProps {
   data: {
@@ -53,7 +70,9 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
   } = useAnswersPage(pageData);
 
   const filtersComponent = (
-    <div className="mt-3">
+    <Suspense
+      fallback={<div className="mt-3 h-20 bg-muted animate-pulse rounded" />}
+    >
       <FilterForm
         type="answers"
         users={users}
@@ -78,41 +97,50 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
         onSubmit={() => toggleAdvancedFilters()}
         mode={mode}
       />
-      {/* Mobile hint: collapse into two rows automatically via flex-wrap */}
-    </div>
+    </Suspense>
   );
 
   const answersListComponent = (
-    <AnswersList
-      answers={answers}
-      topicsById={topicsById}
-      getNameByProfileId={getNameByProfileId}
-      currentUserName={currentUserName}
-      currentUserId={currentUserId}
-      userAnswerData={userAnswerData}
-      actionPath={
-        mode === 'topic'
-          ? `/topics/${topicId}`
-          : mode === 'favorites'
-            ? '/answers/favorites'
-            : '/answers'
+    <Suspense
+      fallback={
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-32 bg-muted animate-pulse rounded" />
+          ))}
+        </div>
       }
-      profileIdForVotes={profileId}
-      pagination={
-        pageCount > 1
-          ? {
-              currentPage,
-              pageCount,
-              buildHref,
-            }
-          : undefined
-      }
-      emptyMessage={
-        mode === 'topic'
-          ? 'このお題に対する回答がまだありません。'
-          : '条件に一致する回答がありません。'
-      }
-    />
+    >
+      <AnswersList
+        answers={answers}
+        topicsById={topicsById}
+        getNameByProfileId={getNameByProfileId}
+        currentUserName={currentUserName}
+        currentUserId={currentUserId}
+        userAnswerData={userAnswerData}
+        actionPath={
+          mode === 'topic'
+            ? `/topics/${topicId}`
+            : mode === 'favorites'
+              ? '/answers/favorites'
+              : '/answers'
+        }
+        profileIdForVotes={profileId}
+        pagination={
+          pageCount > 1
+            ? {
+                currentPage,
+                pageCount,
+                buildHref,
+              }
+            : undefined
+        }
+        emptyMessage={
+          mode === 'topic'
+            ? 'このお題に対する回答がまだありません。'
+            : '条件に一致する回答がありません。'
+        }
+      />
+    </Suspense>
   );
 
   let headerTitle: string;
@@ -123,7 +151,11 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
   } else if (mode === 'topic') {
     headerTitle = `${topic?.id || 'トピック'} - 回答一覧`;
     extraContent = topic && (
-      <TopicOverviewCard topic={topic} answerCount={total} />
+      <Suspense
+        fallback={<div className="h-24 bg-muted animate-pulse rounded" />}
+      >
+        <TopicOverviewCard topic={topic} answerCount={total} />
+      </Suspense>
     );
   } else {
     // mode === 'all'

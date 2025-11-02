@@ -31,10 +31,20 @@ describe('topics.$id._index route', () => {
 
       const request = new Request('http://localhost/topics/123');
       const params = { id: '123' };
-      const result = await loader({ request, params, context: undefined });
+      const result = await loader({
+        request,
+        params,
+        context: undefined,
+        unstable_pattern: '/topics/$id',
+      });
 
       expect(createAnswersLoader).toHaveBeenCalledWith(
-        { request, params, context: undefined },
+        {
+          request,
+          params,
+          context: undefined,
+          unstable_pattern: '/topics/$id',
+        },
         { topicId: '123' }
       );
       expect(await result.json()).toEqual({
@@ -55,10 +65,20 @@ describe('topics.$id._index route', () => {
 
       const request = new Request('http://localhost/topics/undefined');
       const params = { id: undefined };
-      await loader({ request, params, context: undefined });
+      await loader({
+        request,
+        params,
+        context: undefined,
+        unstable_pattern: '/topics/$id',
+      });
 
       expect(createAnswersLoader).toHaveBeenCalledWith(
-        { request, params, context: undefined },
+        {
+          request,
+          params,
+          context: undefined,
+          unstable_pattern: '/topics/$id',
+        },
         { topicId: undefined }
       );
     });
@@ -76,6 +96,7 @@ describe('topics.$id._index route', () => {
         request: new Request('http://localhost/topics/123'),
         params: {},
         context: undefined,
+        unstable_pattern: '/topics/$id',
       };
       const result = await action(args);
 

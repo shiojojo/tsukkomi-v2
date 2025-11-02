@@ -1,5 +1,5 @@
 import { useLoaderData } from 'react-router';
-import { AnswersPage } from '~/components/features/answers/AnswersPage';
+import { lazy, Suspense } from 'react';
 import { LoadingState } from '~/components/common/LoadingState';
 import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
 import { useAnswersPageData } from '~/hooks/features/answers/useAnswersPageData';
@@ -7,6 +7,13 @@ import type {
   AnswersPageLoaderData,
   AnswersPageMode,
 } from '~/lib/types/answersPage';
+
+// Lazy load AnswersPage to reduce initial bundle size
+const AnswersPage = lazy(() =>
+  import('~/components/features/answers/AnswersPage').then(module => ({
+    default: module.AnswersPage,
+  }))
+);
 
 interface AnswersRouteProps {
   mode: AnswersPageMode;
@@ -31,7 +38,9 @@ export function AnswersRoute({ mode, topicId }: AnswersRouteProps) {
   const data = mode === 'topic' ? { ...pageData, topicId } : pageData;
 
   return (
-    <AnswersPage data={data} mode={mode} topicId={topicId} topic={topic} />
+    <Suspense fallback={<LoadingState message="Loading answers page..." />}>
+      <AnswersPage data={data} mode={mode} topicId={topicId} topic={topic} />
+    </Suspense>
   );
 }
 

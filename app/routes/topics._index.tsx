@@ -1,13 +1,25 @@
 import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData } from 'react-router';
+import { lazy, Suspense } from 'react';
 import { Pagination } from '~/components/common/Pagination';
-import { FilterForm } from '~/components/forms/FilterForm';
-import { TopicCard } from '~/components/features/topics/TopicCard';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';
 import { useListPage } from '~/hooks/common/useListPage';
 // server-only import
 import type { Topic } from '~/lib/schemas/topic';
 import { createListLoader } from '~/lib/loaders';
+
+// Lazy load components to reduce initial bundle size
+const FilterForm = lazy(() =>
+  import('~/components/forms/FilterForm').then(module => ({
+    default: module.FilterForm,
+  }))
+);
+
+const TopicCard = lazy(() =>
+  import('~/components/features/topics/TopicCard').then(module => ({
+    default: module.TopicCard,
+  }))
+);
 
 export function meta() {
   return [
@@ -54,15 +66,19 @@ export default function TopicsRoute() {
       headerTitle="お題一覧"
       filters={
         <div className="mb-0">
-          <FilterForm
-            type="topics"
-            query={filters.q}
-            setQuery={(value: string) => updateFilter('q', value)}
-            fromDate={filters.fromDate}
-            setFromDate={(value: string) => updateFilter('fromDate', value)}
-            toDate={filters.toDate}
-            setToDate={(value: string) => updateFilter('toDate', value)}
-          />
+          <Suspense
+            fallback={<div className="h-16 bg-muted animate-pulse rounded" />}
+          >
+            <FilterForm
+              type="topics"
+              query={filters.q}
+              setQuery={(value: string) => updateFilter('q', value)}
+              fromDate={filters.fromDate}
+              setFromDate={(value: string) => updateFilter('fromDate', value)}
+              toDate={filters.toDate}
+              setToDate={(value: string) => updateFilter('toDate', value)}
+            />
+          </Suspense>
         </div>
       }
       list={
@@ -70,7 +86,13 @@ export default function TopicsRoute() {
           <ul className="space-y-3">
             {topics.map(t => (
               <li key={t.id}>
-                <TopicCard topic={t} />
+                <Suspense
+                  fallback={
+                    <div className="h-24 bg-muted animate-pulse rounded" />
+                  }
+                >
+                  <TopicCard topic={t} />
+                </Suspense>
               </li>
             ))}
           </ul>

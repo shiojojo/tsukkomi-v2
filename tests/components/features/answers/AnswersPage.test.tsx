@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AnswersPage } from '~/components/features/answers/AnswersPage';
@@ -109,19 +109,22 @@ describe('AnswersPage', () => {
     profileId: undefined,
   };
 
-  it('renders correctly in all mode', () => {
+  it('renders correctly in all mode', async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <AnswersPage data={mockData} mode="all" />
       </QueryClientProvider>
     );
 
-    expect(screen.getByTestId('filter-form')).toBeInTheDocument();
+    // Wait for lazy-loaded components to resolve
+    await waitFor(() => {
+      expect(screen.getByTestId('filter-form')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('answers-list')).toBeInTheDocument();
     expect(screen.queryByTestId('topic-overview-card')).not.toBeInTheDocument();
   });
 
-  it('renders correctly in topic mode with topic', () => {
+  it('renders correctly in topic mode with topic', async () => {
     const mockTopic = {
       id: 1,
       title: 'Test Topic',
@@ -138,19 +141,25 @@ describe('AnswersPage', () => {
       </QueryClientProvider>
     );
 
-    expect(screen.getByTestId('filter-form')).toBeInTheDocument();
-    expect(screen.getByTestId('answers-list')).toBeInTheDocument();
-    expect(screen.getByTestId('topic-overview-card')).toBeInTheDocument();
+    // Wait for all lazy-loaded components to resolve
+    await waitFor(() => {
+      expect(screen.getByTestId('filter-form')).toBeInTheDocument();
+      expect(screen.getByTestId('answers-list')).toBeInTheDocument();
+      expect(screen.getByTestId('topic-overview-card')).toBeInTheDocument();
+    });
   });
 
-  it('renders correctly in favorites mode', () => {
+  it('renders correctly in favorites mode', async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <AnswersPage data={mockData} mode="favorites" />
       </QueryClientProvider>
     );
 
-    expect(screen.getByTestId('filter-form')).toBeInTheDocument();
+    // Wait for lazy-loaded components to resolve
+    await waitFor(() => {
+      expect(screen.getByTestId('filter-form')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('answers-list')).toBeInTheDocument();
     expect(screen.queryByTestId('topic-overview-card')).not.toBeInTheDocument();
   });
