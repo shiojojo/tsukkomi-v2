@@ -37,7 +37,10 @@ export function CommentSection({
       actionPath,
       onError: (error, text) => {
         // Restore the failed comment text to the textarea
-        setCommentText(text);
+        if (commentInputRef.current) {
+          commentInputRef.current.value = text;
+          setCommentText(text);
+        }
       },
       enabled,
     });
@@ -139,15 +142,9 @@ export function CommentSection({
             aria-label="コメント入力"
             rows={2}
             maxLength={500}
-            value={commentText}
+            defaultValue={commentText}
             disabled={isAddingComment}
-            onChange={e => setCommentText(e.target.value.slice(0, 500))}
-            onPaste={e => {
-              const pastedText = e.clipboardData.getData('text');
-              const newText = (commentText + pastedText).slice(0, 500);
-              setCommentText(newText);
-              e.preventDefault();
-            }}
+            onChange={e => setCommentText(e.target.value)}
             onKeyDown={handleKeyDown}
           />
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
