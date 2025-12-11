@@ -67,9 +67,6 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
             value={authorQuery}
             onChange={e => {
               setAuthorQuery(e.target.value);
-              // Trigger form submission for immediate filtering
-              const form = e.target.form;
-              if (form) form.requestSubmit();
             }}
             className="form-select w-full text-sm"
           >
@@ -88,9 +85,6 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
             value={sortBy}
             onChange={e => {
               setSortBy(e.target.value as 'newest' | 'oldest' | 'scoreDesc');
-              // Trigger form submission for immediate filtering
-              const form = e.target.form;
-              if (form) form.requestSubmit();
             }}
             className="form-select w-full text-sm"
           >
