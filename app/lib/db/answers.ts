@@ -167,7 +167,7 @@ async function _searchAnswers(opts: {
 
   if (hasComments) baseQuery = baseQuery.gt('comment_count', 0);
 
-  if (sortBy === 'scoreDesc') baseQuery = baseQuery.order('score', { ascending: false });
+  if (sortBy === 'scoreDesc') baseQuery = baseQuery.order('score', { ascending: false }).order('created_at', { ascending: false });
   else if (sortBy === 'oldest') baseQuery = baseQuery.order('created_at', { ascending: true });
   else baseQuery = baseQuery.order('created_at', { ascending: false });
 
