@@ -70,25 +70,28 @@ export function AnswerActionCard({
                 </div>
               </div>
             ) : (
-              <div className="text-sm font-semibold text-gray-600 dark:text-gray-300 break-words">
+              <div className="text-lg font-semibold break-words">
                 {topic.title}
               </div>
             )
           ) : (
-            <div className="text-sm font-semibold text-gray-600 dark:text-gray-300">
+            <div className="text-lg font-semibold text-gray-600 dark:text-gray-300">
               お題なし（フリー回答）
             </div>
           )}
         </div>
 
         <div className="space-y-3">
-          <p className="text-lg leading-snug break-words whitespace-pre-wrap">
+          <p className="text-lg font-semibold leading-snug break-words whitespace-pre-wrap">
             {answer.text}
           </p>
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
-              <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
-                Score: <span className="text-foreground">{score}</span>
+              <div
+                className={`text-sm font-medium cursor-pointer ${score === 0 ? 'text-gray-500' : 'text-foreground'}`}
+                onClick={() => setOpen(prev => !prev)}
+              >
+                Score: {score}
               </div>
               {getNameByProfileId(answer.profileId) && (
                 <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -97,8 +100,11 @@ export function AnswerActionCard({
               )}
             </div>
             <div className="flex justify-between items-center">
-              <div className="text-sm font-medium text-gray-700 dark:text-gray-100">
-                コメント{realTimeCommentCount}
+              <div
+                className={`text-sm font-medium cursor-pointer ${realTimeCommentCount === 0 ? 'text-gray-500' : 'text-foreground'}`}
+                onClick={() => setOpen(prev => !prev)}
+              >
+                コメント: {realTimeCommentCount}
               </div>
               <div className="flex items-center gap-2">
                 <FavoriteSection answer={answer} />
