@@ -167,9 +167,9 @@ async function _searchAnswers(opts: {
 
   if (hasComments) baseQuery = baseQuery.gt('comment_count', 0);
 
-  if (sortBy === 'scoreDesc') baseQuery = baseQuery.order('score', { ascending: false }).order('created_at', { ascending: false });
-  else if (sortBy === 'oldest') baseQuery = baseQuery.order('created_at', { ascending: true });
-  else baseQuery = baseQuery.order('created_at', { ascending: false });
+  if (sortBy === 'scoreDesc') baseQuery = baseQuery.order('score', { ascending: false }).order('created_at', { ascending: false }).order('id', { ascending: false });
+  else if (sortBy === 'oldest') baseQuery = baseQuery.order('created_at', { ascending: true }).order('id', { ascending: true });
+  else baseQuery = baseQuery.order('created_at', { ascending: false }).order('id', { ascending: false });
 
   const offset = (page - 1) * pageSize;
   const { data, error, count: c } = await baseQuery.range(offset, offset + pageSize - 1);
