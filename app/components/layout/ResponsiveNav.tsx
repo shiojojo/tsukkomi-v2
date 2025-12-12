@@ -155,14 +155,28 @@ function MobileUserButton({
   mainName: string | null;
 }) {
   if (effectiveName) {
+    const isSubUser = !!subName;
     return (
       <NavLink
         to="/me"
         className="group flex flex-col items-center justify-center gap-1 py-2 px-3 text-sm leading-none w-full text-primary"
       >
-        <div className="max-w-[72px] px-2 h-6 flex items-center justify-center rounded-full bg-secondary text-[10px] font-medium text-secondary-foreground truncate">
+        <svg
+          className={`w-5 h-5 stroke-current ${isSubUser ? 'text-orange-600' : ''}`}
+          viewBox="0 0 24 24"
+          fill="none"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        <span
+          className={`text-xs truncate max-w-[60px] ${isSubUser ? 'text-orange-600' : ''}`}
+        >
           {subName ? subName : mainName}
-        </div>
+        </span>
       </NavLink>
     );
   }

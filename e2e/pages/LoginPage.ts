@@ -84,7 +84,11 @@ export class LoginPage extends BasePage {
    * ナビゲーションバーに指定されたユーザーが表示されているか確認
    */
   async verifyUserInHeader(userName: string): Promise<void> {
-    const userInHeader = this.page.locator('nav[aria-label="Main"] span').filter({ hasText: userName }).first();
+    // Desktopではヘッダーのユーザーバッジ（md:flex領域）に表示される。
+    // モバイル用のフッター要素はmd:hiddenで不可視のため、ヘッダー側を優先して探索する。
+    const headerArea = this.page.locator('nav[aria-label="Main"] .md\\:flex');
+    const userBadgeLink = headerArea.locator('a[href="/me"]');
+    const userInHeader = userBadgeLink.filter({ hasText: userName }).first();
     await this.waitForVisible(userInHeader);
   }
 }
