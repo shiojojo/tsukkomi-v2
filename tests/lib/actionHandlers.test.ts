@@ -23,11 +23,15 @@ describe('actionHandlers', () => {
 
   describe('handleAnswerActions', () => {
     it('should handle toggle favorite', async () => {
-      const formData = new FormData();
-      formData.append('op', 'toggle');
-      formData.append('answerId', '1');
-      formData.append('profileId', 'user1');
-      const request = new Request('http://localhost/answers', { method: 'POST', body: formData });
+      const params = new URLSearchParams();
+      params.append('op', 'toggle');
+      params.append('answerId', '1');
+      params.append('profileId', 'user1');
+      const request = new Request('http://localhost/answers', { 
+        method: 'POST', 
+        body: params,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
       const { consumeToken } = await import('~/lib/rateLimiter');
       const { toggleFavorite } = await import('~/lib/db');
       vi.mocked(consumeToken).mockResolvedValue(true);
@@ -39,11 +43,15 @@ describe('actionHandlers', () => {
     });
 
     it('should handle vote', async () => {
-      const formData = new FormData();
-      formData.append('level', '1');
-      formData.append('answerId', '1');
-      formData.append('userId', 'user1');
-      const request = new Request('http://localhost/answers', { method: 'POST', body: formData });
+      const params = new URLSearchParams();
+      params.append('level', '1');
+      params.append('answerId', '1');
+      params.append('userId', 'user1');
+      const request = new Request('http://localhost/answers', { 
+        method: 'POST', 
+        body: params,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
       const { consumeToken } = await import('~/lib/rateLimiter');
       const { voteAnswer } = await import('~/lib/db');
       vi.mocked(consumeToken).mockResolvedValue(true);
@@ -65,11 +73,15 @@ describe('actionHandlers', () => {
     });
 
     it('should handle comment', async () => {
-      const formData = new FormData();
-      formData.append('answerId', '1');
-      formData.append('text', 'Test comment');
-      formData.append('profileId', 'user1');
-      const request = new Request('http://localhost/answers', { method: 'POST', body: formData });
+      const params = new URLSearchParams();
+      params.append('answerId', '1');
+      params.append('text', 'Test comment');
+      params.append('profileId', 'user1');
+      const request = new Request('http://localhost/answers', { 
+        method: 'POST', 
+        body: params,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
       const { consumeToken } = await import('~/lib/rateLimiter');
       const { addComment } = await import('~/lib/db');
       vi.mocked(consumeToken).mockResolvedValue(true);

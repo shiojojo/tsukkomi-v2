@@ -43,13 +43,14 @@ describe('me route', () => {
       const { consumeToken } = await import('~/lib/rateLimiter');
       vi.mocked(consumeToken).mockReturnValue(true);
 
-      const formData = new FormData();
-      formData.append('intent', 'add-subuser');
-      formData.append('parentId', 'parent1');
-      formData.append('name', 'New Sub');
+      const params = new URLSearchParams();
+      params.append('intent', 'add-subuser');
+      params.append('parentId', 'parent1');
+      params.append('name', 'New Sub');
       const mockRequest = new Request('http://localhost/me', {
         method: 'POST',
-        body: formData,
+        body: params,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       const mockSub = { id: 'sub1', name: 'New Sub' };
       const { addSubUser } = await import('~/lib/db');
@@ -70,13 +71,14 @@ describe('me route', () => {
       const { consumeToken } = await import('~/lib/rateLimiter');
       vi.mocked(consumeToken).mockReturnValue(true);
 
-      const formData = new FormData();
-      formData.append('intent', 'remove-subuser');
-      formData.append('parentId', 'parent1');
-      formData.append('subId', 'sub1');
+      const params = new URLSearchParams();
+      params.append('intent', 'remove-subuser');
+      params.append('parentId', 'parent1');
+      params.append('subId', 'sub1');
       const mockRequest = new Request('http://localhost/me', {
         method: 'POST',
-        body: formData,
+        body: params,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       const { removeSubUser } = await import('~/lib/db');
       vi.mocked(removeSubUser).mockResolvedValue(undefined);
@@ -93,11 +95,12 @@ describe('me route', () => {
       const { consumeToken } = await import('~/lib/rateLimiter');
       vi.mocked(consumeToken).mockReturnValue(false);
 
-      const formData = new FormData();
-      formData.append('intent', 'add-subuser');
+      const params = new URLSearchParams();
+      params.append('intent', 'add-subuser');
       const mockRequest = new Request('http://localhost/me', {
         method: 'POST',
-        body: formData,
+        body: params,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
       const result = await action({

@@ -29,13 +29,14 @@ describe('login route', () => {
 
   describe('action', () => {
     it('should handle add-subuser intent', async () => {
-      const formData = new FormData();
-      formData.append('intent', 'add-subuser');
-      formData.append('parentId', 'parent1');
-      formData.append('name', 'New Sub');
+      const params = new URLSearchParams();
+      params.append('intent', 'add-subuser');
+      params.append('parentId', 'parent1');
+      params.append('name', 'New Sub');
       const mockRequest = new Request('http://localhost/login', {
         method: 'POST',
-        body: formData,
+        body: params,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       const mockSub = { id: 'sub1', name: 'New Sub' };
       const { addSubUser } = await import('~/lib/db');
@@ -53,13 +54,14 @@ describe('login route', () => {
     });
 
     it('should return error for invalid subuser data', async () => {
-      const formData = new FormData();
-      formData.append('intent', 'add-subuser');
-      formData.append('parentId', '');
-      formData.append('name', '');
+      const params = new URLSearchParams();
+      params.append('intent', 'add-subuser');
+      params.append('parentId', '');
+      params.append('name', '');
       const mockRequest = new Request('http://localhost/login', {
         method: 'POST',
-        body: formData,
+        body: params,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
 
       const result = await action({
