@@ -92,9 +92,11 @@ export class AnswersPage extends BasePage {
     }
 
     // 閉じている場合は開く
-    if (await openButton.isVisible()) {
-      await this.clickWhenReady(openButton);
-    }
+    await this.waitForVisible(openButton);
+    await this.clickWhenReady(openButton);
+
+    // 詳細フィルタが開くまで待つ
+    await this.waitForVisible(closeButton);
   }
 
   /**
@@ -162,10 +164,9 @@ export class AnswerCard {
    * コメント/採点セクションを開く
    */
   async openCommentSection(): Promise<void> {
-    const toggleButton = this.element.locator('button:has-text("コメント / 採点")').first();
-    if (await toggleButton.isVisible()) {
-      await toggleButton.click();
-    }
+    const toggleButton = this.element.locator('button').filter({ hasText: /コメント.*採点/ }).first();
+    await toggleButton.waitFor({ state: 'visible', timeout: 10000 });
+    await toggleButton.click();
   }
 
   /**
@@ -221,9 +222,9 @@ export class AnswerCard {
    * コメント数を取得
    */
   async getCommentCount(): Promise<number> {
-    const commentText = await this.element.locator('text=/コメント\\d+/').textContent();
+    const commentText = await this.element.locator('text=/コメント:\\s*\\d+/').textContent();
     if (commentText) {
-      const match = commentText.match(/コメント(\d+)/);
+      const match = commentText.match(/コメント:\s*(\d+)/);
       return match ? parseInt(match[1]) : 0;
     }
     return 0;

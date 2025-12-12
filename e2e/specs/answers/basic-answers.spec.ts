@@ -140,16 +140,16 @@ test.describe('Answers Page - Basic Functionality', () => {
     await page.waitForFunction(
       (initialCount) => {
         const commentElements = Array.from(document.querySelectorAll('*')).filter(el =>
-          el.textContent && el.textContent.match(/コメント\d+/)
+          el.textContent && el.textContent.match(/コメント:\s*\d+/)
         );
         if (commentElements.length === 0) return false;
         const commentText = commentElements[0].textContent || '';
-        const match = commentText.match(/コメント(\d+)/);
+        const match = commentText.match(/コメント:\s*(\d+)/);
         const currentCount = match ? parseInt(match[1]) : 0;
         return currentCount > initialCount;
       },
       initialCommentCount,
-      { timeout: 5000 }
+      { timeout: 10000 }
     );
   });
 });

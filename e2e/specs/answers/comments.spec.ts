@@ -4,7 +4,7 @@ import { loginAsTestUser, setupAnswersPageSortedByOldest, waitForSuccessToast, w
 /**
  * 回答ページのコメント機能テスト
  */
-test.describe('Answers Page - Comments', () => {
+test.describe.serial('Answers Page - Comments', () => {
   test('should add comment and update count', async ({ page }) => {
     await loginAsTestUser(page);
     const answersPage = await setupAnswersPageSortedByOldest(page);
@@ -17,7 +17,7 @@ test.describe('Answers Page - Comments', () => {
     const initialCommentCount = await firstAnswer.getCommentCount();
 
     // テストコメントを入力
-    const testComment = 'test_comment_functionality';
+    const testComment = `test_comment_functionality_${Date.now()}`;
     await firstAnswer.enterComment(testComment);
 
     // コメントを送信
@@ -26,8 +26,21 @@ test.describe('Answers Page - Comments', () => {
     // 成功トーストが表示されることを確認
     await waitForSuccessToast(page);
 
-    // DB同期を待機（コメント追加に時間がかかる場合がある）
-    await waitForTimeout(3000);
+    // コメント数が更新されるまで待機
+    await page.waitForFunction(
+      (initialCount) => {
+        const commentElements = Array.from(document.querySelectorAll('*')).filter(el =>
+          el.textContent && el.textContent.match(/コメント:\s*\d+/)
+        );
+        if (commentElements.length === 0) return false;
+        const commentText = commentElements[0].textContent || '';
+        const match = commentText.match(/コメント:\s*(\d+)/);
+        const currentCount = match ? parseInt(match[1]) : 0;
+        return currentCount > initialCount;
+      },
+      initialCommentCount,
+      { timeout: 10000 }
+    );
 
     // コメント数が1増加したことを確認
     const newCommentCount = await firstAnswer.getCommentCount();
