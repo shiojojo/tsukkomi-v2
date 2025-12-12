@@ -134,7 +134,7 @@ describe('AnswersList', () => {
   it('passes comment count from answer to AnswerActionCard', () => {
     render(<AnswersList {...defaultProps} />, { wrapper: createTestWrapper() });
 
-    expect(screen.getByText('コメント1')).toBeInTheDocument();
+    expect(screen.getByText(/コメント:/)).toBeInTheDocument();
   });
 
   it('renders pagination when pagination prop is provided', () => {

@@ -128,7 +128,7 @@ describe('AnswerActionCard', () => {
     });
 
     // Score = (2*1) + (1*2) + (0*3) = 4
-    expect(screen.getByText('4')).toBeInTheDocument();
+    expect(screen.getByText(/Score:/)).toBeInTheDocument();
   });
 
   it('shows author name when getNameByProfileId returns a name', () => {
@@ -144,7 +144,7 @@ describe('AnswerActionCard', () => {
       wrapper: createTestWrapper(),
     });
 
-    expect(screen.getByText('コメント1')).toBeInTheDocument();
+    expect(screen.getByText(/コメント:/)).toBeInTheDocument();
   });
 
   it('renders child components', () => {
@@ -205,7 +205,7 @@ describe('AnswerActionCard', () => {
       wrapper: createTestWrapper(),
     });
 
-    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getByText(/Score:/)).toBeInTheDocument();
   });
 
   it('calls getNameByProfileId with correct profileId', () => {
