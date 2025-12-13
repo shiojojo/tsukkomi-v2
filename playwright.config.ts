@@ -25,7 +25,7 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     port: 5173,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false, // 常に新しいサーバーを起動
     // サーバー起動のタイムアウトを延長
     timeout: 120000,
   },

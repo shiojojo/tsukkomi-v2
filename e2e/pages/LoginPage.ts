@@ -31,8 +31,8 @@ export class LoginPage extends BasePage {
     const userContainer = this.page.locator('h2:has-text("メインユーザー一覧")').locator('xpath=following-sibling::ul').locator('li').filter({ hasText: userName });
     await this.waitForVisible(userContainer);
 
-    // 選択ボタンをクリック
-    const selectButton = userContainer.locator(`button:has-text("${this.selectButton}")`);
+    // 選択または再選択ボタンをクリック
+    const selectButton = userContainer.locator('button').filter({ hasText: /^(選択|再選択)$/ });
     await this.clickWhenReady(selectButton);
 
     // ホームページにリダイレクトされるまで待機
