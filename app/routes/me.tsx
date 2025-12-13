@@ -414,6 +414,7 @@ export default function MeRoute() {
               onChange={e => setConfirmName(e.target.value)}
               className="form-input w-full"
               placeholder={subUserToDelete?.name}
+              autoComplete="off"
             />
           </div>
           <DialogFooter>
