@@ -1,5 +1,6 @@
 {
-  "buildCommand": "npm run build",
+  "installCommand": "npm ci --omit=dev",
+  "buildCommand": "npx allow-scripts --verbose && npm run build",
   "outputDirectory": "build/client",
   "headers": [
     {
