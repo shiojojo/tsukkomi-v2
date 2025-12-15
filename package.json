@@ -40,6 +40,8 @@
     "zustand": "^5.0.8"
   },
   "devDependencies": {
+    "@lavamoat/allow-scripts": "^3.4.1",
+    "@lavamoat/preinstall-always-fail": "^2.1.1",
     "@playwright/test": "^1.55.1",
     "@react-router/dev": "^7.10.1",
     "@tailwindcss/vite": "^4.1.4",
@@ -72,5 +74,12 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "lavamoat": {
+    "allowScripts": {
+      "sharp": true,
+      "tsx>esbuild": true,
+      "@lavamoat/preinstall-always-fail": false
+    }
   }
 }
