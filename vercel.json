@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm ci --omit=dev && npx allow-scripts --verbose",
+  "installCommand": "npm ci && npx allow-scripts --verbose",
   "buildCommand": "npm run build",
   "outputDirectory": "build/client",
   "headers": [
