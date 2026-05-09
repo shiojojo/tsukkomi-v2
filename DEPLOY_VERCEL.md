@@ -9,8 +9,8 @@ Quick steps to deploy to Vercel
 2. In the Vercel dashboard, set the following Environment Variables (Project > Settings > Environment Variables):
    - ENABLE_EXPERIMENTAL_COREPACK = 1
    - VITE_SUPABASE_URL = https://<your-project>.supabase.co
-   - VITE_SUPABASE_KEY = <your-anon-or-public-key>
-   - SUPABASE_KEY = <your-service-role-key> (optional: only if server-side service key is needed)
+   - VITE_SUPABASE_PUBLIC_KEY = <your-anon-or-public-key>
+   - SUPABASE_SECRET_KEY = <your-service-role-key> (required for server-side answer search and favorites; do not use a `VITE_` prefix)
 
 3. Push to Git (main) and import the repo in Vercel. Vercel will run `pnpm run build`.
 

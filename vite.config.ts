@@ -5,6 +5,19 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  server: {
+    watch: {
+      ignored: [
+        '**/.git/**',
+        '**/node_modules/**',
+        '**/build/**',
+        '**/coverage/**',
+        '**/dist/**',
+        '**/playwright-report/**',
+        '**/test-results/**',
+      ],
+    },
+  },
   optimizeDeps: {
     exclude: ["sharp"],
   },

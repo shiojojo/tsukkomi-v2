@@ -5,7 +5,7 @@
   "packageManager": "pnpm@10.29.3",
   "scripts": {
     "build": "react-router build",
-    "dev": "react-router dev --port 5173 --host",
+    "dev": "CHOKIDAR_USEPOLLING=true react-router dev --port 5173 --host",
     "start": "node ./scripts/start-server.mjs",
     "test": "vitest run",
     "test:unit": "vitest run",

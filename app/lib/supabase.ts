@@ -2,12 +2,17 @@ import { createClient } from '@supabase/supabase-js';
 
 // Prefer Vite env names but fall back to process.env for server environments
 // Require the URL/key to be provided via env to avoid leaking project-specific URLs in source.
-const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string) ?? process.env.SUPABASE_URL;
+const SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string) ??
+  process.env.VITE_SUPABASE_URL ??
+  process.env.SUPABASE_URL;
 
 // Public (anon) key intended to be bundled into client-side code. Only allows reads by RLS rules.
 const SUPABASE_PUBLIC_KEY =
   (import.meta.env.VITE_SUPABASE_PUBLIC_KEY as string) ??
+  (import.meta.env.VITE_SUPABASE_KEY as string) ??
   process.env.VITE_SUPABASE_PUBLIC_KEY ??
+  process.env.VITE_SUPABASE_KEY ??
   process.env.SUPABASE_PUBLIC_KEY ??
   '';
 
@@ -15,7 +20,12 @@ const SUPABASE_PUBLIC_KEY =
 // running in a server environment (SSR / Node). Prefer process.env on server to avoid leakage.
 const isServer = typeof window === 'undefined' || Boolean((import.meta as { env?: { SSR?: boolean } }).env?.SSR);
 const SUPABASE_SECRET_KEY = isServer
-  ? (process.env.VITE_SUPABASE_SECRET_KEY ?? process.env.VITE_SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SECRET_KEY ?? import.meta.env.VITE_SUPABASE_SECRET_KEY ?? '')
+  ? (
+      process.env.SUPABASE_SECRET_KEY ??
+      process.env.SUPABASE_SERVICE_ROLE_KEY ??
+      process.env.SUPABASE_KEY ??
+      ''
+    )
   : '';
 
 const isDev = import.meta.env.DEV;
