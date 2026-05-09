@@ -64,6 +64,16 @@ export const supabaseAdmin = isServer && SUPABASE_URL && SUPABASE_SECRET_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SECRET_KEY)
   : undefined;
 
+export function getSupabaseConfigStatus() {
+  return {
+    hasUrl: Boolean(SUPABASE_URL),
+    hasPublicKey: Boolean(SUPABASE_PUBLIC_KEY),
+    hasServerSecretKey: Boolean(SUPABASE_SECRET_KEY),
+    hasAdminClient: Boolean(supabaseAdmin),
+    isServer,
+  };
+}
+
 export default supabase;
 
 // Connection check caching: avoid repeating a failed network call many times.
