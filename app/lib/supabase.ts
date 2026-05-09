@@ -1,50 +1,68 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+const nonEmpty = (value: unknown): string | undefined =>
+  typeof value === 'string' && value.trim() ? value.trim() : undefined;
 
 // Prefer Vite env names but fall back to process.env for server environments
 // Require the URL/key to be provided via env to avoid leaking project-specific URLs in source.
 const SUPABASE_URL =
-  (import.meta.env.VITE_SUPABASE_URL as string) ??
-  process.env.VITE_SUPABASE_URL ??
-  process.env.SUPABASE_URL;
+  nonEmpty(import.meta.env.VITE_SUPABASE_URL) ??
+  nonEmpty(process.env.VITE_SUPABASE_URL) ??
+  nonEmpty(process.env.SUPABASE_URL);
 
 // Public (anon) key intended to be bundled into client-side code. Only allows reads by RLS rules.
 const SUPABASE_PUBLIC_KEY =
-  (import.meta.env.VITE_SUPABASE_PUBLIC_KEY as string) ??
-  (import.meta.env.VITE_SUPABASE_KEY as string) ??
-  process.env.VITE_SUPABASE_PUBLIC_KEY ??
-  process.env.VITE_SUPABASE_KEY ??
-  process.env.SUPABASE_PUBLIC_KEY ??
-  '';
+  nonEmpty(import.meta.env.VITE_SUPABASE_PUBLIC_KEY) ??
+  nonEmpty(import.meta.env.VITE_SUPABASE_KEY) ??
+  nonEmpty(process.env.VITE_SUPABASE_PUBLIC_KEY) ??
+  nonEmpty(process.env.VITE_SUPABASE_KEY) ??
+  nonEmpty(process.env.SUPABASE_PUBLIC_KEY);
 
 // Secret / service role key must never be bundled into client code. Create server client only when
 // running in a server environment (SSR / Node). Prefer process.env on server to avoid leakage.
 const isServer = typeof window === 'undefined' || Boolean((import.meta as { env?: { SSR?: boolean } }).env?.SSR);
 const SUPABASE_SECRET_KEY = isServer
   ? (
-      process.env.SUPABASE_SECRET_KEY ??
-      process.env.SUPABASE_SERVICE_ROLE_KEY ??
-      process.env.SUPABASE_KEY ??
-      ''
+      nonEmpty(process.env.SUPABASE_SECRET_KEY) ??
+      nonEmpty(process.env.SUPABASE_SERVICE_ROLE_KEY) ??
+      nonEmpty(process.env.SUPABASE_KEY)
     )
-  : '';
+  : undefined;
 
 const isDev = import.meta.env.DEV;
 
 if (!SUPABASE_URL) {
   console.warn('Supabase URL is not set. Set VITE_SUPABASE_URL / SUPABASE_URL in environment.');
 }
+if (!SUPABASE_PUBLIC_KEY) {
+  console.warn('Supabase public key is not set. Set VITE_SUPABASE_PUBLIC_KEY / SUPABASE_PUBLIC_KEY in environment.');
+}
+
+const missingSupabaseClient = (reason: string): SupabaseClient =>
+  new Proxy({} as SupabaseClient, {
+    get(_target, prop) {
+      if (prop === 'then') return undefined;
+      throw new Error(reason);
+    },
+  });
 
 // Public client: safe to use on client-side for SELECTs (RLS still applies).
-export const supabase = createClient(String(SUPABASE_URL ?? ''), SUPABASE_PUBLIC_KEY, {
-  ...(isDev && {
-    global: {
-      headers: { 'x-client-info': 'tsukkomi-v2-dev' },
-    },
-  }),
-});
+export const supabase = SUPABASE_URL && SUPABASE_PUBLIC_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_PUBLIC_KEY, {
+      ...(isDev && {
+        global: {
+          headers: { 'x-client-info': 'tsukkomi-v2-dev' },
+        },
+      }),
+    })
+  : missingSupabaseClient(
+      'Supabase client is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLIC_KEY.'
+    );
 
 // Server/admin client: only created on server and only when a secret key is present.
-export const supabaseAdmin = isServer && SUPABASE_SECRET_KEY ? createClient(String(SUPABASE_URL ?? ''), SUPABASE_SECRET_KEY) : undefined;
+export const supabaseAdmin = isServer && SUPABASE_URL && SUPABASE_SECRET_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SECRET_KEY)
+  : undefined;
 
 export default supabase;
 
