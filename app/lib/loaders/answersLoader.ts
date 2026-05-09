@@ -47,9 +47,24 @@ export async function createAnswersLoader(
   });
   const listData = await listResponse.json();
 
+  if (!listResponse.ok) {
+    return Response.json(listData, {
+      status: listResponse.status,
+      statusText: listResponse.statusText,
+    });
+  }
+
+  if (!Array.isArray(listData.answers)) {
+    const message =
+      typeof listData?.error === 'string'
+        ? listData.error
+        : 'Answers loader received an invalid response without an answers array.';
+    throw new Response(message, { status: 502 });
+  }
+
   // 回答に含まれる全トピックIDを取得してトピック情報を取得
   const topicIds = Array.from(
-    new Set((listData.answers as Answer[]).map(a => a.topicId).filter(Boolean) as number[])
+    new Set((listData.answers as Answer[]).map((a) => a.topicId).filter(Boolean) as number[])
   );
 
   // 並列実行: トピック情報とユーザー情報を同時に取得
