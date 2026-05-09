@@ -1,0 +1,30 @@
+# Avoid packages that were published very recently.
+# 10080 minutes = 7 days. pnpm v10 defaults to 0 minutes, so this project
+# intentionally enables a stricter delay for supply-chain hardening.
+minimumReleaseAge: 10080
+
+# Prevent transitive dependencies from resolving to Git repositories or
+# direct tarball URLs unless they are trusted direct dependencies.
+blockExoticSubdeps: true
+
+# Reject packages whose trust evidence has downgraded compared with older
+# releases.
+trustPolicy: no-downgrade
+
+# Avoid blocking established packages that predate newer publisher trust
+# signals while still catching recent trust downgrades.
+# 10080 minutes = 7 days.
+trustPolicyIgnoreAfter: 10080
+
+# Dependency lifecycle/build scripts are denied by default. Add explicit
+# package approvals with `pnpm approve-builds` only after review.
+allowBuilds:
+  sharp: true
+  esbuild: true
+  "@lavamoat/preinstall-always-fail": false
+
+# Never auto-approve dependency build scripts globally.
+dangerouslyAllowAllBuilds: false
+
+# Treat unreviewed dependency build scripts as install failures.
+strictDepBuilds: true

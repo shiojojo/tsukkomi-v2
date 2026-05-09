@@ -36,7 +36,7 @@ export default async function (req, res) {
   if (!handler) {
     res.statusCode = 500;
     res.setHeader('content-type', 'text/plain; charset=utf-8');
-    res.end('Server build not found. Run `npm run build` before deploying.');
+    res.end('Server build not found. Run `pnpm run build` before deploying.');
     return;
   }
 

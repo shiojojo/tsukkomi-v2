@@ -5,7 +5,7 @@ import child_process from 'child_process';
 // Resolve build/server
 const serverBuild = path.resolve(process.cwd(), 'build', 'server');
 if (!fs.existsSync(serverBuild)) {
-  console.error('build/server not found. Run `npm run build` first.');
+  console.error('build/server not found. Run `pnpm run build` first.');
   process.exit(1);
 }
 

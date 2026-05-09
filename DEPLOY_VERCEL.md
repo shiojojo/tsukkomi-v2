@@ -7,15 +7,18 @@ Quick steps to deploy to Vercel
    - Adds a Node serverless function at `api/index.js` which loads `build/server/index.js` and handles SSR.
 
 2. In the Vercel dashboard, set the following Environment Variables (Project > Settings > Environment Variables):
+   - ENABLE_EXPERIMENTAL_COREPACK = 1
    - VITE_SUPABASE_URL = https://<your-project>.supabase.co
    - VITE_SUPABASE_KEY = <your-anon-or-public-key>
    - SUPABASE_KEY = <your-service-role-key> (optional: only if server-side service key is needed)
 
-3. Push to Git (main) and import the repo in Vercel. Vercel will run `npm run build`.
+3. Push to Git (main) and import the repo in Vercel. Vercel will run `pnpm run build`.
 
 Notes and troubleshooting
 
 - If build fails with Supabase errors, ensure the Vercel Build Environment variables include the `VITE_SUPABASE_*` values. In development the project uses `mock/` data when `import.meta.env.DEV === true`.
+- This project pins pnpm 10 because it is supported by Vercel. Keep `ENABLE_EXPERIMENTAL_COREPACK=1` enabled so Vercel uses the `packageManager` version pinned in `package.json`.
+- If deployment fails because a dependency has an unapproved build script, review it locally with `pnpm approve-builds` instead of enabling `dangerouslyAllowAllBuilds`.
 - Static assets (files with an extension) are served from `build/client` directly. All other paths are routed to the serverless function for SSR.
 - Sharp version is pinned to 0.32.6 due to Vercel compatibility issues with newer versions (0.33.0+). Do not upgrade Sharp without testing on Vercel.
 
