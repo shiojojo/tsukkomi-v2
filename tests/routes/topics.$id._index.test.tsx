@@ -31,11 +31,13 @@ describe('topics.$id._index route', () => {
 
       const request = new Request('http://localhost/topics/123');
       const params = { id: '123' };
+      const unstable_url = new URL(request.url);
       const result = await loader({
         request,
         params,
         context: undefined,
         unstable_pattern: '/topics/$id',
+        unstable_url,
       });
 
       expect(createAnswersLoader).toHaveBeenCalledWith(
@@ -44,6 +46,7 @@ describe('topics.$id._index route', () => {
           params,
           context: undefined,
           unstable_pattern: '/topics/$id',
+          unstable_url,
         },
         { topicId: '123' }
       );
@@ -65,11 +68,13 @@ describe('topics.$id._index route', () => {
 
       const request = new Request('http://localhost/topics/undefined');
       const params = { id: undefined };
+      const unstable_url = new URL(request.url);
       await loader({
         request,
         params,
         context: undefined,
         unstable_pattern: '/topics/$id',
+        unstable_url,
       });
 
       expect(createAnswersLoader).toHaveBeenCalledWith(
@@ -78,6 +83,7 @@ describe('topics.$id._index route', () => {
           params,
           context: undefined,
           unstable_pattern: '/topics/$id',
+          unstable_url,
         },
         { topicId: undefined }
       );
@@ -92,11 +98,13 @@ describe('topics.$id._index route', () => {
       const { handleAnswerActions } = await import('~/lib/actionHandlers');
       vi.mocked(handleAnswerActions).mockResolvedValue(mockResult);
 
+      const request = new Request('http://localhost/topics/123');
       const args = {
-        request: new Request('http://localhost/topics/123'),
+        request,
         params: {},
         context: undefined,
         unstable_pattern: '/topics/$id',
+        unstable_url: new URL(request.url),
       };
       const result = await action(args);
 
