@@ -21,7 +21,6 @@ trustPolicyIgnoreAfter: 10080
 allowBuilds:
   sharp: true
   esbuild: true
-  "@lavamoat/preinstall-always-fail": false
 
 # Never auto-approve dependency build scripts globally.
 dangerouslyAllowAllBuilds: false

@@ -42,8 +42,6 @@
   },
   "devDependencies": {
     "@eslint/js": "9.39.0",
-    "@lavamoat/allow-scripts": "3.4.1",
-    "@lavamoat/preinstall-always-fail": "2.1.1",
     "@playwright/test": "1.56.1",
     "@react-router/dev": "7.10.1",
     "@tailwindcss/vite": "4.1.16",
@@ -77,12 +75,5 @@
   "engines": {
     "node": "22.x",
     "pnpm": ">=10.26.0 <11"
-  },
-  "lavamoat": {
-    "allowScripts": {
-      "sharp": true,
-      "tsx>esbuild": true,
-      "@lavamoat/preinstall-always-fail": false
-    }
   }
 }
