@@ -1,24 +1,16 @@
-# Welcome to React Router!
+# Tsukkomi V2
 
-A modern, production-ready template for building full-stack React applications using React Router.
+React Router v7 SSR app for browsing topics, searching answers, voting, favorites, comments, and LINE answer ingestion.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Runtime
 
-## Features
+- Node.js `22.x`
+- pnpm `10.29.3`
+- Vercel deployment uses the pinned pnpm version from `packageManager`
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+Do not use `npm install` for this repository. Commit `pnpm-lock.yaml` and `pnpm-workspace.yaml`.
 
-## Getting Started
-
-### Installation
-
-Install the dependencies:
+## Setup
 
 ```bash
 corepack enable
@@ -26,65 +18,73 @@ corepack prepare pnpm@10.29.3 --activate
 pnpm install
 ```
 
-### Development
+Create `.env.local` from `.env.example` and fill in the values.
 
-Start the development server with HMR:
+```bash
+cp .env.example .env.local
+```
+
+Required local env keys:
+
+```text
+VITE_SUPABASE_URL
+VITE_SUPABASE_PUBLIC_KEY
+SUPABASE_SECRET_KEY
+LINE_SYNC_API_KEY
+```
+
+`SUPABASE_SECRET_KEY` and `LINE_SYNC_API_KEY` must not use a `VITE_` prefix.
+
+Optional server-only env keys:
+
+```text
+STORAGE_BUCKET
+STORAGE_FOLDER
+```
+
+## Development
 
 ```bash
 pnpm run dev
 ```
 
-Your application will be available at `http://localhost:5173`.
+The app runs at `http://localhost:5173`.
 
-## Building for Production
+## Tests
 
-Create a production build:
+```bash
+pnpm run typecheck
+pnpm test
+pnpm run test:e2e
+pnpm run build
+```
+
+Playwright E2E tests intentionally run with `workers: 1` because they share login state and mutate the same Supabase-backed data.
+
+If your local Node version is not `22.x`, pnpm may print an engine warning. Vercel uses Node `22.x`; local warnings do not matter as long as the commands pass.
+
+## Security Notes
+
+- Public client env may use `VITE_`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLIC_KEY`.
+- Server secrets must not use `VITE_`: `SUPABASE_SECRET_KEY`, `LINE_SYNC_API_KEY`.
+- User authentication is intentionally not enforced in this app. Treat write endpoints and service-role access as server-side trust boundaries.
+- Dependency install hardening is configured in `pnpm-workspace.yaml`.
+- Dependency build scripts are denied by default. Only reviewed packages should be added to `allowBuilds`.
+- Do not set `dangerouslyAllowAllBuilds: true`.
+
+## Build
 
 ```bash
 pnpm run build
 ```
 
+Build output:
+
+```text
+build/client/    static assets
+build/server/    SSR server bundle
+```
+
 ## Deployment
 
-### Docker Deployment
-
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
-```
-
-The containerized application can be deployed to any platform that supports Docker, including:
-
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
-
-### DIY Deployment
-
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
-
-Make sure to deploy the output of `pnpm run build`
-
-```
-├── package.json
-├── pnpm-lock.yaml
-├── pnpm-workspace.yaml
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
-```
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with React Router.
+Vercel deployment details are in `DEPLOY_VERCEL.md`.
