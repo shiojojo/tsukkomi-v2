@@ -4,14 +4,10 @@ import { defineConfig, loadEnv } from "vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 const SERVER_ENV_KEYS = [
-  'VITE_SUPABASE_URL',
-  'VITE_SUPABASE_PUBLIC_KEY',
-  'VITE_SUPABASE_KEY',
-  'SUPABASE_URL',
-  'SUPABASE_PUBLIC_KEY',
   'SUPABASE_SECRET_KEY',
-  'SUPABASE_SERVICE_ROLE_KEY',
-  'SUPABASE_KEY',
+  'LINE_SYNC_API_KEY',
+  'STORAGE_BUCKET',
+  'STORAGE_FOLDER',
 ];
 
 export default defineConfig(({ mode }) => {
@@ -22,9 +18,6 @@ export default defineConfig(({ mode }) => {
       process.env[key] = env[key];
     }
   }
-
-  process.env.SUPABASE_URL ??= process.env.VITE_SUPABASE_URL;
-  process.env.SUPABASE_PUBLIC_KEY ??= process.env.VITE_SUPABASE_PUBLIC_KEY ?? process.env.VITE_SUPABASE_KEY;
 
   return {
     plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],

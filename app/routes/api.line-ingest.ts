@@ -8,9 +8,7 @@ function resolveLineSyncApiKey(): string | undefined {
   const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env: Record<string, string | undefined> }).env : undefined;
   return (
     process.env.LINE_SYNC_API_KEY ||
-    process.env.VITE_LINE_SYNC_API_KEY ||
-    (metaEnv ? metaEnv.LINE_SYNC_API_KEY : undefined) ||
-    (metaEnv ? metaEnv.VITE_LINE_SYNC_API_KEY : undefined)
+    (metaEnv ? metaEnv.LINE_SYNC_API_KEY : undefined)
   );
 }
 

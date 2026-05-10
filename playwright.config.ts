@@ -23,7 +23,7 @@ export default defineConfig({
     navigationTimeout: 30000,
   },
   webServer: {
-    command: 'pnpm run dev',
+    command: 'CHOKIDAR_USEPOLLING=true corepack pnpm --config.engine-strict=false exec react-router dev --port 5173 --host 127.0.0.1',
     port: 5173,
     reuseExistingServer: false, // 常に新しいサーバーを起動
     // サーバー起動のタイムアウトを延長
@@ -41,10 +41,11 @@ export default defineConfig({
     // コンソール出力も有効化
     ['line'],
   ],
-  // 並列実行を有効化（CPUコア数に基づく）
-  workers: process.env.CI ? 2 : undefined, // CIでは2並列、本地では自動
+  // These E2E tests share login state and mutate the same Supabase-backed data,
+  // so parallel workers can interrupt navigations or race on votes/favorites.
+  workers: 1,
   // リトライ設定
   retries: process.env.CI ? 2 : 0,
   // テスト実行順序を固定
-  fullyParallel: true,
+  fullyParallel: false,
 });

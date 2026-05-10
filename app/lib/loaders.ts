@@ -1,6 +1,5 @@
 import { parsePaginationParams, parseFilterParams } from '~/lib/queryParser';
 import { getTopicsPaged, searchAnswers } from '~/lib/db';
-import { getSupabaseConfigStatus } from '~/lib/supabase';
 
 function serializeLoaderError(error: unknown) {
   if (error instanceof Error) {
@@ -45,7 +44,6 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
       : await searchAnswers({ page, pageSize, ...filters, ...extraParams });
   } catch (error) {
     const errorInfo = serializeLoaderError(error);
-    const supabase = getSupabaseConfigStatus();
 
     console.error('createListLoader failed', {
       entityType,
@@ -54,7 +52,6 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
       filters,
       extraParamKeys: extraParams ? Object.keys(extraParams) : [],
       error: errorInfo,
-      supabase,
     });
 
     return Response.json(
@@ -62,7 +59,6 @@ export async function createListLoader(entityType: 'topics' | 'answers', request
         error: errorInfo.message,
         code: errorInfo.code ?? 'LIST_LOADER_FAILED',
         entityType,
-        supabase,
       },
       { status: 500 }
     );

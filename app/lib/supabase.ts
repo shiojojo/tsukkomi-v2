@@ -6,36 +6,26 @@ const nonEmpty = (value: unknown): string | undefined =>
 // Prefer Vite env names but fall back to process.env for server environments
 // Require the URL/key to be provided via env to avoid leaking project-specific URLs in source.
 const SUPABASE_URL =
-  nonEmpty(import.meta.env.VITE_SUPABASE_URL) ??
-  nonEmpty(process.env.VITE_SUPABASE_URL) ??
-  nonEmpty(process.env.SUPABASE_URL);
+  nonEmpty(import.meta.env.VITE_SUPABASE_URL);
 
 // Public (anon) key intended to be bundled into client-side code. Only allows reads by RLS rules.
 const SUPABASE_PUBLIC_KEY =
-  nonEmpty(import.meta.env.VITE_SUPABASE_PUBLIC_KEY) ??
-  nonEmpty(import.meta.env.VITE_SUPABASE_KEY) ??
-  nonEmpty(process.env.VITE_SUPABASE_PUBLIC_KEY) ??
-  nonEmpty(process.env.VITE_SUPABASE_KEY) ??
-  nonEmpty(process.env.SUPABASE_PUBLIC_KEY);
+  nonEmpty(import.meta.env.VITE_SUPABASE_PUBLIC_KEY);
 
 // Secret / service role key must never be bundled into client code. Create server client only when
 // running in a server environment (SSR / Node). Prefer process.env on server to avoid leakage.
 const isServer = typeof window === 'undefined' || Boolean((import.meta as { env?: { SSR?: boolean } }).env?.SSR);
 const SUPABASE_SECRET_KEY = isServer
-  ? (
-      nonEmpty(process.env.SUPABASE_SECRET_KEY) ??
-      nonEmpty(process.env.SUPABASE_SERVICE_ROLE_KEY) ??
-      nonEmpty(process.env.SUPABASE_KEY)
-    )
+  ? nonEmpty(process.env.SUPABASE_SECRET_KEY)
   : undefined;
 
 const isDev = import.meta.env.DEV;
 
 if (!SUPABASE_URL) {
-  console.warn('Supabase URL is not set. Set VITE_SUPABASE_URL / SUPABASE_URL in environment.');
+  console.warn('Supabase URL is not set. Set VITE_SUPABASE_URL in environment.');
 }
 if (!SUPABASE_PUBLIC_KEY) {
-  console.warn('Supabase public key is not set. Set VITE_SUPABASE_PUBLIC_KEY / SUPABASE_PUBLIC_KEY in environment.');
+  console.warn('Supabase public key is not set. Set VITE_SUPABASE_PUBLIC_KEY in environment.');
 }
 
 const missingSupabaseClient = (reason: string): SupabaseClient =>
@@ -63,16 +53,6 @@ export const supabase = SUPABASE_URL && SUPABASE_PUBLIC_KEY
 export const supabaseAdmin = isServer && SUPABASE_URL && SUPABASE_SECRET_KEY
   ? createClient(SUPABASE_URL, SUPABASE_SECRET_KEY)
   : undefined;
-
-export function getSupabaseConfigStatus() {
-  return {
-    hasUrl: Boolean(SUPABASE_URL),
-    hasPublicKey: Boolean(SUPABASE_PUBLIC_KEY),
-    hasServerSecretKey: Boolean(SUPABASE_SECRET_KEY),
-    hasAdminClient: Boolean(supabaseAdmin),
-    isServer,
-  };
-}
 
 export default supabase;
 

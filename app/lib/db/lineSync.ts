@@ -6,15 +6,11 @@ import { withTiming } from './debug';
 const STORAGE_BUCKET =
   process.env.STORAGE_BUCKET ??
   (import.meta.env.STORAGE_BUCKET as string | undefined) ??
-  process.env.VITE_STORAGE_BUCKET ??
-  (import.meta.env.VITE_STORAGE_BUCKET as string | undefined) ??
   'images';
 
 const STORAGE_FOLDER =
   process.env.STORAGE_FOLDER ??
   (import.meta.env.STORAGE_FOLDER as string | undefined) ??
-  process.env.VITE_STORAGE_FOLDER ??
-  (import.meta.env.VITE_STORAGE_FOLDER as string | undefined) ??
   'line-sync';
 
 function resolveStorageBucket() {
