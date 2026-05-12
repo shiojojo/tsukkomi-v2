@@ -94,7 +94,6 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
         setHasComments={(value: boolean) => updateFilter('hasComments', value)}
         showAdvancedFilters={showAdvancedFilters}
         toggleAdvancedFilters={toggleAdvancedFilters}
-        onSubmit={() => toggleAdvancedFilters()}
         mode={mode}
       />
     </Suspense>
