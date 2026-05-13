@@ -60,13 +60,3 @@ export function parseAnswersFilterParams(source: QuerySource): AnswersFilterPara
 
 // topics 固有のフィルタ（今のところ common と同じ）
 export type TopicsFilterParams = CommonFilterParams;
-
-export type FilterParams = CommonFilterParams | AnswersFilterParams;
-
-export function parseFilterParams(source: QuerySource, entityType: 'topics' | 'answers'): FilterParams {
-  if (entityType === 'topics') {
-    return parseCommonFilterParams(source);
-  } else {
-    return parseAnswersFilterParams(source);
-  }
-}

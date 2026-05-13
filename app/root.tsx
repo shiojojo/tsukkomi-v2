@@ -8,7 +8,6 @@ import {
   useNavigation,
 } from 'react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from '~/components/ui/toaster';
 import {
   GenericErrorPage,
@@ -154,9 +153,6 @@ export default function App() {
         {/* Debug info - only in development */}
         {useClientOnlyDebugInfo(navigation, isLoading, loadingTimeout)}
       </Layout>
-
-      {/* React Query DevTools - only in development */}
-      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
 
       {/* Toast notifications */}
       <Toaster />

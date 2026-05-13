@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parsePaginationParams, parseCommonFilterParams, parseAnswersFilterParams, parseFilterParams } from '~/lib/queryParser';
+import { parsePaginationParams, parseCommonFilterParams, parseAnswersFilterParams } from '~/lib/queryParser';
 
 describe('queryParser', () => {
   describe('parsePaginationParams', () => {
@@ -108,37 +108,4 @@ describe('queryParser', () => {
     });
   });
 
-  describe('parseFilterParams', () => {
-    it('should return CommonFilterParams for topics', () => {
-      const mockRequest = {
-        url: 'http://example.com?q=test&fromDate=2023-01-01',
-      } as Request;
-
-      const result = parseFilterParams(mockRequest, 'topics');
-
-      expect(result).toEqual({
-        q: 'test',
-        fromDate: '2023-01-01',
-        toDate: undefined,
-      });
-    });
-
-    it('should return AnswersFilterParams for answers', () => {
-      const mockRequest = {
-        url: 'http://example.com?q=test&author=user&sortBy=newest',
-      } as Request;
-
-      const result = parseFilterParams(mockRequest, 'answers');
-
-      expect(result).toEqual({
-        q: 'test',
-        fromDate: undefined,
-        toDate: undefined,
-        author: 'user',
-        sortBy: 'newest',
-        minScore: undefined,
-        hasComments: false,
-      });
-    });
-  });
 });
