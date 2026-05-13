@@ -28,8 +28,8 @@ export function meta() {
   ];
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
-  return createListLoader('topics', request);
+export async function loader({ request, unstable_url }: LoaderFunctionArgs) {
+  return createListLoader('topics', request, undefined, unstable_url);
 }
 
 export default function TopicsRoute() {

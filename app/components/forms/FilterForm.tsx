@@ -24,7 +24,6 @@ interface AnswersFilterProps extends BaseFilterProps {
   setHasComments: (value: boolean) => void;
   showAdvancedFilters: boolean;
   toggleAdvancedFilters: () => void;
-  onSubmit?: () => void;
   mode?: 'all' | 'topic' | 'favorites';
 }
 
@@ -48,7 +47,6 @@ export function FilterForm(props: FilterFormProps) {
       setHasComments,
       showAdvancedFilters,
       toggleAdvancedFilters,
-      onSubmit,
       ...baseProps
     } = props;
     return (
@@ -65,7 +63,6 @@ export function FilterForm(props: FilterFormProps) {
         setHasComments={setHasComments}
         showAdvancedFilters={showAdvancedFilters}
         toggleAdvancedFilters={toggleAdvancedFilters}
-        onSubmit={onSubmit}
         mode={props.mode}
       />
     );

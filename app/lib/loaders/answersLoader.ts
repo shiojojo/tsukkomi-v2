@@ -12,10 +12,10 @@ export interface CreateAnswersLoaderOptions {
 }
 
 export async function createAnswersLoader(
-  { request }: LoaderFunctionArgs,
+  { request, unstable_url }: LoaderFunctionArgs,
   options: CreateAnswersLoaderOptions = {}
 ) {
-  const url = new URL(request.url);
+  const url = unstable_url ?? new URL(request.url);
   const profileIdQuery = url.searchParams.get('profileId') ?? undefined;
 
   // 認証が必要なページでprofileIdがない場合
@@ -44,7 +44,7 @@ export async function createAnswersLoader(
     topicId: options.topicId,
     favorite: options.favorite,
     profileId: options.profileId || profileIdQuery,
-  });
+  }, url);
   const listData = await listResponse.json();
 
   if (!listResponse.ok) {

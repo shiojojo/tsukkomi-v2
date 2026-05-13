@@ -88,6 +88,24 @@ describe('queryParser', () => {
 
       expect(result.hasComments).toBe(true);
     });
+
+    it('should parse answers filters from a normalized URL source', () => {
+      const normalizedUrl = new URL(
+        'http://example.com/answers?author=&sortBy=newest&q=&minScore=1&fromDate=&toDate='
+      );
+
+      const result = parseAnswersFilterParams(normalizedUrl);
+
+      expect(result).toEqual({
+        q: '',
+        fromDate: '',
+        toDate: '',
+        author: '',
+        sortBy: 'newest',
+        minScore: 1,
+        hasComments: false,
+      });
+    });
   });
 
   describe('parseFilterParams', () => {

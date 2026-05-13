@@ -85,12 +85,11 @@ describe('AnswersFilterForm', () => {
     setHasComments: vi.fn(),
     showAdvancedFilters: false,
     toggleAdvancedFilters: vi.fn(),
-    onSubmit: vi.fn(),
     mode: 'all' as const,
   };
 
   beforeEach(() => {
-    // Reset mocks if needed
+    vi.clearAllMocks();
   });
 
   it('renders form with correct method', () => {
@@ -186,6 +185,15 @@ describe('AnswersFilterForm', () => {
     fireEvent.click(button);
 
     expect(baseProps.toggleAdvancedFilters).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call toggleAdvancedFilters when the search form is submitted', () => {
+    render(<AnswersFilterForm {...baseProps} showAdvancedFilters={true} />);
+
+    const form = screen.getByRole('form');
+    fireEvent.submit(form);
+
+    expect(baseProps.toggleAdvancedFilters).not.toHaveBeenCalled();
   });
 
   it('calls setAuthorQuery when author select changes', () => {

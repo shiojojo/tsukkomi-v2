@@ -48,5 +48,28 @@ describe('loaders', () => {
       const resultData = await result.json();
       expect(resultData).toEqual({ answers: [], total: 0, page: 1, pageSize: 10, q: 'test', sortBy: 'newest' });
     });
+
+    it('should use the provided query source when available', async () => {
+      const mockRequest = new Request('http://localhost/answers');
+      const normalizedUrl = new URL(
+        'http://localhost/answers?sortBy=newest&minScore=1'
+      );
+      const { parsePaginationParams, parseFilterParams } = await import('~/lib/queryParser');
+      vi.mocked(parsePaginationParams).mockReturnValue({ page: 1, pageSize: 10 });
+      vi.mocked(parseFilterParams).mockReturnValue({ sortBy: 'newest', minScore: 1 });
+      const { searchAnswers } = await import('~/lib/db');
+      vi.mocked(searchAnswers).mockResolvedValue({ answers: [], total: 0 });
+
+      await createListLoader('answers', mockRequest, undefined, normalizedUrl);
+
+      expect(parsePaginationParams).toHaveBeenCalledWith(normalizedUrl);
+      expect(parseFilterParams).toHaveBeenCalledWith(normalizedUrl, 'answers');
+      expect(searchAnswers).toHaveBeenCalledWith({
+        page: 1,
+        pageSize: 10,
+        sortBy: 'newest',
+        minScore: 1,
+      });
+    });
   });
 });

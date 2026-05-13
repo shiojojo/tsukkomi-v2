@@ -1,4 +1,4 @@
-import { parsePaginationParams, parseFilterParams } from '~/lib/queryParser';
+import { parsePaginationParams, parseFilterParams, type QuerySource } from '~/lib/queryParser';
 import { getTopicsPaged, searchAnswers } from '~/lib/db';
 
 function serializeLoaderError(error: unknown) {
@@ -33,9 +33,14 @@ function serializeLoaderError(error: unknown) {
  * Environment: サーバーサイドのみ。db.ts 関数を呼び出す。
  * Errors: DBエラー時は throw（呼び出し側 loader が捕捉）。
  */
-export async function createListLoader(entityType: 'topics' | 'answers', request: Request, extraParams?: Record<string, unknown>): Promise<Response> {
-  const { page, pageSize } = parsePaginationParams(request);
-  const filters = parseFilterParams(request, entityType);
+export async function createListLoader(
+  entityType: 'topics' | 'answers',
+  request: Request,
+  extraParams?: Record<string, unknown>,
+  querySource: QuerySource = request
+): Promise<Response> {
+  const { page, pageSize } = parsePaginationParams(querySource);
+  const filters = parseFilterParams(querySource, entityType);
 
   let data;
   try {

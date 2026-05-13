@@ -23,7 +23,6 @@ interface AnswersFilterProps {
   setHasComments: (value: boolean) => void;
   showAdvancedFilters: boolean;
   toggleAdvancedFilters: () => void;
-  onSubmit?: () => void;
   mode?: 'all' | 'topic' | 'favorites';
 }
 
@@ -46,7 +45,6 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
     setHasComments,
     showAdvancedFilters,
     toggleAdvancedFilters,
-    onSubmit,
     mode,
   } = props;
 
@@ -57,7 +55,6 @@ export function AnswersFilterForm(props: AnswersFilterProps) {
     <Form
       method="get"
       className="flex flex-wrap gap-2 items-start md:items-center"
-      onSubmit={onSubmit}
     >
       {/* Group: author, sortBy, advanced toggle — keep single-line on small screens */}
       <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">

@@ -1,5 +1,12 @@
-import type { LoaderFunctionArgs } from 'react-router';
 import { DEFAULT_PAGE_SIZE } from './constants';
+
+export type QuerySource = Request | URL;
+
+function getSearchParams(source: QuerySource): URLSearchParams {
+  return source instanceof URL
+    ? source.searchParams
+    : new URL(source.url).searchParams;
+}
 
 export interface PaginationParams {
   page: number;
@@ -14,18 +21,16 @@ export interface CommonFilterParams {
 
 export type SortBy = 'newest' | 'oldest' | 'scoreDesc';
 
-export function parsePaginationParams(request: LoaderFunctionArgs['request']): PaginationParams {
-  const url = new URL(request.url);
-  const params = url.searchParams;
+export function parsePaginationParams(source: QuerySource): PaginationParams {
+  const params = getSearchParams(source);
   return {
     page: Number(params.get('page') ?? '1'),
     pageSize: Number(params.get('pageSize') ?? String(DEFAULT_PAGE_SIZE)),
   };
 }
 
-export function parseCommonFilterParams(request: LoaderFunctionArgs['request']): CommonFilterParams {
-  const url = new URL(request.url);
-  const params = url.searchParams;
+export function parseCommonFilterParams(source: QuerySource): CommonFilterParams {
+  const params = getSearchParams(source);
   return {
     q: params.get('q') ?? undefined,
     fromDate: params.get('fromDate') ?? undefined,
@@ -41,10 +46,9 @@ export interface AnswersFilterParams extends CommonFilterParams {
   hasComments?: boolean;
 }
 
-export function parseAnswersFilterParams(request: LoaderFunctionArgs['request']): AnswersFilterParams {
-  const common = parseCommonFilterParams(request);
-  const url = new URL(request.url);
-  const params = url.searchParams;
+export function parseAnswersFilterParams(source: QuerySource): AnswersFilterParams {
+  const common = parseCommonFilterParams(source);
+  const params = getSearchParams(source);
   return {
     ...common,
     author: params.get('author') ?? undefined,
@@ -59,10 +63,10 @@ export type TopicsFilterParams = CommonFilterParams;
 
 export type FilterParams = CommonFilterParams | AnswersFilterParams;
 
-export function parseFilterParams(request: LoaderFunctionArgs['request'], entityType: 'topics' | 'answers'): FilterParams {
+export function parseFilterParams(source: QuerySource, entityType: 'topics' | 'answers'): FilterParams {
   if (entityType === 'topics') {
-    return parseCommonFilterParams(request);
+    return parseCommonFilterParams(source);
   } else {
-    return parseAnswersFilterParams(request);
+    return parseAnswersFilterParams(source);
   }
 }
