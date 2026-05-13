@@ -4,7 +4,8 @@ import { createListLoader } from '~/lib/loaders';
 // Mock dependencies
 vi.mock('~/lib/queryParser', () => ({
   parsePaginationParams: vi.fn(),
-  parseFilterParams: vi.fn(),
+  parseAnswersFilterParams: vi.fn(),
+  parseCommonFilterParams: vi.fn(),
 }));
 vi.mock('~/lib/db', () => ({
   getTopicsPaged: vi.fn(),
@@ -19,15 +20,15 @@ describe('loaders', () => {
   describe('createListLoader', () => {
     it('should handle topics', async () => {
       const mockRequest = new Request('http://localhost/topics');
-      const { parsePaginationParams, parseFilterParams } = await import('~/lib/queryParser');
+      const { parsePaginationParams, parseCommonFilterParams } = await import('~/lib/queryParser');
       vi.mocked(parsePaginationParams).mockReturnValue({ page: 1, pageSize: 10 });
-      vi.mocked(parseFilterParams).mockReturnValue({ q: 'test' });
+      vi.mocked(parseCommonFilterParams).mockReturnValue({ q: 'test' });
       const { getTopicsPaged } = await import('~/lib/db');
       vi.mocked(getTopicsPaged).mockResolvedValue({ topics: [], total: 0 });
 
       const result = await createListLoader('topics', mockRequest);
       expect(parsePaginationParams).toHaveBeenCalledWith(mockRequest);
-      expect(parseFilterParams).toHaveBeenCalledWith(mockRequest, 'topics');
+      expect(parseCommonFilterParams).toHaveBeenCalledWith(mockRequest);
       expect(getTopicsPaged).toHaveBeenCalledWith({ page: 1, pageSize: 10, q: 'test' });
       expect(result).toBeInstanceOf(Response);
       const resultData = await result.json();
@@ -36,9 +37,9 @@ describe('loaders', () => {
 
     it('should handle answers', async () => {
       const mockRequest = new Request('http://localhost/answers');
-      const { parsePaginationParams, parseFilterParams } = await import('~/lib/queryParser');
+      const { parsePaginationParams, parseAnswersFilterParams } = await import('~/lib/queryParser');
       vi.mocked(parsePaginationParams).mockReturnValue({ page: 1, pageSize: 10 });
-      vi.mocked(parseFilterParams).mockReturnValue({ q: 'test', sortBy: 'newest' });
+      vi.mocked(parseAnswersFilterParams).mockReturnValue({ q: 'test', sortBy: 'newest' });
       const { searchAnswers } = await import('~/lib/db');
       vi.mocked(searchAnswers).mockResolvedValue({ answers: [], total: 0 });
 
@@ -54,16 +55,16 @@ describe('loaders', () => {
       const normalizedUrl = new URL(
         'http://localhost/answers?sortBy=newest&minScore=1'
       );
-      const { parsePaginationParams, parseFilterParams } = await import('~/lib/queryParser');
+      const { parsePaginationParams, parseAnswersFilterParams } = await import('~/lib/queryParser');
       vi.mocked(parsePaginationParams).mockReturnValue({ page: 1, pageSize: 10 });
-      vi.mocked(parseFilterParams).mockReturnValue({ sortBy: 'newest', minScore: 1 });
+      vi.mocked(parseAnswersFilterParams).mockReturnValue({ sortBy: 'newest', minScore: 1 });
       const { searchAnswers } = await import('~/lib/db');
       vi.mocked(searchAnswers).mockResolvedValue({ answers: [], total: 0 });
 
       await createListLoader('answers', mockRequest, undefined, normalizedUrl);
 
       expect(parsePaginationParams).toHaveBeenCalledWith(normalizedUrl);
-      expect(parseFilterParams).toHaveBeenCalledWith(normalizedUrl, 'answers');
+      expect(parseAnswersFilterParams).toHaveBeenCalledWith(normalizedUrl);
       expect(searchAnswers).toHaveBeenCalledWith({
         page: 1,
         pageSize: 10,

@@ -36,7 +36,7 @@ describe('topics._index route', () => {
       const result = await loader({
         request: mockRequest,
       } as LoaderFunctionArgs);
-      expect(createListLoader).toHaveBeenCalledWith('topics', mockRequest);
+      expect(createListLoader).toHaveBeenCalledWith('topics', mockRequest, undefined, undefined);
       expect(result).toBeInstanceOf(Response);
       const resultData = await result.json();
       expect(resultData).toEqual(mockData);

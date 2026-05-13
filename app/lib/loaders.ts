@@ -1,4 +1,9 @@
-import { parsePaginationParams, parseFilterParams, type QuerySource } from '~/lib/queryParser';
+import {
+  parseAnswersFilterParams,
+  parseCommonFilterParams,
+  parsePaginationParams,
+  type QuerySource,
+} from '~/lib/queryParser';
 import { getTopicsPaged, searchAnswers } from '~/lib/db';
 
 function serializeLoaderError(error: unknown) {
@@ -40,13 +45,17 @@ export async function createListLoader(
   querySource: QuerySource = request
 ): Promise<Response> {
   const { page, pageSize } = parsePaginationParams(querySource);
-  const filters = parseFilterParams(querySource, entityType);
 
   let data;
+  let filters;
   try {
-    data = entityType === 'topics'
-      ? await getTopicsPaged({ page, pageSize, ...filters })
-      : await searchAnswers({ page, pageSize, ...filters, ...extraParams });
+    if (entityType === 'topics') {
+      filters = parseCommonFilterParams(querySource);
+      data = await getTopicsPaged({ page, pageSize, ...filters });
+    } else {
+      filters = parseAnswersFilterParams(querySource);
+      data = await searchAnswers({ page, pageSize, ...filters, ...extraParams });
+    }
   } catch (error) {
     const errorInfo = serializeLoaderError(error);
 

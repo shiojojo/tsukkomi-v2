@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs } from 'react-router';
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants';
 import { getTopicsByIds } from '~/lib/db/topics';
 import { getUsers } from '~/lib/db/users';
+import { createListLoader } from '~/lib/loaders';
 import type { Answer } from '~/lib/schemas/answer';
 
 export interface CreateAnswersLoaderOptions {
@@ -39,7 +40,6 @@ export async function createAnswersLoader(
   }
 
   // answersリストデータだけを取得（最小限）
-  const { createListLoader } = await import('~/lib/loaders');
   const listResponse = await createListLoader('answers', request, {
     topicId: options.topicId,
     favorite: options.favorite,
