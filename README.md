@@ -42,6 +42,11 @@ STORAGE_BUCKET
 STORAGE_FOLDER
 ```
 
+LINE / image APIs (same `LINE_SYNC_API_KEY`):
+
+- `POST /api/line-ingest` — sync answers (see `docs/line-sync.md`)
+- `POST /api/upload-image` — upload image bytes to Supabase Storage (see `docs/image-upload.md`)
+
 ## Development
 
 ```bash

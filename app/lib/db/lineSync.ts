@@ -1,115 +1,7 @@
-import { createHash } from 'node:crypto';
 import { LineAnswerIngestRequestSchema, type LineAnswerIngestRequest } from '~/lib/schemas/line-sync';
+import { uploadImageFromUrlToSupabaseStorage } from '../imageStorage';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 import { withTiming } from './debug';
-
-const STORAGE_BUCKET =
-  process.env.STORAGE_BUCKET ??
-  (import.meta.env.STORAGE_BUCKET as string | undefined) ??
-  'images';
-
-const STORAGE_FOLDER =
-  process.env.STORAGE_FOLDER ??
-  (import.meta.env.STORAGE_FOLDER as string | undefined) ??
-  'line-sync';
-
-function resolveStorageBucket() {
-  if (!STORAGE_BUCKET) {
-    throw new Error('Supabase storage bucket is not configured (STORAGE_BUCKET)');
-  }
-  return STORAGE_BUCKET;
-}
-
-function extFromContentType(contentType: string | null | undefined) {
-
-  if (!contentType) return null;
-  const normalized = contentType.split(';')[0]?.trim().toLowerCase();
-  switch (normalized) {
-    case 'image/jpeg':
-    case 'image/jpg':
-      return 'jpg';
-    case 'image/png':
-      return 'png';
-    case 'image/webp':
-      return 'webp';
-    case 'image/gif':
-      return 'gif';
-    default:
-      return null;
-  }
-}
-
-function extFromUrl(url: string) {
-  try {
-    const parsed = new URL(url);
-    const pathname = parsed.pathname;
-    const idx = pathname.lastIndexOf('.');
-    if (idx >= 0 && idx < pathname.length - 1) {
-      const extCandidate = pathname.slice(idx + 1).toLowerCase();
-      if (/^[a-z0-9]{2,5}$/.test(extCandidate)) {
-        return extCandidate.split('?')[0];
-      }
-    }
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
-function deriveImageExtension(sourceUrl: string, contentType: string | null | undefined) {
-  return extFromContentType(contentType) ?? extFromUrl(sourceUrl) ?? 'jpg';
-}
-
-function buildStoragePath(sourceUrl: string, extension: string) {
-  const hash = createHash('sha256').update(sourceUrl).digest('hex').slice(0, 32);
-  const folder = STORAGE_FOLDER.replace(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '');
-  const sanitizedExt = extension.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
-  return `${folder}/${hash}.${sanitizedExt}`;
-}
-
-
-
-async function uploadImageToSupabaseStorage(sourceUrl: string) {
-  const response = await fetch(sourceUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch image from ${sourceUrl}: ${response.status}`);
-  }
-  const contentType = response.headers.get('content-type');
-  const extension = deriveImageExtension(sourceUrl, contentType);
-  const storagePath = buildStoragePath(sourceUrl, extension);
-
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  // Resize image if needed
-  let processedBuffer: Buffer = buffer;
-  try {
-    const { processImageBuffer } = await import('../imageProcessor');
-    processedBuffer = await processImageBuffer(buffer, extension);
-  } catch (error) {
-    console.warn('Image processing failed, using original:', error);
-  }
-
-  const bucket = resolveStorageBucket();
-  const storageClient = supabaseAdmin?.storage ?? supabase.storage;
-  const { error } = await storageClient
-    .from(bucket)
-    .upload(storagePath, processedBuffer, {
-      contentType: `image/${extension}`,
-      upsert: true,
-    });
-
-  if (error) throw error;
-
-  const { data: publicUrlData } = supabase.storage
-    .from(bucket)
-    .getPublicUrl(storagePath);
-
-  return {
-    path: storagePath,
-    publicUrl: publicUrlData.publicUrl,
-  };
-}
 
 export type LineAnswerIngestResult = {
   topicId: number;
@@ -166,10 +58,10 @@ async function _ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineA
 
     if (topicExisting && topicExisting.id != null) {
       topicId = Number(topicExisting.id);
-      // Upload image if missing or empty
+      // Upload image if missing or empty (skips re-upload when source is already our Storage URL)
       if (!topicExisting.image) {
-        const uploadInfo = await uploadImageToSupabaseStorage(sourceImage);
-        uploadedImagePath = uploadInfo.path;
+        const uploadInfo = await uploadImageFromUrlToSupabaseStorage(sourceImage);
+        uploadedImagePath = uploadInfo.path || null;
         const { error: updateErr } = await writeClient
           .from('topics')
           .update({ image: uploadInfo.publicUrl, title: topicTitle })
@@ -177,8 +69,8 @@ async function _ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineA
         if (updateErr) throw updateErr;
       }
     } else {
-      const uploadInfo = await uploadImageToSupabaseStorage(sourceImage);
-      uploadedImagePath = uploadInfo.path;
+      const uploadInfo = await uploadImageFromUrlToSupabaseStorage(sourceImage);
+      uploadedImagePath = uploadInfo.path || null;
       const { data: topicInserted, error: topicInsertErr } = await writeClient
         .from('topics')
         .insert({

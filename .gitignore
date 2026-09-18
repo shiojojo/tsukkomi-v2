@@ -37,6 +37,11 @@ service-account*.json
 
 # Scripts that may contain secrets or service URLs
 
+# One-shot migration inputs/outputs (keep migrate_*.mjs; ignore local runs)
+scripts/_tmp_*
+scripts/_catalog_*
+scripts/local/
+
 # If you prefer to ignore all scripts (uncomment)
 # /scripts/
 

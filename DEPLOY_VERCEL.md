@@ -39,6 +39,8 @@ STORAGE_BUCKET=images
 STORAGE_FOLDER=line-sync
 ```
 
+Image upload: `POST /api/upload-image` (same `LINE_SYNC_API_KEY`). See `docs/image-upload.md`.
+
 Important:
 
 - Do not create `VITE_SUPABASE_SECRET_KEY`.
