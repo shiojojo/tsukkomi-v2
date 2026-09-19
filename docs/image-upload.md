@@ -1,13 +1,13 @@
 # Image Upload API
 
-Upload image bytes to Supabase Storage via tsukkomi-v2. Use this instead of Google Drive as the source of truth for LINE image odai.
+Upload image bytes to Supabase Storage via tsukkomi-v2. Storage public URLs are the source of truth for LINE image odai (not Google Drive).
 
 ## Endpoint
 
 - **Method:** `POST`
 - **Path:** `/api/upload-image`
 - **Auth:** `X-API-KEY: <LINE_SYNC_API_KEY>`
-- **Side effects:** Writes to Supabase Storage only. Does **not** create a `topics` row (topics are still created by `/api/line-ingest` when answers sync).
+- **Side effects:** Writes to Supabase Storage only. Does **not** create a `topics` row (topics are created by `/api/line-ingest` when answers sync).
 
 ### Body options
 
@@ -32,7 +32,7 @@ Upload image bytes to Supabase Storage via tsukkomi-v2. Use this instead of Goog
 }
 ```
 
-Put `publicUrl` into the LINE bot spreadsheet sheet **画像** column B. LINE and the ingest cron will use that URL.
+Put `publicUrl` into the LINE bot spreadsheet sheet **画像** column B (GAS `appendImagePublicUrl`, or wait for the monthly unused rebuild).
 
 ### Example (curl)
 
@@ -52,37 +52,12 @@ curl -X POST "https://<your-host>/api/upload-image" \
 
 ## Server config
 
-Same as line ingest:
-
 - `LINE_SYNC_API_KEY`
 - `SUPABASE_SECRET_KEY` (required for Storage writes)
 - `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLIC_KEY`
 - Optional: `STORAGE_BUCKET` (default `images`), `STORAGE_FOLDER` (default `line-sync`)
 
-Images are resized (max width 800) via the existing `imageProcessor` when possible.
-
-## One-shot Drive catalog migration (local)
-
-If the LINE「画像」sheet still has Drive URLs, and some (answered) topics already have Storage copies keyed by `source_image`, run:
-
-```bash
-# 1) Export sheet to input.csv; download Drive folder as Zip
-# 2) Dry-run: DB classify + Zip filename match (0 uploads, 0 Google hits for matched rows)
-node scripts/migrate_drive_catalog_images.mjs input.csv mapping.csv \
-  --from-zip=/path/to/images.zip
-
-# 3) Smoke-test 3 uploads from Zip
-node scripts/migrate_drive_catalog_images.mjs input.csv mapping.csv \
-  --from-zip=/path/to/images.zip --apply --limit=3
-
-# 4) Full apply (+ rewrite source_image)
-node scripts/migrate_drive_catalog_images.mjs input.csv mapping.csv \
-  --from-zip=/path/to/images.zip --apply --update-source-image
-```
-
-Zip may be a single folder (`images/…`). Filenames match CSV `項番` / `ファイル名`; `LINE_ALBUM_…` names that mojibake in the Zip are matched via Python `zipfile` (Unicode) and trailing `_YYMMDD_N.ext` when needed.
-
-Then replace「画像」B with `public_url` from `mapping.csv`. Unanswered images get Storage only (no new `topics` rows). Local run outputs belong under `scripts/local/` (gitignored). See script header for CSV column names.
+Images are resized (max width 800) via `imageProcessor` when possible.
 
 ## Unused image URLs (monthly sheet rebuild)
 
@@ -95,22 +70,21 @@ Then replace「画像」B with `public_url` from `mapping.csv`. Unanswered image
 {
   "ok": true,
   "urls": ["https://.../line-sync/abc.jpg"],
-  "storageCount": 317,
+  "storageCount": 280,
   "storageUniqueKeyCount": 280,
   "usedUrlCount": 88,
   "usedKeyCount": 88,
   "usedTopicCount": 88,
   "unusedCount": 192,
-  "folders": ["line-sync", "images"]
+  "folders": ["line-sync"]
 }
 ```
 
-Server computes **Storage − used image topics**, matching by **filename stem (hash)** so `images/….webp` and `line-sync/….jpg` with the same hash count as one image.
+Server computes **Storage − used image topics**, matching by **filename stem (hash)** so folder/extension differences do not matter.
 
-Why duplicates exist: older CSV import wrote `images/<hash>.webp`; the Zip migration later wrote `line-sync/<hash>.jpg` (same Drive-URL hash, different folder/extension). Prefer cleaning legacy duplicates later; exclusion no longer depends on exact URL.
+LINE bot (`oogiriLineBot`):
 
-LINE bot:
+- Daily 「写真」 / `linePushImage`: random from spreadsheet「画像」only (no API).
+- Monthly (or manual): `cronRebuildUnusedImageSheet` / `rebuildUnusedImageSheet` replaces「画像」with this API’s `urls`. On API failure the sheet is left unchanged.
 
-- Daily 「写真」 / image cron: random from spreadsheet「画像」only (no API).
-- Monthly (or manual): `cronRebuildUnusedImageSheet` replaces「画像」with this API’s `urls` in one `setValues` batch. On API failure the sheet is left unchanged.
-
+See the bot README for which GAS functions to put on triggers.

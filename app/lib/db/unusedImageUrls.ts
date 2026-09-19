@@ -10,8 +10,8 @@ const STORAGE_FOLDER =
   (import.meta.env.STORAGE_FOLDER as string | undefined) ??
   'line-sync';
 
-/** Extra folders under the bucket to include (legacy import paths, etc.). */
-const EXTRA_STORAGE_FOLDERS = (process.env.STORAGE_EXTRA_FOLDERS ?? 'images')
+/** Extra folders under the bucket (comma-separated). Default: none — catalog is STORAGE_FOLDER only. */
+const EXTRA_STORAGE_FOLDERS = (process.env.STORAGE_EXTRA_FOLDERS ?? '')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);

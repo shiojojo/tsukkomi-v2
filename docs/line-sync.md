@@ -65,14 +65,20 @@ Failures return `ok: false` with a message, and the endpoint responds with an ap
 
 ## GAS configuration
 
-1. In the Apps Script project, add the following Script Properties:
+Full trigger list lives in the **oogiriLineBot README**. Summary:
+
+1. Script Properties:
    - `TSUKKOMI_API_ENDPOINT`: full URL of the ingest endpoint (e.g. `https://tsukkomi.example.com/api/line-ingest`).
-   - `TSUKKOMI_API_KEY`: the shared secret configured on the server.
+   - `TSUKKOMI_API_KEY`: the shared secret (`LINE_SYNC_API_KEY` on the server).
+   - `TSUKKOMI_GROUP_SHEET`: (optional) group timeline sheet name; falls back to `LINE_USERID`.
 
-- `TSUKKOMI_GROUP_SHEET`: (optional) sheet name that stores the group's timeline. If omitted, the script falls back to the global `LINE_USERID` constant.
+2. Time-driven triggers to schedule:
+   - `cronSyncTextTopicsToTsukkomi` — every few minutes (answer sync)
+   - `linePush` / `linePushImage` — when you want scheduled odai delivery
+   - `cronRebuildUnusedImageSheet` — monthly (refresh「画像」from `/api/unused-image-urls`)
 
-2. Ensure the trigger entrypoint `cronSyncTextTopicsToTsukkomi` (defined in `oogiriLineBot/src/tsukkomiSyncTrigger.js`) is scheduled via a time-driven trigger. The recommended cadence is every 5 minutes.
-3. Optional: set global variables `TSUKKOMI_API_ENDPOINT` and `TSUKKOMI_API_KEY` instead of script properties if preferred.
+3. Do **not** schedule `getFileListInFolder` (deprecated Drive catalog).
+
 
 ## Sync behaviour
 
@@ -82,11 +88,9 @@ Failures return `ok: false` with a message, and the endpoint responds with an ap
 - On the server, topic rows are created on demand (matching by title with `image IS NULL`). Profiles are looked up by `line_id`; new entries are created when necessary and their display names are updated when they change.
 - Duplicate detection uses a `(profile_id, normalized text)` pair to keep the ingestion idempotent. Re-running the trigger with the same data is safe.
 
-## Future work
-
-- Add automated tests for the ingestion pathway once the Vitest suite is introduced.
-
 ## Related
 
-- Image upload (Drive 代替): [image-upload.md](./image-upload.md) — `POST /api/upload-image`
-- Image topics are supported: send `topic.kind: "image"` with `sourceImage` (public URL). If `sourceImage` is already this project's Supabase Storage public URL, the server reuses it without re-uploading.
+- Image upload / unused URLs: [image-upload.md](./image-upload.md)
+- Image topics: `topic.kind: "image"` with `sourceImage` (public URL). Own Storage URLs are reused without re-upload.
+- GAS triggers: `oogiriLineBot` README
+

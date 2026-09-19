@@ -39,7 +39,7 @@ STORAGE_BUCKET=images
 STORAGE_FOLDER=line-sync
 ```
 
-Image upload: `POST /api/upload-image` (same `LINE_SYNC_API_KEY`). See `docs/image-upload.md`.
+LINE image APIs (same `LINE_SYNC_API_KEY`): `POST /api/upload-image`, `GET /api/unused-image-urls`. See `docs/image-upload.md`.
 
 Important:
 

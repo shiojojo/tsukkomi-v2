@@ -38,14 +38,20 @@ LINE_SYNC_API_KEY
 Optional server-only env keys:
 
 ```text
-STORAGE_BUCKET
-STORAGE_FOLDER
+STORAGE_BUCKET          # default: images
+STORAGE_FOLDER          # default: line-sync (canonical catalog folder)
+STORAGE_EXTRA_FOLDERS   # optional extra list prefixes; usually unset
 ```
 
 LINE / image APIs (same `LINE_SYNC_API_KEY`):
 
-- `POST /api/line-ingest` — sync answers (see `docs/line-sync.md`)
-- `POST /api/upload-image` — upload image bytes to Supabase Storage (see `docs/image-upload.md`)
+| Method | Path | Role |
+|--------|------|------|
+| `POST` | `/api/line-ingest` | Sync text/image answers from GAS (see `docs/line-sync.md`) |
+| `POST` | `/api/upload-image` | Upload image bytes → Supabase Storage public URL (see `docs/image-upload.md`) |
+| `GET` | `/api/unused-image-urls` | Storage − used topic image keys; GAS monthly sheet rebuild |
+
+Image catalog flow: upload (or migrate once) → Storage `line-sync/` → GAS sheet「画像」holds unused public URLs → daily LINE pick from the sheet → answers sync creates topics → monthly rebuild drops used URLs. GAS triggers are documented in the `oogiriLineBot` README.
 
 ## Development
 
