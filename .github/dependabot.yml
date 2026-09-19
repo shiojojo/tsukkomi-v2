@@ -1,0 +1,39 @@
+# Dependabot version updates (stage 2).
+# Security updates are separate (GitHub Settings toggle; no file required).
+#
+# After push: Settings → Code security → Dependabot version updates = Enabled
+# (usually turns on automatically once this file exists on the default branch).
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    # Align with pnpm minimumReleaseAge (7 days) — avoid brand-new publishes.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+    # Bundle routine bumps; leave majors as separate PRs to review.
+    groups:
+      production-minor-patch:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      development-minor-patch:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 7
