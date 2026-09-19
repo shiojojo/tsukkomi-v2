@@ -84,3 +84,27 @@ Zip may be a single folder (`images/…`). Filenames match CSV `項番` / `フ�
 
 Then replace「画像」B with `public_url` from `mapping.csv`. Unanswered images get Storage only (no new `topics` rows). Local run outputs belong under `scripts/local/` (gitignored). See script header for CSV column names.
 
+## Unused image URLs (monthly sheet rebuild)
+
+- **Method:** `GET`
+- **Path:** `/api/unused-image-urls`
+- **Auth:** `X-API-KEY: <LINE_SYNC_API_KEY>`
+- **Response:**
+
+```json
+{
+  "ok": true,
+  "urls": ["https://.../line-sync/abc.jpg"],
+  "storageCount": 279,
+  "answeredUrlCount": 88,
+  "unusedCount": 191
+}
+```
+
+Server computes **Storage (`STORAGE_FOLDER`) − answered topic image URLs**. GAS must not download the full answered list.
+
+LINE bot:
+
+- Daily 「写真」 / image cron: random from spreadsheet「画像」only (no API).
+- Monthly (or manual): `cronRebuildUnusedImageSheet` replaces「画像」with this API’s `urls` in one `setValues` batch. On API failure the sheet is left unchanged.
+
