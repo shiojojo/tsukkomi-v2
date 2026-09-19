@@ -95,18 +95,19 @@ Then replace「画像」B with `public_url` from `mapping.csv`. Unanswered image
 {
   "ok": true,
   "urls": ["https://.../line-sync/abc.jpg"],
-  "storageCount": 280,
+  "storageCount": 317,
+  "storageUniqueKeyCount": 280,
   "usedUrlCount": 88,
+  "usedKeyCount": 88,
   "usedTopicCount": 88,
   "unusedCount": 192,
   "folders": ["line-sync", "images"]
 }
 ```
 
-Server computes **Storage folders − image topics** (`topics` where `image` / `source_image` is set).  
-Image topics are created only when LINE answers sync, so “in topics with an image” means already used — no `answers` join and no 1000-row trap on the answers table.
+Server computes **Storage − used image topics**, matching by **filename stem (hash)** so `images/….webp` and `line-sync/….jpg` with the same hash count as one image.
 
-Default folders: `STORAGE_FOLDER` (`line-sync`) plus `STORAGE_EXTRA_FOLDERS` (default `images` for legacy imports).
+Why duplicates exist: older CSV import wrote `images/<hash>.webp`; the Zip migration later wrote `line-sync/<hash>.jpg` (same Drive-URL hash, different folder/extension). Prefer cleaning legacy duplicates later; exclusion no longer depends on exact URL.
 
 LINE bot:
 

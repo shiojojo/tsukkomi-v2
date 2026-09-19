@@ -32,16 +32,32 @@ function candidateFolders(): string[] {
   return [...set];
 }
 
+/** Filename stem used as content/key id, e.g. line-sync/abc.webp → abc */
+export function storageObjectKey(urlOrPath: string): string | null {
+  try {
+    const raw = /^https?:\/\//i.test(urlOrPath)
+      ? new URL(urlOrPath).pathname
+      : urlOrPath;
+    const base = raw.split('/').pop() || '';
+    const stem = base.replace(/\.[a-z0-9]{2,5}$/i, '');
+    return stem || null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Image topics already in DB = used (LINE image topics are created only when answers sync).
- * Query topics filtered by image/source_image — do not page through answers.
+ * Keys are storage object stems (hash), not full URLs — folder/extension must not matter.
  */
-export async function listUsedImageUrlSet(): Promise<{
+export async function listUsedImageKeys(): Promise<{
+  keys: Set<string>;
   urls: Set<string>;
   usedTopicCount: number;
 }> {
   await ensureConnection();
   const client = writeClient();
+  const keys = new Set<string>();
   const urls = new Set<string>();
   const topicIds = new Set<number>();
   const pageSize = 1000;
@@ -59,17 +75,19 @@ export async function listUsedImageUrlSet(): Promise<{
     for (const row of batch) {
       if (row.id != null) topicIds.add(Number(row.id));
       for (const candidate of [row.image, row.source_image]) {
-        if (typeof candidate === 'string') {
-          const trimmed = candidate.trim();
-          if (/^https?:\/\//i.test(trimmed)) urls.add(trimmed);
-        }
+        if (typeof candidate !== 'string') continue;
+        const trimmed = candidate.trim();
+        if (!/^https?:\/\//i.test(trimmed)) continue;
+        urls.add(trimmed);
+        const key = storageObjectKey(trimmed);
+        if (key) keys.add(key);
       }
     }
     if (batch.length < pageSize) break;
     from += pageSize;
   }
 
-  return { urls, usedTopicCount: topicIds.size };
+  return { keys, urls, usedTopicCount: topicIds.size };
 }
 
 async function listFilesInFolder(folder: string): Promise<string[]> {
@@ -114,40 +132,61 @@ function publicUrlForPath(storagePath: string): string {
   return data.publicUrl;
 }
 
+function preferPath(a: string, b: string): string {
+  const primary = resolveFolder();
+  const aPrimary = a.startsWith(`${primary}/`);
+  const bPrimary = b.startsWith(`${primary}/`);
+  if (aPrimary !== bPrimary) return aPrimary ? a : b;
+  return a.length <= b.length ? a : b;
+}
+
 export type UnusedImageUrlsResult = {
   urls: string[];
   storageCount: number;
-  /** @deprecated use usedUrlCount — kept for older GAS logs */
+  storageUniqueKeyCount: number;
+  /** @deprecated use usedUrlCount */
   answeredUrlCount: number;
   usedUrlCount: number;
+  usedKeyCount: number;
   usedTopicCount: number;
   unusedCount: number;
   folders: string[];
 };
 
 /**
- * Candidates = Storage folders (line-sync + legacy images by default).
- * Used = topics with image/source_image set (image odai already in DB).
- * Unused = storage public URL not in that set.
+ * Candidates = Storage objects, deduped by filename stem (hash).
+ * Used = stems from topics.image / source_image.
+ * Folder and extension differences (images/*.webp vs line-sync/*.jpg) do not matter.
  */
 export async function listUnusedImageUrls(): Promise<UnusedImageUrlsResult> {
   const folders = candidateFolders();
   const [used, paths] = await Promise.all([
-    listUsedImageUrlSet(),
+    listUsedImageKeys(),
     listStorageObjectPaths(),
   ]);
 
-  const unused: string[] = [];
+  // Dedupe storage objects by stem; prefer STORAGE_FOLDER (line-sync) over legacy.
+  const bestPathByKey = new Map<string, string>();
   for (const path of paths) {
-    const url = publicUrlForPath(path);
-    if (!used.urls.has(url)) unused.push(url);
+    const key = storageObjectKey(path);
+    if (!key) continue;
+    const prev = bestPathByKey.get(key);
+    bestPathByKey.set(key, prev ? preferPath(prev, path) : path);
+  }
+
+  const unused: string[] = [];
+  for (const [key, path] of bestPathByKey) {
+    if (used.keys.has(key)) continue;
+    unused.push(publicUrlForPath(path));
   }
 
   return {
     urls: unused,
     storageCount: paths.length,
+    storageUniqueKeyCount: bestPathByKey.size,
     answeredUrlCount: used.urls.size,
     usedUrlCount: used.urls.size,
+    usedKeyCount: used.keys.size,
     usedTopicCount: used.usedTopicCount,
     unusedCount: unused.length,
     folders,
