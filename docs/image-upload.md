@@ -95,13 +95,18 @@ Then replace「画像」B with `public_url` from `mapping.csv`. Unanswered image
 {
   "ok": true,
   "urls": ["https://.../line-sync/abc.jpg"],
-  "storageCount": 279,
-  "answeredUrlCount": 88,
-  "unusedCount": 191
+  "storageCount": 280,
+  "usedUrlCount": 88,
+  "usedTopicCount": 88,
+  "unusedCount": 192,
+  "folders": ["line-sync", "images"]
 }
 ```
 
-Server computes **Storage (`STORAGE_FOLDER`) − answered topic image URLs**. GAS must not download the full answered list.
+Server computes **Storage folders − image topics** (`topics` where `image` / `source_image` is set).  
+Image topics are created only when LINE answers sync, so “in topics with an image” means already used — no `answers` join and no 1000-row trap on the answers table.
+
+Default folders: `STORAGE_FOLDER` (`line-sync`) plus `STORAGE_EXTRA_FOLDERS` (default `images` for legacy imports).
 
 LINE bot:
 
