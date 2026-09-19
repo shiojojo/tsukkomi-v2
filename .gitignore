@@ -42,6 +42,12 @@ scripts/_tmp_*
 scripts/_catalog_*
 scripts/local/
 
+# Local image catalog drop zone (keep folder structure only)
+local-images/inbox/*
+!local-images/inbox/.gitkeep
+local-images/done/*
+!local-images/done/.gitkeep
+
 # If you prefer to ignore all scripts (uncomment)
 # /scripts/
 

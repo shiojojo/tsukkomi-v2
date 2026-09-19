@@ -14,7 +14,8 @@
     "typecheck": "react-router typegen && tsc",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
-    "security:audit": "audit-ci --config audit-ci.json"
+    "security:audit": "audit-ci --config audit-ci.json",
+    "upload:images": "node ./scripts/upload-images.mjs"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "1.1.15",

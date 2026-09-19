@@ -161,9 +161,11 @@ export async function uploadImageBufferToSupabaseStorage(
   }
 
   let processedBuffer: Buffer = buffer;
+  let storedExt = extension === 'jpeg' ? 'jpg' : extension;
   try {
     const { processImageBuffer } = await import('./imageProcessor');
     processedBuffer = await processImageBuffer(buffer, extension);
+    storedExt = 'jpg';
   } catch (error) {
     console.warn('Image processing failed, using original:', error);
   }
@@ -171,12 +173,12 @@ export async function uploadImageBufferToSupabaseStorage(
   const hashSeed =
     options?.hashSeed ??
     createHash('sha256').update(processedBuffer).digest('hex');
-  const storagePath = buildStoragePath(hashSeed, extension === 'jpeg' ? 'jpg' : extension);
+  const storagePath = buildStoragePath(hashSeed, storedExt);
   const bucket = resolveStorageBucket();
   const storageClient = getStorageWriteClient();
 
   const { error } = await storageClient.from(bucket).upload(storagePath, processedBuffer, {
-    contentType: contentTypeForExtension(extension),
+    contentType: contentTypeForExtension(storedExt),
     upsert: true,
   });
   if (error) throw error;

@@ -1,8 +1,27 @@
-# Image Upload API
+# Image Upload
 
-Upload image bytes to Supabase Storage via tsukkomi-v2. Storage public URLs are the source of truth for LINE image odai (not Google Drive).
+Storage public URLs are the source of truth for LINE image odai (not Google Drive).
 
-## Endpoint
+## Preferred: local CLI (resize on your machine)
+
+Drop photos into **`local-images/inbox/`** with any filenames, then:
+
+```bash
+# .env.local needs VITE_SUPABASE_URL + SUPABASE_SECRET_KEY
+pnpm upload:images
+pnpm upload:images -- --dry-run
+```
+
+- Always output **JPEG**: max edge **800px**, quality **75**, strip EXIF (orientation applied first)
+- Moves each inbox file to **`local-images/done/<hash>.jpg`** (same name as the Storage object)
+- Stdout: one `publicUrl` per line (paste into sheet「画像」B, or GAS `appendImagePublicUrl`)
+- Stderr: progress / summary
+- Optional paths: `pnpm upload:images -- ./other.png`
+- Input: `jpg/png/webp/gif/heic` (non-recursive directory listing)
+
+## Server endpoint (legacy / optional)
+
+Upload image bytes to Supabase Storage via tsukkomi-v2 (still resizes with sharp on the server).
 
 - **Method:** `POST`
 - **Path:** `/api/upload-image`
@@ -46,7 +65,7 @@ curl -X POST "https://<your-host>/api/upload-image" \
 
 | Step | API | What happens |
 |------|-----|----------------|
-| Add image to pool | `/api/upload-image` | Bytes → Storage → `publicUrl` |
+| Add image to pool | local `pnpm upload:images` (preferred) or `/api/upload-image` | Bytes → Storage → `publicUrl` |
 | LINE shows odai | (sheet) | Uses `publicUrl` from **画像** sheet |
 | Answers sync | `/api/line-ingest` | If `sourceImage` is already this project's Storage public URL, **skips re-upload** and stores it on the topic |
 
@@ -57,7 +76,7 @@ curl -X POST "https://<your-host>/api/upload-image" \
 - `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLIC_KEY`
 - Optional: `STORAGE_BUCKET` (default `images`), `STORAGE_FOLDER` (default `line-sync`)
 
-Images are resized (max width 800) via `imageProcessor` when possible.
+Images are always normalized to JPEG (max edge 800, quality 75, EXIF stripped) via `imageProcessor` when processing succeeds.
 
 ## Unused image URLs (monthly sheet rebuild)
 

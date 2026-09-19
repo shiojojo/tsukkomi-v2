@@ -48,12 +48,19 @@ LINE / image APIs (same `LINE_SYNC_API_KEY`):
 | Method | Path | Role |
 |--------|------|------|
 | `POST` | `/api/line-ingest` | Sync text/image answers from GAS (see `docs/line-sync.md`) |
-| `POST` | `/api/upload-image` | Upload image bytes → Supabase Storage public URL (see `docs/image-upload.md`) |
+| `POST` | `/api/upload-image` | (Optional) Upload image bytes → Storage; prefer local CLI below |
 | `GET` | `/api/unused-image-urls` | Storage − used topic image keys; GAS monthly sheet rebuild |
 
-Image catalog flow: upload (or migrate once) → Storage `line-sync/` → GAS sheet「画像」holds unused public URLs → daily LINE pick from the sheet → answers sync creates topics → monthly rebuild drops used URLs. GAS triggers are documented in the `oogiriLineBot` README.
+Image catalog flow: local upload → Storage `line-sync/` → GAS sheet「画像」holds unused public URLs → daily LINE pick from the sheet → answers sync creates topics → monthly rebuild drops used URLs. GAS triggers are documented in the `oogiriLineBot` README.
 
-Upload path runs bytes through `imageProcessor` (sharp): max width 800 when larger; webp re-encoded when needed. Failures fall back to the original buffer. `sharp` must stay in `pnpm-workspace.yaml` `allowBuilds`. Details: `docs/image-upload.md`.
+**Add images to the pool (preferred):**
+
+1. Drop files into `local-images/inbox/` (any names).
+2. Run `pnpm upload:images`
+3. Files are normalized to JPEG (max edge 800, q75), uploaded, then moved to `local-images/done/<hash>.jpg` (same basename as Storage — no manual renaming).
+4. Stdout `publicUrl` lines → sheet「画像」B (or GAS `appendImagePublicUrl`).
+
+See `local-images/README.md` and `docs/image-upload.md`. Server `/api/upload-image` remains for compatibility; ingest of own Storage URLs does not re-process images.
 
 ## Development
 
