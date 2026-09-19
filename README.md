@@ -56,10 +56,10 @@ Image catalog flow: local upload → Storage `line-sync/` → GAS sheet「画像
 
 1. Drop files into `local-images/inbox/` (any names).
 2. Run `pnpm upload:images`
-3. Files are normalized to JPEG (max edge 800, q75), uploaded, then moved to `local-images/done/<hash>.jpg` (same basename as Storage — no manual renaming).
+3. Files are normalized to JPEG via macOS `sips` (max edge 800, q75), uploaded, then moved to `local-images/done/<hash>.jpg`.
 4. Stdout `publicUrl` lines → sheet「画像」B (or GAS `appendImagePublicUrl`).
 
-See `local-images/README.md` and `docs/image-upload.md`. Ingest only accepts this project's Storage public URLs (no server-side re-upload / resize). `sharp` is a **devDependency** for the local CLI only.
+See `local-images/README.md` and `docs/image-upload.md`. Ingest only accepts this project's Storage public URLs (no server-side re-upload / resize). Image normalize uses macOS **`sips`** (no `sharp`).
 
 ## Development
 
@@ -90,7 +90,7 @@ For production-sensitive fixes, run both tests and a production build. React Rou
 - Server secrets must not use `VITE_`: `SUPABASE_SECRET_KEY`, `LINE_SYNC_API_KEY`.
 - User authentication is intentionally not enforced in this app. Treat write endpoints and service-role access as server-side trust boundaries.
 - Dependency install hardening is configured in `pnpm-workspace.yaml`.
-- Dependency build scripts are denied by default. Only reviewed packages should be added to `allowBuilds`; currently approved packages are `sharp` (local `upload:images` CLI) and `esbuild`.
+- Dependency build scripts are denied by default. Only reviewed packages should be added to `allowBuilds`; currently approved: `esbuild` only.
 - Do not set `dangerouslyAllowAllBuilds: true`.
 - Avoid broad helper functions that hide route-specific query parsing. The answers loader must use `parseAnswersFilterParams` so production builds keep `author`, `sortBy`, `minScore`, and `hasComments` filters.
 - Reporting: see `SECURITY.md`. Code scanning: `.github/workflows/codeql.yml`.

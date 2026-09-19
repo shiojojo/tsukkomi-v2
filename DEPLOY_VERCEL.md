@@ -73,7 +73,7 @@ Only add reviewed packages to `allowBuilds`. Do not bypass this with `dangerousl
 - If `/answers` loads but filters such as `minScore`, `author`, or `sortBy` do not apply only in production, verify the production SSR build. The answers loader should statically import `createListLoader`, and `createListLoader` should call `parseAnswersFilterParams` directly for answers routes.
 - If build logs mention Node `24.x`, check that `package.json` still says `"node": "22.x"`.
 - If install logs do not mention pnpm `10.29.3`, check `packageManager` and `ENABLE_EXPERIMENTAL_COREPACK` if your Vercel project requires it.
-- `sharp` is a **devDependency** for `pnpm upload:images` only (not used in the Vercel app runtime). After bumping it, smoke-test the local CLI.
+- Local catalog upload (`pnpm upload:images`) uses macOS `sips` — no `sharp` in this repo.
 
 Useful production data check:
 

@@ -12,13 +12,13 @@ pnpm upload:images
 pnpm upload:images -- --dry-run
 ```
 
-- Always output **JPEG**: max edge **800px**, quality **75**, strip EXIF (orientation applied first)
+- Always output **JPEG** via macOS **`sips`**: max edge **800px**, quality **75** (no npm image packages / no `allowBuilds` for sharp)
 - Moves each inbox file to **`local-images/done/<hash>.jpg`** (same name as the Storage object)
 - Stdout: one `publicUrl` per line (paste into sheet「画像」B, or GAS `appendImagePublicUrl`)
 - Stderr: progress / summary
 - Optional paths: `pnpm upload:images -- ./other.png`
-- Input: `jpg/png/webp/gif/heic` (non-recursive directory listing)
-- Uses **devDependency** `sharp` on your machine only (not on Vercel)
+- Input: `jpg/png/gif/heic` (non-recursive). WebP is not supported by sips — convert first if needed.
+- **macOS only** (supply-chain: avoid native npm postinstall for image processing)
 
 There is **no** server `/api/upload-image`. Catalog writes go through this CLI.
 

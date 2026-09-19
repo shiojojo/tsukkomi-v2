@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * Local image catalog uploader.
+ * Local image catalog uploader (macOS only).
+ *
+ * Uses system `sips` (no npm native / postinstall packages) to normalize
+ * to JPEG, then uploads to Supabase Storage.
  *
  * Default drop zone: local-images/inbox/
- * Always normalizes to JPEG (max edge 800, quality 75, strip metadata),
- * uploads to Storage, then moves inbox files to local-images/done/<hash>.jpg
- * (same basename as the Storage object).
+ * After success: move to local-images/done/<hash>.jpg
  *
  * Usage:
  *   pnpm upload:images
@@ -17,13 +18,17 @@
  */
 
 import { createHash } from 'node:crypto';
-import { mkdir, readdir, readFile, stat, unlink, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import sharp from 'sharp';
+
+const execFileAsync = promisify(execFile);
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const INBOX_DIR = path.join(ROOT, 'local-images', 'inbox');
@@ -33,15 +38,17 @@ dotenv.config({ path: path.join(ROOT, '.env.local'), quiet: true });
 dotenv.config({ path: path.join(ROOT, '.env'), quiet: true });
 
 const MAX_EDGE = 800;
+/** sips formatOptions: 0–100 (similar ballpark to former sharp q75) */
 const JPEG_QUALITY = 75;
-/** Input only — everything is stored as .jpg */
-const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif']);
+/** Input only — everything is stored as .jpg. WebP is omitted (sips cannot reliably read it). */
+const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'heic', 'heif']);
 
 function usage(exitCode = 1) {
   console.error(`Usage: pnpm upload:images -- [--dry-run] [file-or-dir ...]
 
-Default input: local-images/inbox/ (any names).
-Always output JPEG: max edge ${MAX_EDGE}px, quality ${JPEG_QUALITY}, strip EXIF.
+macOS only (system sips — no sharp / npm postinstall).
+Default input: local-images/inbox/
+Always JPEG: max edge ${MAX_EDGE}px, quality ${JPEG_QUALITY}.
 Upload to Storage, then move inbox → local-images/done/<hash>.jpg
 
 Stdout: one publicUrl per line.
@@ -57,6 +64,17 @@ function normalizeExt(ext) {
 function isUnderDir(filePath, dir) {
   const rel = path.relative(dir, filePath);
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
+}
+
+async function assertMacSips() {
+  if (process.platform !== 'darwin') {
+    throw new Error('upload:images requires macOS (uses system sips for supply-chain-safe processing).');
+  }
+  try {
+    await execFileAsync('/usr/bin/sips', ['-h']);
+  } catch {
+    throw new Error('sips not found at /usr/bin/sips (expected on macOS).');
+  }
 }
 
 async function collectImagePaths(inputs) {
@@ -77,7 +95,7 @@ async function collectImagePaths(inputs) {
     } else if (info.isFile()) {
       const ext = normalizeExt(path.extname(abs));
       if (!ALLOWED_EXT.has(ext)) {
-        throw new Error(`Unsupported file type: ${abs}`);
+        throw new Error(`Unsupported file type: ${abs} (allowed: ${[...ALLOWED_EXT].join(', ')})`);
       }
       out.push(abs);
     } else {
@@ -87,16 +105,31 @@ async function collectImagePaths(inputs) {
   return [...new Set(out)].sort();
 }
 
-/** Always JPEG: max edge, quality 75, no metadata. */
-async function toCatalogJpeg(buffer) {
-  return sharp(buffer)
-    .rotate() // honour EXIF orientation, then strip
-    .resize(MAX_EDGE, MAX_EDGE, {
-      fit: 'inside',
-      withoutEnlargement: true,
-    })
-    .jpeg({ quality: JPEG_QUALITY, mozjpeg: true })
-    .toBuffer();
+/**
+ * Always JPEG via sips: max edge MAX_EDGE, quality JPEG_QUALITY.
+ * Aspect ratio preserved (-Z). Runs only on the source file path (no npm image libs).
+ */
+async function toCatalogJpeg(sourcePath) {
+  const tmp = await mkdtemp(path.join(tmpdir(), 'tsukkomi-img-'));
+  const outPath = path.join(tmp, 'out.jpg');
+  try {
+    await execFileAsync('/usr/bin/sips', [
+      '-Z',
+      String(MAX_EDGE),
+      '-s',
+      'format',
+      'jpeg',
+      '-s',
+      'formatOptions',
+      String(JPEG_QUALITY),
+      sourcePath,
+      '--out',
+      outPath,
+    ]);
+    return await readFile(outPath);
+  } finally {
+    await rm(tmp, { recursive: true, force: true });
+  }
 }
 
 function buildStoragePath(folder, contentHashHex) {
@@ -131,6 +164,8 @@ async function main() {
     usage(0);
   }
 
+  await assertMacSips();
+
   const dryRun = argv.includes('--dry-run');
   const inputs = argv.filter((a) => a !== '--dry-run');
   const resolvedInputs = inputs.length > 0 ? inputs : [INBOX_DIR];
@@ -152,7 +187,7 @@ async function main() {
   if (files.length === 0) {
     console.error(
       `No image files found in ${resolvedInputs.join(', ')} ` +
-        `(jpg/png/webp/gif/heic).\n` +
+        `(jpg/png/gif/heic).\n` +
         `Drop files into ${path.relative(ROOT, INBOX_DIR)}/ then re-run.`,
     );
     process.exit(1);
@@ -165,7 +200,7 @@ async function main() {
     });
 
   console.error(
-    `Uploading ${files.length} file(s) as JPEG (max ${MAX_EDGE}px q${JPEG_QUALITY}) → ${bucket}/${folder}/` +
+    `Uploading ${files.length} file(s) via sips → JPEG (max ${MAX_EDGE}px q${JPEG_QUALITY}) → ${bucket}/${folder}/` +
       (dryRun ? ' (dry-run)' : ''),
   );
 
@@ -173,10 +208,9 @@ async function main() {
   let failed = 0;
 
   for (const file of files) {
-    const raw = await readFile(file);
     let buffer;
     try {
-      buffer = await toCatalogJpeg(raw);
+      buffer = await toCatalogJpeg(file);
     } catch (error) {
       console.error(`FAIL  ${file}: process ${error.message ?? error}`);
       failed += 1;

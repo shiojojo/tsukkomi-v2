@@ -19,7 +19,6 @@ trustPolicyIgnoreAfter: 10080
 # Dependency lifecycle/build scripts are denied by default. Add explicit
 # package approvals with `pnpm approve-builds` only after review.
 allowBuilds:
-  sharp: true
   esbuild: true
 
 # Never auto-approve dependency build scripts globally.
