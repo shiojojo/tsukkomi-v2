@@ -39,7 +39,7 @@ STORAGE_BUCKET=images
 STORAGE_FOLDER=line-sync
 ```
 
-LINE image APIs (same `LINE_SYNC_API_KEY`): `POST /api/upload-image`, `GET /api/unused-image-urls`. See `docs/image-upload.md`.
+LINE image APIs (same `LINE_SYNC_API_KEY`): `GET /api/unused-image-urls`. Catalog uploads use local `pnpm upload:images` (see `docs/image-upload.md`).
 
 Important:
 
@@ -73,7 +73,7 @@ Only add reviewed packages to `allowBuilds`. Do not bypass this with `dangerousl
 - If `/answers` loads but filters such as `minScore`, `author`, or `sortBy` do not apply only in production, verify the production SSR build. The answers loader should statically import `createListLoader`, and `createListLoader` should call `parseAnswersFilterParams` directly for answers routes.
 - If build logs mention Node `24.x`, check that `package.json` still says `"node": "22.x"`.
 - If install logs do not mention pnpm `10.29.3`, check `packageManager` and `ENABLE_EXPERIMENTAL_COREPACK` if your Vercel project requires it.
-- `sharp` is used on the image upload path (`imageProcessor`). After bumping it, smoke-test `POST /api/upload-image` on a Vercel preview/production deploy (native binary + resize). See README “Dependency updates (ops)”.
+- `sharp` is a **devDependency** for `pnpm upload:images` only (not used in the Vercel app runtime). After bumping it, smoke-test the local CLI.
 
 Useful production data check:
 

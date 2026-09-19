@@ -58,7 +58,7 @@ async function _ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineA
 
     if (topicExisting && topicExisting.id != null) {
       topicId = Number(topicExisting.id);
-      // Upload image if missing or empty (skips re-upload when source is already our Storage URL)
+      // Resolve Storage URL onto the topic (own Storage URLs only; no re-upload)
       if (!topicExisting.image) {
         const uploadInfo = await uploadImageFromUrlToSupabaseStorage(sourceImage);
         uploadedImagePath = uploadInfo.path || null;

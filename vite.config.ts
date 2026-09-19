@@ -34,9 +34,6 @@ export default defineConfig(({ mode }) => {
         ],
       },
     },
-    optimizeDeps: {
-      exclude: ["sharp"],
-    },
     build: {
       sourcemap: false, // Disable sourcemaps in production for smaller bundle size
       rollupOptions: {

@@ -1,17 +1,7 @@
-import { createHash } from 'node:crypto';
-import { supabase, supabaseAdmin, ensureConnection } from './supabase';
-
 const STORAGE_BUCKET =
   process.env.STORAGE_BUCKET ??
   (import.meta.env.STORAGE_BUCKET as string | undefined) ??
   'images';
-
-const STORAGE_FOLDER =
-  process.env.STORAGE_FOLDER ??
-  (import.meta.env.STORAGE_FOLDER as string | undefined) ??
-  'line-sync';
-
-const ALLOWED_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
 
 export type StoredImage = {
   path: string;
@@ -26,14 +16,11 @@ function resolveStorageBucket() {
   return STORAGE_BUCKET;
 }
 
-function resolveStorageFolder() {
-  return STORAGE_FOLDER.replace(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '');
-}
-
 function resolveSupabaseUrl(): string | undefined {
-  const fromVite = typeof import.meta !== 'undefined'
-    ? (import.meta.env.VITE_SUPABASE_URL as string | undefined)
-    : undefined;
+  const fromVite =
+    typeof import.meta !== 'undefined'
+      ? (import.meta.env.VITE_SUPABASE_URL as string | undefined)
+      : undefined;
   return (process.env.VITE_SUPABASE_URL || fromVite || '').replace(/\/$/, '') || undefined;
 }
 
@@ -89,29 +76,6 @@ export function deriveImageExtension(
   return 'jpg';
 }
 
-export function contentTypeForExtension(extension: string): string {
-  switch (extension.toLowerCase()) {
-    case 'jpg':
-    case 'jpeg':
-      return 'image/jpeg';
-    case 'png':
-      return 'image/png';
-    case 'webp':
-      return 'image/webp';
-    case 'gif':
-      return 'image/gif';
-    default:
-      return 'application/octet-stream';
-  }
-}
-
-function buildStoragePath(hashSeed: string, extension: string) {
-  const hash = createHash('sha256').update(hashSeed).digest('hex').slice(0, 32);
-  const folder = resolveStorageFolder();
-  const sanitizedExt = extension.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'jpg';
-  return `${folder}/${hash}.${sanitizedExt}`;
-}
-
 /**
  * Returns true when the URL already points at this project's public Storage object.
  */
@@ -130,71 +94,22 @@ export function isOwnStoragePublicUrl(url: string): boolean {
   }
 }
 
-function getStorageWriteClient() {
-  const storageClient = supabaseAdmin?.storage ?? supabase.storage;
-  if (!storageClient) {
-    throw new Error('No Supabase storage client configured for writes');
-  }
-  return storageClient;
-}
-
-/**
- * Upload an image buffer to Supabase Storage (with optional resize via imageProcessor).
- * Dedupes by content hash path; upserts so re-uploads of the same bytes are safe.
- */
-export async function uploadImageBufferToSupabaseStorage(
-  buffer: Buffer,
-  options?: {
-    contentType?: string | null;
-    filenameHint?: string | null;
-    hashSeed?: string;
-  },
-): Promise<StoredImage> {
-  await ensureConnection();
-
-  const extension = deriveImageExtension(
-    options?.filenameHint ?? null,
-    options?.contentType ?? null,
-  );
-  if (!ALLOWED_EXTENSIONS.has(extension) && extension !== 'jpeg') {
-    throw new Error(`Unsupported image type: ${extension}`);
-  }
-
-  let processedBuffer: Buffer = buffer;
-  let storedExt = extension === 'jpeg' ? 'jpg' : extension;
+export function extractStoragePathFromPublicUrl(url: string): string | null {
   try {
-    const { processImageBuffer } = await import('./imageProcessor');
-    processedBuffer = await processImageBuffer(buffer, extension);
-    storedExt = 'jpg';
-  } catch (error) {
-    console.warn('Image processing failed, using original:', error);
+    const parsed = new URL(url);
+    const bucket = resolveStorageBucket();
+    const prefix = `/storage/v1/object/public/${bucket}/`;
+    if (!parsed.pathname.startsWith(prefix)) return null;
+    return decodeURIComponent(parsed.pathname.slice(prefix.length));
+  } catch {
+    return null;
   }
-
-  const hashSeed =
-    options?.hashSeed ??
-    createHash('sha256').update(processedBuffer).digest('hex');
-  const storagePath = buildStoragePath(hashSeed, storedExt);
-  const bucket = resolveStorageBucket();
-  const storageClient = getStorageWriteClient();
-
-  const { error } = await storageClient.from(bucket).upload(storagePath, processedBuffer, {
-    contentType: contentTypeForExtension(storedExt),
-    upsert: true,
-  });
-  if (error) throw error;
-
-  const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(storagePath);
-
-  return {
-    path: storagePath,
-    publicUrl: publicUrlData.publicUrl,
-    reusedExisting: false,
-  };
 }
 
 /**
- * Resolve a public image URL into Storage.
- * If the URL is already our public Storage URL, skip fetch/upload and reuse it.
+ * Resolve an image odai URL for ingest.
+ * Catalog images must already be this project's Storage public URLs
+ * (upload via `pnpm upload:images`). External URLs are not re-uploaded.
  */
 export async function uploadImageFromUrlToSupabaseStorage(
   sourceUrl: string,
@@ -208,40 +123,8 @@ export async function uploadImageFromUrlToSupabaseStorage(
     };
   }
 
-  const response = await fetch(sourceUrl);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch image from ${sourceUrl}: ${response.status}`);
-  }
-  const contentType = response.headers.get('content-type');
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  return uploadImageBufferToSupabaseStorage(buffer, {
-    contentType,
-    filenameHint: sourceUrl,
-    // Keep ingest paths stable across re-runs for the same source URL.
-    hashSeed: sourceUrl,
-  });
-}
-
-export function extractStoragePathFromPublicUrl(url: string): string | null {
-  try {
-    const parsed = new URL(url);
-    const bucket = resolveStorageBucket();
-    const prefix = `/storage/v1/object/public/${bucket}/`;
-    if (!parsed.pathname.startsWith(prefix)) return null;
-    return decodeURIComponent(parsed.pathname.slice(prefix.length));
-  } catch {
-    return null;
-  }
-}
-
-export function assertAllowedImageContentType(contentType: string | null | undefined) {
-  const ext = extFromContentType(contentType);
-  if (!ext) {
-    throw new Error(
-      `Unsupported Content-Type: ${contentType ?? '(missing)'}. Allowed: image/jpeg, image/png, image/webp, image/gif`,
-    );
-  }
-  return ext === 'jpeg' ? 'jpg' : ext;
+  throw new Error(
+    `Image topic sourceImage must be this project's Storage public URL ` +
+      `(got non-Storage URL). Upload with pnpm upload:images first: ${sourceUrl}`,
+  );
 }

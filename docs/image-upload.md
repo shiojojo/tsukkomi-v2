@@ -2,7 +2,7 @@
 
 Storage public URLs are the source of truth for LINE image odai (not Google Drive).
 
-## Preferred: local CLI (resize on your machine)
+## Local CLI (only catalog upload path)
 
 Drop photos into **`local-images/inbox/`** with any filenames, then:
 
@@ -18,65 +18,22 @@ pnpm upload:images -- --dry-run
 - Stderr: progress / summary
 - Optional paths: `pnpm upload:images -- ./other.png`
 - Input: `jpg/png/webp/gif/heic` (non-recursive directory listing)
+- Uses **devDependency** `sharp` on your machine only (not on Vercel)
 
-## Server endpoint (legacy / optional)
-
-Upload image bytes to Supabase Storage via tsukkomi-v2 (still resizes with sharp on the server).
-
-- **Method:** `POST`
-- **Path:** `/api/upload-image`
-- **Auth:** `X-API-KEY: <LINE_SYNC_API_KEY>`
-- **Side effects:** Writes to Supabase Storage only. Does **not** create a `topics` row (topics are created by `/api/line-ingest` when answers sync).
-
-### Body options
-
-1. **multipart/form-data** (recommended)
-
-   - Field name: `file` or `image`
-   - Max size: 10 MiB
-   - Allowed types: `image/jpeg`, `image/png`, `image/webp`, `image/gif`
-
-2. **Raw body**
-
-   - `Content-Type: image/jpeg` (or png / webp / gif)
-   - Body = image bytes
-
-### Response
-
-```json
-{
-  "ok": true,
-  "path": "line-sync/<hash>.jpg",
-  "publicUrl": "https://<project>.supabase.co/storage/v1/object/public/images/line-sync/<hash>.jpg"
-}
-```
-
-Put `publicUrl` into the LINE bot spreadsheet sheet **画像** column B (GAS `appendImagePublicUrl`, or wait for the monthly unused rebuild).
-
-### Example (curl)
-
-```bash
-curl -X POST "https://<your-host>/api/upload-image" \
-  -H "X-API-KEY: $LINE_SYNC_API_KEY" \
-  -F "file=@./photo.jpg"
-```
+There is **no** server `/api/upload-image`. Catalog writes go through this CLI.
 
 ## Relationship to `/api/line-ingest`
 
-| Step | API | What happens |
-|------|-----|----------------|
-| Add image to pool | local `pnpm upload:images` (preferred) or `/api/upload-image` | Bytes → Storage → `publicUrl` |
-| LINE shows odai | (sheet) | Uses `publicUrl` from **画像** sheet |
-| Answers sync | `/api/line-ingest` | If `sourceImage` is already this project's Storage public URL, **skips re-upload** and stores it on the topic |
+| Step | What |
+|------|------|
+| Add image to pool | `pnpm upload:images` → Storage → `publicUrl` |
+| LINE shows odai | Sheet「画像」uses that `publicUrl` |
+| Answers sync | `/api/line-ingest` requires `sourceImage` to already be this project's Storage public URL (reuses it; does not fetch/re-upload) |
 
-## Server config
+## Env for CLI / unused API
 
-- `LINE_SYNC_API_KEY`
-- `SUPABASE_SECRET_KEY` (required for Storage writes)
-- `VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLIC_KEY`
-- Optional: `STORAGE_BUCKET` (default `images`), `STORAGE_FOLDER` (default `line-sync`)
-
-Images are always normalized to JPEG (max edge 800, quality 75, EXIF stripped) via `imageProcessor` when processing succeeds.
+- CLI: `VITE_SUPABASE_URL`, `SUPABASE_SECRET_KEY`; optional `STORAGE_BUCKET` / `STORAGE_FOLDER`
+- Unused rebuild API still needs `LINE_SYNC_API_KEY` on the server (see below)
 
 ## Unused image URLs (monthly sheet rebuild)
 

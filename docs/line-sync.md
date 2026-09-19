@@ -88,6 +88,6 @@ Full trigger list lives in the **oogiriLineBot README**. Summary:
 ## Related
 
 - Image upload / unused URLs: [image-upload.md](./image-upload.md)
-- Image topics: `topic.kind: "image"` with `sourceImage` (public URL). Own Storage URLs are reused without re-upload.
+- Image topics: `topic.kind: "image"` with `sourceImage` set to this project's Storage public URL (required; no server-side fetch/re-upload).
 - GAS triggers: `oogiriLineBot` README
 
