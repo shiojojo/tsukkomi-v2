@@ -28,7 +28,8 @@ const TextTopicSchema = BaseTopicSchema.extend({
 const ImageTopicSchema = BaseTopicSchema.extend({
   kind: z.literal('image'),
   title: z.string().min(1).max(300).default('写真'),
-  sourceImage: z.string().url(),
+  /** Storage public URL for the photo odai (same value stored on topics.image). */
+  image: z.string().url(),
   altText: z.string().min(1).max(300).optional(),
 });
 

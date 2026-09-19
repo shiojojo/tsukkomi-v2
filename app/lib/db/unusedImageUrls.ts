@@ -66,22 +66,20 @@ export async function listUsedImageKeys(): Promise<{
   for (;;) {
     const { data, error } = await client
       .from('topics')
-      .select('id, image, source_image')
-      .or('image.not.is.null,source_image.not.is.null')
+      .select('id, image')
+      .not('image', 'is', null)
       .range(from, from + pageSize - 1);
 
     if (error) throw error;
     const batch = data ?? [];
     for (const row of batch) {
       if (row.id != null) topicIds.add(Number(row.id));
-      for (const candidate of [row.image, row.source_image]) {
-        if (typeof candidate !== 'string') continue;
-        const trimmed = candidate.trim();
-        if (!/^https?:\/\//i.test(trimmed)) continue;
-        urls.add(trimmed);
-        const key = storageObjectKey(trimmed);
-        if (key) keys.add(key);
-      }
+      if (typeof row.image !== 'string') continue;
+      const trimmed = row.image.trim();
+      if (!/^https?:\/\//i.test(trimmed)) continue;
+      urls.add(trimmed);
+      const key = storageObjectKey(trimmed);
+      if (key) keys.add(key);
     }
     if (batch.length < pageSize) break;
     from += pageSize;
@@ -155,7 +153,7 @@ export type UnusedImageUrlsResult = {
 
 /**
  * Candidates = Storage objects, deduped by filename stem (hash).
- * Used = stems from topics.image / source_image.
+ * Used = stems from topics.image.
  * Matching is by filename stem so path/extension differences do not matter.
  */
 export async function listUnusedImageUrls(): Promise<UnusedImageUrlsResult> {

@@ -107,24 +107,20 @@ export function extractStoragePathFromPublicUrl(url: string): string | null {
 }
 
 /**
- * Resolve an image odai URL for ingest.
- * Catalog images must already be this project's Storage public URLs
- * (upload via `pnpm upload:images`). External URLs are not re-uploaded.
+ * Validate that an image odai URL is this project's Storage public URL.
+ * Catalog uploads are local-only (`pnpm upload:images`); ingest never re-uploads.
  */
-export async function uploadImageFromUrlToSupabaseStorage(
-  sourceUrl: string,
-): Promise<StoredImage> {
-  if (isOwnStoragePublicUrl(sourceUrl)) {
-    const path = extractStoragePathFromPublicUrl(sourceUrl);
-    return {
-      path: path ?? '',
-      publicUrl: sourceUrl,
-      reusedExisting: true,
-    };
+export async function resolveOwnStorageImageUrl(imageUrl: string): Promise<StoredImage> {
+  if (!isOwnStoragePublicUrl(imageUrl)) {
+    throw new Error(
+      `Image topic URL must be this project's Storage public URL. ` +
+        `Upload with pnpm upload:images first: ${imageUrl}`,
+    );
   }
-
-  throw new Error(
-    `Image topic sourceImage must be this project's Storage public URL ` +
-      `(got non-Storage URL). Upload with pnpm upload:images first: ${sourceUrl}`,
-  );
+  const path = extractStoragePathFromPublicUrl(imageUrl);
+  return {
+    path: path ?? '',
+    publicUrl: imageUrl,
+    reusedExisting: true,
+  };
 }

@@ -28,7 +28,7 @@ There is **no** server `/api/upload-image`. Catalog writes go through this CLI.
 |------|------|
 | Add image to pool | `pnpm upload:images` → Storage → `publicUrl` |
 | LINE shows odai | Sheet「画像」uses that `publicUrl` |
-| Answers sync | `/api/line-ingest` requires `sourceImage` to already be this project's Storage public URL (reuses it; does not fetch/re-upload) |
+| Answers sync | `/api/line-ingest` requires `topic.image` to already be this project's Storage public URL (stored on `topics.image`; no re-upload) |
 
 ## Env for CLI / unused API
 

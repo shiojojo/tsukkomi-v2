@@ -79,7 +79,7 @@ Full trigger list lives in the **oogiriLineBot README**. Summary:
 
 ## Sync behaviour
 
-- **Text and image** topics are processed. If the current odai is an `http(s)` URL, the payload uses `topic.kind: "image"` with `sourceImage` set to that URL.
+- **Text and image** topics are processed. If the current odai is an `http(s)` URL, the payload uses `topic.kind: "image"` with `image` set to that URL (must be this project's Storage public URL).
 - The script reads the designated group sheet (typically the LINE group ID, e.g. `Cb27b7a04b848b9e42bdcd2b21ba3313c`) from the bottom, collecting rows whose topic column matches the current odai stored in `H2`. It slices out rows that were already synced by remembering the most recent `回答ID` in `TSUKKOMI_LAST_SYNC_ANSWER_ID`.
 - Each answer requires non-empty `回答`(B列), `回答者ID`(C列), and `回答ID`(G列). Rows missing these fields are skipped.
 - On the server, topic rows are created on demand (matching by title with `image IS NULL`). Profiles are looked up by `line_id`; new entries are created when necessary and their display names are updated when they change.
@@ -88,6 +88,6 @@ Full trigger list lives in the **oogiriLineBot README**. Summary:
 ## Related
 
 - Image upload / unused URLs: [image-upload.md](./image-upload.md)
-- Image topics: `topic.kind: "image"` with `sourceImage` set to this project's Storage public URL (required; no server-side fetch/re-upload).
+- Image topics: `topic.kind: "image"` with `image` (Storage public URL) → `topics.image`. There is no `source_image` column.
 - GAS triggers: `oogiriLineBot` README
 

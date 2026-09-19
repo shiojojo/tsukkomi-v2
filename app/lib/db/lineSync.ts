@@ -1,5 +1,5 @@
 import { LineAnswerIngestRequestSchema, type LineAnswerIngestRequest } from '~/lib/schemas/line-sync';
-import { uploadImageFromUrlToSupabaseStorage } from '../imageStorage';
+import { resolveOwnStorageImageUrl } from '../imageStorage';
 import { supabase, supabaseAdmin, ensureConnection } from '../supabase';
 import { withTiming } from './debug';
 
@@ -25,6 +25,7 @@ function normalizeLineAnswerText(text: string): string {
  * Intent: 外部サービスからの一括同期を 1 箇所に閉じ、API ルートや他レイヤーからは関数呼び出しのみで完結させる。
  * Contract:
  *   - Input: LineAnswerIngestRequest (単一トピック + 回答配列)。topic.kind は text | image。
+ *     image トピックは topic.image（自前 Storage 公開 URL）を topics.image に保存。
  *   - Output: LineAnswerIngestResult (挿入件数 / スキップ件数 / トピック作成有無 等)。
  * Environment:
  *   - 常に Supabase を利用。書き込みには supabaseAdmin (service key) を優先し、無ければ public client。
@@ -43,14 +44,18 @@ async function _ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineA
   let uploadedImagePath: string | null = null;
 
   if (payload.topic.kind === 'image') {
-    const sourceImage = payload.topic.sourceImage;
-    if (!sourceImage) throw new Error('Image topic requires sourceImage');
+    const imageUrl = payload.topic.image;
+    if (!imageUrl) throw new Error('Image topic requires image URL');
     const topicTitle = (payload.topic.title ?? '写真').trim() || '写真';
+
+    // Catalog URLs must already be this project's Storage public URL.
+    const resolved = await resolveOwnStorageImageUrl(imageUrl);
+    const canonicalImage = resolved.publicUrl;
 
     const { data: topicExisting, error: topicQueryErr } = await writeClient
       .from('topics')
-      .select('id, image, source_image')
-      .eq('source_image', sourceImage)
+      .select('id, image')
+      .eq('image', canonicalImage)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -58,25 +63,13 @@ async function _ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineA
 
     if (topicExisting && topicExisting.id != null) {
       topicId = Number(topicExisting.id);
-      // Resolve Storage URL onto the topic (own Storage URLs only; no re-upload)
-      if (!topicExisting.image) {
-        const uploadInfo = await uploadImageFromUrlToSupabaseStorage(sourceImage);
-        uploadedImagePath = uploadInfo.path || null;
-        const { error: updateErr } = await writeClient
-          .from('topics')
-          .update({ image: uploadInfo.publicUrl, title: topicTitle })
-          .eq('id', topicExisting.id);
-        if (updateErr) throw updateErr;
-      }
+      uploadedImagePath = resolved.path || null;
     } else {
-      const uploadInfo = await uploadImageFromUrlToSupabaseStorage(sourceImage);
-      uploadedImagePath = uploadInfo.path || null;
       const { data: topicInserted, error: topicInsertErr } = await writeClient
         .from('topics')
         .insert({
           title: topicTitle,
-          image: uploadInfo.publicUrl,
-          source_image: sourceImage,
+          image: canonicalImage,
           created_at: topicCreatedAt,
         })
         .select('id')
@@ -84,6 +77,7 @@ async function _ingestLineAnswers(input: LineAnswerIngestRequest): Promise<LineA
       if (topicInsertErr) throw topicInsertErr;
       topicId = Number(topicInserted.id);
       createdTopic = true;
+      uploadedImagePath = resolved.path || null;
     }
   } else {
     const topicTitle = payload.topic.title.trim();
