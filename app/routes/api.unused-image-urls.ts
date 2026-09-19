@@ -48,10 +48,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     return jsonResponse({ ok: true, ...result });
   } catch (error) {
     console.error('unused-image-urls failed', error);
-    return jsonResponse(
-      { ok: false, error: (error as Error)?.message ?? 'Unknown error' },
-      { status: 500 },
-    );
+    return jsonResponse({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 

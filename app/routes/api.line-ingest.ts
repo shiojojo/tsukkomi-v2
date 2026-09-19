@@ -47,7 +47,8 @@ export async function action({ request }: ActionFunctionArgs) {
   try {
     rawBody = await request.json();
   } catch (error) {
-    return jsonResponse({ error: 'Invalid JSON payload', detail: (error as Error)?.message ?? String(error) }, { status: 400 });
+    console.error('LINE ingest invalid JSON', error);
+    return jsonResponse({ error: 'Invalid JSON payload' }, { status: 400 });
   }
 
   const parsed = LineAnswerIngestRequestSchema.safeParse(rawBody);
@@ -67,6 +68,6 @@ export async function action({ request }: ActionFunctionArgs) {
     return jsonResponse({ ok: true, result });
   } catch (error) {
     console.error('LINE ingest failed', error);
-    return jsonResponse({ ok: false, error: (error as Error)?.message ?? 'Unknown error' }, { status: 500 });
+    return jsonResponse({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 }

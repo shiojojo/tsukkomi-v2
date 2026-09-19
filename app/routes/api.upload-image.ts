@@ -89,15 +89,25 @@ export async function action({ request }: ActionFunctionArgs) {
       publicUrl: stored.publicUrl,
     });
   } catch (error) {
-    const message = (error as Error)?.message ?? 'Unknown error';
-    const status =
-      message.startsWith('Unsupported') ||
-      message.includes('multipart') ||
-      message.includes('Missing')
-        ? 400
-        : 500;
     console.error('Image upload failed', error);
-    return jsonResponse({ ok: false, error: message }, { status });
+    const message = (error as Error)?.message ?? '';
+    if (message.startsWith('Unsupported') || message.includes('multipart')) {
+      return jsonResponse(
+        {
+          ok: false,
+          error:
+            'Unsupported body. Send multipart/form-data with `file`, or raw body with Content-Type image/*',
+        },
+        { status: 400 },
+      );
+    }
+    if (message.includes('Missing')) {
+      return jsonResponse(
+        { ok: false, error: 'Missing multipart file field `file` (or `image`)' },
+        { status: 400 },
+      );
+    }
+    return jsonResponse({ ok: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
