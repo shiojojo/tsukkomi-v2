@@ -1,11 +1,11 @@
 import React from 'react';
 
-// Mock ResizeObserver for test environment
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
+// Mock ResizeObserver for test environment (vitest 4 requires a real constructor)
+global.ResizeObserver = class {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+} as unknown as typeof ResizeObserver;
 
 // Mock useIdentity hook
 vi.mock('~/hooks/common/useIdentity', () => ({
