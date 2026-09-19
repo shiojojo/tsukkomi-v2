@@ -73,7 +73,7 @@ Only add reviewed packages to `allowBuilds`. Do not bypass this with `dangerousl
 - If `/answers` loads but filters such as `minScore`, `author`, or `sortBy` do not apply only in production, verify the production SSR build. The answers loader should statically import `createListLoader`, and `createListLoader` should call `parseAnswersFilterParams` directly for answers routes.
 - If build logs mention Node `24.x`, check that `package.json` still says `"node": "22.x"`.
 - If install logs do not mention pnpm `10.29.3`, check `packageManager` and `ENABLE_EXPERIMENTAL_COREPACK` if your Vercel project requires it.
-- Sharp is pinned to `0.32.6`; do not upgrade it without testing the Vercel runtime image path.
+- `sharp` is used on the image upload path (`imageProcessor`). After bumping it, smoke-test `POST /api/upload-image` on a Vercel preview/production deploy (native binary + resize). See README “Dependency updates (ops)”.
 
 Useful production data check:
 
