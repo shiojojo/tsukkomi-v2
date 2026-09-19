@@ -156,7 +156,7 @@ export type UnusedImageUrlsResult = {
 /**
  * Candidates = Storage objects, deduped by filename stem (hash).
  * Used = stems from topics.image / source_image.
- * Folder and extension differences (images/*.webp vs line-sync/*.jpg) do not matter.
+ * Matching is by filename stem so path/extension differences do not matter.
  */
 export async function listUnusedImageUrls(): Promise<UnusedImageUrlsResult> {
   const folders = candidateFolders();

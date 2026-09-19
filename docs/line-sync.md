@@ -77,9 +77,6 @@ Full trigger list lives in the **oogiriLineBot README**. Summary:
    - `linePush` / `linePushImage` — when you want scheduled odai delivery
    - `cronRebuildUnusedImageSheet` — monthly (refresh「画像」from `/api/unused-image-urls`)
 
-3. Do **not** schedule `getFileListInFolder` (deprecated Drive catalog).
-
-
 ## Sync behaviour
 
 - **Text and image** topics are processed. If the current odai is an `http(s)` URL, the payload uses `topic.kind: "image"` with `sourceImage` set to that URL.
