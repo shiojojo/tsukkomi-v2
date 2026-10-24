@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import type { Navigation } from 'react-router';
+import type { useNavigation } from 'react-router';
 
-export function useLoadingState(navigation: Navigation) {
+type NavigationState = ReturnType<typeof useNavigation>;
+
+export function useLoadingState(navigation: NavigationState) {
   const isLoading = navigation.state !== 'idle';
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const navigationPathname = navigation.location?.pathname ?? null;

@@ -29,7 +29,8 @@ describe('createAnswersLoader', () => {
       request: new Request('http://localhost/answers'),
       params: {},
       context: {},
-      unstable_pattern: '/answers',
+      url: new URL('http://localhost/answers'),
+      pattern: '/answers',
     } as LoaderFunctionArgs);
 
     expect(response.status).toBe(500);
@@ -47,7 +48,8 @@ describe('createAnswersLoader', () => {
         request: new Request('http://localhost/answers'),
         params: {},
         context: {},
-        unstable_pattern: '/answers',
+        url: new URL('http://localhost/answers'),
+        pattern: '/answers',
       } as LoaderFunctionArgs)
     ).rejects.toMatchObject({
       status: 502,

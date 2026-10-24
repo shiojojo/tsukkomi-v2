@@ -12,13 +12,13 @@ import { createListLoader } from '~/lib/loaders';
 const FilterForm = lazy(() =>
   import('~/components/forms/FilterForm').then(module => ({
     default: module.FilterForm,
-  }))
+  })),
 );
 
 const TopicCard = lazy(() =>
   import('~/components/features/topics/TopicCard').then(module => ({
     default: module.TopicCard,
-  }))
+  })),
 );
 
 export function meta() {
@@ -28,8 +28,8 @@ export function meta() {
   ];
 }
 
-export async function loader({ request, unstable_url }: LoaderFunctionArgs) {
-  return createListLoader('topics', request, undefined, unstable_url);
+export async function loader({ request, url }: LoaderFunctionArgs) {
+  return createListLoader('topics', request, undefined, url);
 }
 
 export default function TopicsRoute() {
@@ -104,7 +104,7 @@ export default function TopicsRoute() {
           pageCount={pageCount}
           buildHref={(p: number) =>
             `?q=${encodeURIComponent(filters.q)}&fromDate=${encodeURIComponent(
-              filters.fromDate
+              filters.fromDate,
             )}&toDate=${encodeURIComponent(filters.toDate)}&page=${p}&pageSize=${pageSize}`
           }
         />

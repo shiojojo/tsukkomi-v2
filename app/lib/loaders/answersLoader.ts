@@ -13,11 +13,11 @@ export interface CreateAnswersLoaderOptions {
 }
 
 export async function createAnswersLoader(
-  { request, unstable_url }: LoaderFunctionArgs,
+  { request, url }: LoaderFunctionArgs,
   options: CreateAnswersLoaderOptions = {}
 ) {
-  const url = unstable_url ?? new URL(request.url);
-  const profileIdQuery = url.searchParams.get('profileId') ?? undefined;
+  const requestUrl = url ?? new URL(request.url);
+  const profileIdQuery = requestUrl.searchParams.get('profileId') ?? undefined;
 
   // 認証が必要なページでprofileIdがない場合
   if (options.requiresAuth && !profileIdQuery) {
@@ -44,7 +44,7 @@ export async function createAnswersLoader(
     topicId: options.topicId,
     favorite: options.favorite,
     profileId: options.profileId || profileIdQuery,
-  }, url);
+  }, requestUrl);
   const listData = await listResponse.json();
 
   if (!listResponse.ok) {

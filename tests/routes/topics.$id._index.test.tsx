@@ -22,22 +22,21 @@ describe('topics.$id._index route', () => {
     it('should call createAnswersListLoader with topicId from params', async () => {
       const mockResult = new Response(
         JSON.stringify({ answers: [], topicId: '123', topicsById: {} }),
-        { status: 200 }
+        { status: 200 },
       );
-      const { createAnswersLoader } = await import(
-        '~/lib/loaders/answersLoader'
-      );
+      const { createAnswersLoader } =
+        await import('~/lib/loaders/answersLoader');
       vi.mocked(createAnswersLoader).mockResolvedValue(mockResult);
 
       const request = new Request('http://localhost/topics/123');
       const params = { id: '123' };
-      const unstable_url = new URL(request.url);
+      const url = new URL(request.url);
       const result = await loader({
         request,
         params,
         context: undefined,
-        unstable_pattern: '/topics/$id',
-        unstable_url,
+        pattern: '/topics/$id',
+        url,
       });
 
       expect(createAnswersLoader).toHaveBeenCalledWith(
@@ -45,10 +44,10 @@ describe('topics.$id._index route', () => {
           request,
           params,
           context: undefined,
-          unstable_pattern: '/topics/$id',
-          unstable_url,
+          pattern: '/topics/$id',
+          url,
         },
-        { topicId: '123' }
+        { topicId: '123' },
       );
       expect(await result.json()).toEqual({
         answers: [],
@@ -61,20 +60,19 @@ describe('topics.$id._index route', () => {
       const mockResult = new Response(JSON.stringify({ answers: [] }), {
         status: 200,
       });
-      const { createAnswersLoader } = await import(
-        '~/lib/loaders/answersLoader'
-      );
+      const { createAnswersLoader } =
+        await import('~/lib/loaders/answersLoader');
       vi.mocked(createAnswersLoader).mockResolvedValue(mockResult);
 
       const request = new Request('http://localhost/topics/undefined');
       const params = { id: undefined };
-      const unstable_url = new URL(request.url);
+      const url = new URL(request.url);
       await loader({
         request,
         params,
         context: undefined,
-        unstable_pattern: '/topics/$id',
-        unstable_url,
+        pattern: '/topics/$id',
+        url,
       });
 
       expect(createAnswersLoader).toHaveBeenCalledWith(
@@ -82,10 +80,10 @@ describe('topics.$id._index route', () => {
           request,
           params,
           context: undefined,
-          unstable_pattern: '/topics/$id',
-          unstable_url,
+          pattern: '/topics/$id',
+          url,
         },
-        { topicId: undefined }
+        { topicId: undefined },
       );
     });
   });
@@ -103,8 +101,8 @@ describe('topics.$id._index route', () => {
         request,
         params: {},
         context: undefined,
-        unstable_pattern: '/topics/$id',
-        unstable_url: new URL(request.url),
+        pattern: '/topics/$id',
+        url: new URL(request.url),
       };
       const result = await action(args);
 

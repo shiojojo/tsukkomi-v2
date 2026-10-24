@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import type { Navigation } from 'react-router';
+import type { useNavigation } from 'react-router';
+
+type NavigationState = ReturnType<typeof useNavigation>;
 
 export function useClientOnlyDebugInfo(
-  navigation: Navigation,
+  navigation: NavigationState,
   isLoading: boolean,
-  loadingTimeout: boolean
+  loadingTimeout: boolean,
 ) {
   const [isClient, setIsClient] = useState(false);
 
