@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { RouterContextProvider } from 'react-router';
 import { loader, action } from '~/routes/topics.$id._index';
 
 // Mock db
@@ -14,6 +15,8 @@ vi.mock('~/lib/actionHandlers', () => ({
 }));
 
 describe('topics.$id._index route', () => {
+  const context = new RouterContextProvider();
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -34,7 +37,7 @@ describe('topics.$id._index route', () => {
       const result = await loader({
         request,
         params,
-        context: undefined,
+        context,
         pattern: '/topics/$id',
         url,
       });
@@ -43,7 +46,7 @@ describe('topics.$id._index route', () => {
         {
           request,
           params,
-          context: undefined,
+          context,
           pattern: '/topics/$id',
           url,
         },
@@ -70,7 +73,7 @@ describe('topics.$id._index route', () => {
       await loader({
         request,
         params,
-        context: undefined,
+        context,
         pattern: '/topics/$id',
         url,
       });
@@ -79,7 +82,7 @@ describe('topics.$id._index route', () => {
         {
           request,
           params,
-          context: undefined,
+          context,
           pattern: '/topics/$id',
           url,
         },
@@ -100,7 +103,7 @@ describe('topics.$id._index route', () => {
       const args = {
         request,
         params: {},
-        context: undefined,
+        context,
         pattern: '/topics/$id',
         url: new URL(request.url),
       };
