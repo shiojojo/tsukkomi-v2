@@ -1,11 +1,12 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useFetcher } from 'react-router';
-import { consumeToken } from '~/lib/rateLimiter';
+import { consumeRequestToken } from '~/lib/rateLimiter';
 import { getItem, setItem, removeItem } from '~/lib/identityStorage';
 import React, { useEffect, useState } from 'react';
 import { useIdentity } from '~/hooks/common/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
+import { SubUserRemoveSchema } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
 import { useThemeStore } from '~/lib/store';
@@ -35,28 +36,13 @@ export async function loader(_args: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  const form = await request.formData();
-  // basic rate limiting to protect this dev endpoint from storms
-  const parentId = form.get('parentId')
-    ? String(form.get('parentId'))
-    : undefined;
-  let rateKey = 'anon';
-  if (parentId) rateKey = `p:${parentId}`;
-  else {
-    const hdr =
-      request.headers && request.headers.get
-        ? request.headers.get('x-forwarded-for') ||
-          request.headers.get('x-real-ip')
-        : null;
-    if (hdr) rateKey = `ip:${String(hdr).split(',')[0].trim()}`;
-  }
-  // if no token available, return 429
-  if (!consumeToken(rateKey, 1)) {
+  if (!consumeRequestToken(request, 1, 'me-action')) {
     return new Response(JSON.stringify({ ok: false, error: 'rate_limited' }), {
       status: 429,
       headers: { 'Content-Type': 'application/json' },
     });
   }
+  const form = await request.formData();
   const intent = form.get('intent') ? String(form.get('intent')) : '';
 
   if (intent === 'add-subuser') {
@@ -69,7 +55,7 @@ export async function action({ request }: ActionFunctionArgs) {
         {
           status: 400,
           headers: { 'Content-Type': 'application/json' },
-        }
+        },
       );
     const { addSubUser } = await import('~/lib/db');
     const sub = await addSubUser(parsed.data);
@@ -77,10 +63,19 @@ export async function action({ request }: ActionFunctionArgs) {
   }
 
   if (intent === 'remove-subuser') {
-    const parentId = String(form.get('parentId') || '');
-    const subId = String(form.get('subId') || '');
+    const parsed = SubUserRemoveSchema.safeParse({
+      parentId: form.get('parentId'),
+      subId: form.get('subId'),
+    });
+    if (!parsed.success) {
+      return Response.json(
+        { ok: false, error: 'Invalid sub-user request' },
+        { status: 400 },
+      );
+    }
     const { removeSubUser } = await import('~/lib/db');
-    const ok = await removeSubUser({ id: subId });
+    const { parentId, subId } = parsed.data;
+    const ok = await removeSubUser({ id: subId, parentId });
     return Response.json({ ok, parentId, subId });
   }
 
@@ -348,7 +343,7 @@ export default function MeRoute() {
                               onClick={() =>
                                 switchToSub(
                                   s,
-                                  users.find(u => u.id === currentUserId)!
+                                  users.find(u => u.id === currentUserId)!,
                                 )
                               }
                             >

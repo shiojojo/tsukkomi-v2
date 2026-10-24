@@ -1,13 +1,11 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
+import { matchesApiKey } from '~/lib/apiSecurity';
+import { consumeRequestToken } from '~/lib/rateLimiter';
 
 const API_KEY_HEADER = 'x-api-key';
 
 function resolveLineSyncApiKey(): string | undefined {
-  const metaEnv =
-    typeof import.meta !== 'undefined'
-      ? (import.meta as { env: Record<string, string | undefined> }).env
-      : undefined;
-  return process.env.LINE_SYNC_API_KEY || (metaEnv ? metaEnv.LINE_SYNC_API_KEY : undefined);
+  return process.env.LINE_SYNC_API_KEY;
 }
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
@@ -22,7 +20,7 @@ function authorize(request: Request): Response | null {
     return jsonResponse({ error: 'Server missing LINE_SYNC_API_KEY' }, { status: 500 });
   }
   const providedKey = request.headers.get(API_KEY_HEADER);
-  if (!providedKey || providedKey !== configuredKey) {
+  if (!matchesApiKey(configuredKey, providedKey)) {
     return jsonResponse({ error: 'Unauthorized' }, { status: 401 });
   }
   return null;
@@ -37,6 +35,10 @@ function authorize(request: Request): Response | null {
 export async function loader({ request }: LoaderFunctionArgs) {
   if (request.method.toUpperCase() !== 'GET') {
     return jsonResponse({ error: 'Method Not Allowed' }, { status: 405 });
+  }
+
+  if (!consumeRequestToken(request, 1, 'unused-image-urls')) {
+    return jsonResponse({ error: 'Too Many Requests' }, { status: 429 });
   }
 
   const denied = authorize(request);

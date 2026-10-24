@@ -82,9 +82,17 @@ export const getUsers = withTiming(_getUsers, 'getUsers', 'users');
  */
 async function _addSubUser(input: { parentId: string; name: string }): Promise<SubUser> {
   await ensureConnection();
-  await ensureConnection();
   const writeClient = supabaseAdmin ?? supabase;
   if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
+  const { data: parent, error: parentError } = await writeClient
+    .from('profiles')
+    .select('id')
+    .eq('id', input.parentId)
+    .is('parent_id', null)
+    .maybeSingle();
+  if (parentError) throw parentError;
+  if (!parent) throw new Error('Parent profile not found');
+
   const { data, error } = await writeClient
   .from('profiles')
   .insert({ parent_id: input.parentId, name: input.name })
@@ -100,14 +108,15 @@ export const addSubUser = withTiming(_addSubUser, 'addSubUser', 'users');
  * removeSubUser
  * Intent: delete a sub-user from parent in dev and return boolean
  */
-async function _removeSubUser(input: { id: string }): Promise<void> {
+async function _removeSubUser(input: { id: string; parentId: string }): Promise<void> {
   await ensureConnection();
   const writeClient = supabaseAdmin ?? supabase;
   if (!supabaseAdmin && !writeClient) throw new Error('No Supabase client available for writes');
   const { error } = await writeClient
     .from('profiles')
     .delete()
-    .eq('id', input.id);
+    .eq('id', input.id)
+    .eq('parent_id', input.parentId);
   if (error) throw error;
 }
 

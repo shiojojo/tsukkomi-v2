@@ -393,7 +393,7 @@ describe('db functions', () => {
       const { removeSubUser } = await import('~/lib/db/users');
       vi.mocked(removeSubUser).mockResolvedValue(undefined);
 
-      await expect(removeSubUser({ id: '2' })).resolves.toBeUndefined();
+      await expect(removeSubUser({ id: '2', parentId: '1' })).resolves.toBeUndefined();
     });
   });
 

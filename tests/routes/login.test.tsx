@@ -7,8 +7,13 @@ vi.mock('~/lib/db', () => ({
   getUsers: vi.fn(),
   addSubUser: vi.fn(),
 }));
+vi.mock('~/lib/rateLimiter', () => ({
+  consumeRequestToken: vi.fn(() => true),
+}));
 
 describe('login route', () => {
+  const parentId = '123e4567-e89b-42d3-a456-426614174000';
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -29,9 +34,11 @@ describe('login route', () => {
 
   describe('action', () => {
     it('should handle add-subuser intent', async () => {
+      const { consumeRequestToken } = await import('~/lib/rateLimiter');
+      vi.mocked(consumeRequestToken).mockReturnValue(true);
       const params = new URLSearchParams();
       params.append('intent', 'add-subuser');
-      params.append('parentId', 'parent1');
+      params.append('parentId', parentId);
       params.append('name', 'New Sub');
       const mockRequest = new Request('http://localhost/login', {
         method: 'POST',
@@ -46,14 +53,16 @@ describe('login route', () => {
         request: mockRequest,
       } as ActionFunctionArgs);
       expect(addSubUser).toHaveBeenCalledWith({
-        parentId: 'parent1',
+        parentId,
         name: 'New Sub',
       });
       const data = await result.json();
-      expect(data).toEqual({ ok: true, sub: mockSub, parentId: 'parent1' });
+      expect(data).toEqual({ ok: true, sub: mockSub, parentId });
     });
 
     it('should return error for invalid subuser data', async () => {
+      const { consumeRequestToken } = await import('~/lib/rateLimiter');
+      vi.mocked(consumeRequestToken).mockReturnValue(true);
       const params = new URLSearchParams();
       params.append('intent', 'add-subuser');
       params.append('parentId', '');
@@ -70,6 +79,16 @@ describe('login route', () => {
       const data = await result.json();
       expect(data).toHaveProperty('ok', false);
       expect(data).toHaveProperty('errors');
+    });
+
+    it('rate limits subuser creation by requester', async () => {
+      const { consumeRequestToken } = await import('~/lib/rateLimiter');
+      vi.mocked(consumeRequestToken).mockReturnValue(false);
+      const request = new Request('http://localhost/login', { method: 'POST' });
+
+      const response = await action({ request } as ActionFunctionArgs);
+
+      expect(response.status).toBe(429);
     });
   });
 });

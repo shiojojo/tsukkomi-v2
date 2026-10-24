@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { useLoaderData, useFetcher } from 'react-router';
 import { useEffect, useState } from 'react';
 import * as identityStorage from '~/lib/identityStorage';
+import { consumeRequestToken } from '~/lib/rateLimiter';
 import { useIdentity } from '~/hooks/common/useIdentity';
 import { SubUserCreateSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
@@ -32,6 +33,13 @@ export async function loader(_args: LoaderFunctionArgs) {
 
 export async function action({ request }: ActionFunctionArgs) {
   try {
+    if (!consumeRequestToken(request, 1, 'login-action')) {
+      return Response.json(
+        { ok: false, error: 'Too Many Requests' },
+        { status: 429 },
+      );
+    }
+
     const form = await request.formData();
     const intent = String(form.get('intent') || '');
     if (intent === 'add-subuser') {
@@ -41,7 +49,7 @@ export async function action({ request }: ActionFunctionArgs) {
       if (!parsed.success)
         return new Response(
           JSON.stringify({ ok: false, errors: parsed.error.format() }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } }
+          { status: 400, headers: { 'Content-Type': 'application/json' } },
         );
       const { addSubUser } = await import('~/lib/db');
       const sub = await addSubUser(parsed.data);
@@ -84,7 +92,7 @@ export default function LoginRoute() {
     ) {
       const sub = (createFetcher.data as ActionData).sub!;
       const parentId = String(
-        (createFetcher.data as ActionData).parentId || ''
+        (createFetcher.data as ActionData).parentId || '',
       );
       const parent = users.find(u => u.id === parentId);
       identityStorage.setItem('currentUserId', parentId);

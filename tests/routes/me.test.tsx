@@ -10,7 +10,7 @@ vi.mock('~/lib/db', () => ({
 }));
 
 vi.mock('~/lib/rateLimiter', () => ({
-  consumeToken: vi.fn(),
+  consumeRequestToken: vi.fn(),
 }));
 
 vi.mock('~/lib/identityStorage', () => ({
@@ -20,6 +20,9 @@ vi.mock('~/lib/identityStorage', () => ({
 }));
 
 describe('me route', () => {
+  const parentId = '123e4567-e89b-42d3-a456-426614174000';
+  const subId = '123e4567-e89b-42d3-a456-426614174001';
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -40,12 +43,12 @@ describe('me route', () => {
 
   describe('action', () => {
     it('should handle add-subuser intent', async () => {
-      const { consumeToken } = await import('~/lib/rateLimiter');
-      vi.mocked(consumeToken).mockReturnValue(true);
+      const { consumeRequestToken } = await import('~/lib/rateLimiter');
+      vi.mocked(consumeRequestToken).mockReturnValue(true);
 
       const params = new URLSearchParams();
       params.append('intent', 'add-subuser');
-      params.append('parentId', 'parent1');
+      params.append('parentId', parentId);
       params.append('name', 'New Sub');
       const mockRequest = new Request('http://localhost/me', {
         method: 'POST',
@@ -60,21 +63,21 @@ describe('me route', () => {
         request: mockRequest,
       } as ActionFunctionArgs);
       expect(addSubUser).toHaveBeenCalledWith({
-        parentId: 'parent1',
+        parentId,
         name: 'New Sub',
       });
       const data = await result.json();
-      expect(data).toEqual({ ok: true, sub: mockSub, parentId: 'parent1' });
+      expect(data).toEqual({ ok: true, sub: mockSub, parentId });
     });
 
     it('should handle remove-subuser intent', async () => {
-      const { consumeToken } = await import('~/lib/rateLimiter');
-      vi.mocked(consumeToken).mockReturnValue(true);
+      const { consumeRequestToken } = await import('~/lib/rateLimiter');
+      vi.mocked(consumeRequestToken).mockReturnValue(true);
 
       const params = new URLSearchParams();
       params.append('intent', 'remove-subuser');
-      params.append('parentId', 'parent1');
-      params.append('subId', 'sub1');
+      params.append('parentId', parentId);
+      params.append('subId', subId);
       const mockRequest = new Request('http://localhost/me', {
         method: 'POST',
         body: params,
@@ -86,14 +89,14 @@ describe('me route', () => {
       const result = await action({
         request: mockRequest,
       } as ActionFunctionArgs);
-      expect(removeSubUser).toHaveBeenCalledWith({ id: 'sub1' });
+      expect(removeSubUser).toHaveBeenCalledWith({ id: subId, parentId });
       const data = await result.json();
-      expect(data).toEqual({ parentId: 'parent1', subId: 'sub1' });
+      expect(data).toEqual({ parentId, subId });
     });
 
     it('should return rate limited error', async () => {
-      const { consumeToken } = await import('~/lib/rateLimiter');
-      vi.mocked(consumeToken).mockReturnValue(false);
+      const { consumeRequestToken } = await import('~/lib/rateLimiter');
+      vi.mocked(consumeRequestToken).mockReturnValue(false);
 
       const params = new URLSearchParams();
       params.append('intent', 'add-subuser');

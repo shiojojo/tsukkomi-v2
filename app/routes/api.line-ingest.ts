@@ -1,15 +1,13 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
+import { matchesApiKey, readJsonBody } from '~/lib/apiSecurity';
+import { consumeRequestToken } from '~/lib/rateLimiter';
 import { LineAnswerIngestRequestSchema } from '~/lib/schemas/line-sync';
 // server-only imports are done inside loader/action to avoid bundling Supabase client in browser code
 
 const API_KEY_HEADER = 'x-api-key';
 
 function resolveLineSyncApiKey(): string | undefined {
-  const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as { env: Record<string, string | undefined> }).env : undefined;
-  return (
-    process.env.LINE_SYNC_API_KEY ||
-    (metaEnv ? metaEnv.LINE_SYNC_API_KEY : undefined)
-  );
+  return process.env.LINE_SYNC_API_KEY;
 }
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
@@ -33,25 +31,29 @@ export async function action({ request }: ActionFunctionArgs) {
     return jsonResponse({ error: 'Method Not Allowed' }, { status: 405 });
   }
 
+  if (!consumeRequestToken(request, 1, 'line-ingest')) {
+    return jsonResponse({ error: 'Too Many Requests' }, { status: 429 });
+  }
+
   const configuredKey = resolveLineSyncApiKey();
   if (!configuredKey) {
     return jsonResponse({ error: 'Server missing LINE_SYNC_API_KEY' }, { status: 500 });
   }
 
   const providedKey = request.headers.get(API_KEY_HEADER);
-  if (!providedKey || providedKey !== configuredKey) {
+  if (!matchesApiKey(configuredKey, providedKey)) {
     return jsonResponse({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let rawBody: unknown;
-  try {
-    rawBody = await request.json();
-  } catch (error) {
-    console.error('LINE ingest invalid JSON', error);
+  const body = await readJsonBody(request);
+  if (body.kind === 'too-large') {
+    return jsonResponse({ error: 'Payload too large' }, { status: 413 });
+  }
+  if (body.kind === 'invalid') {
     return jsonResponse({ error: 'Invalid JSON payload' }, { status: 400 });
   }
 
-  const parsed = LineAnswerIngestRequestSchema.safeParse(rawBody);
+  const parsed = LineAnswerIngestRequestSchema.safeParse(body.value);
   if (!parsed.success) {
     return jsonResponse({
       error: 'Validation failed',
