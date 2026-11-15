@@ -97,11 +97,6 @@ describe('AnswersList', () => {
     getNameByProfileId: vi.fn(id =>
       id === 'user1' ? 'Test User' : 'Other User'
     ),
-    currentUserName: 'Test User',
-    currentUserId: 'user1',
-    userAnswerData: { votes: {} },
-    actionPath: '/test-action',
-    profileIdForVotes: 'user1' as string | null,
     pagination: undefined,
     emptyMessage: '表示される回答がありません。',
   };

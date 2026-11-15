@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { VoteSection } from './VoteSection';
 import { CommentSection } from './CommentSection';
-import { FavoriteSection } from './FavoriteSection';
 import type { Answer } from '~/lib/schemas/answer';
 import type { Topic } from '~/lib/schemas/topic';
 import { Button } from '~/components/ui/Button';
@@ -9,40 +7,24 @@ import { Button } from '~/components/ui/Button';
 export interface AnswerActionCardProps {
   answer: Answer;
   topic: Topic | null;
-  currentUserId: string | null;
-  currentUserName: string | null;
   getNameByProfileId: (pid?: string | null) => string | undefined;
-  userAnswerData: { votes: Record<number, number> };
-  actionPath: string;
-  profileIdForVotes?: string | null;
 }
 
 /**
- * 概要: お題情報付きの回答カード。お気に入り・採点・コメント送信を 1 カードに集約して表示する。
+ * 概要: お題情報付きの読み取り専用回答カード。既存コメントの閲覧のみ提供する。
  * Intent: /answers, /answers/favorites, /topics/:id など複数スクリーンで UI を統一し再利用する。
  * Contract:
- *   - props.answer は votes(level1..3) / favorited を含む場合がある。なければ 0 扱い。
- *   - props.userAnswerData は useAnswerUserData などで取得したローカル同期情報。
- *   - actionPath に対して POST (toggle/vote/comment) を行う。ルート側に同じ action を実装しておくこと。
+ *   - props.answer は loader が取得した回答情報を含む。
+ *   - コメント、投票、お気に入りの書き込み操作は提供しない。
  * Environment:
- *   - ブラウザ専用。localStorage や fetcher を利用するため SSR では副作用を起こさないよう条件分岐済み。
- * Errors:
- *   - fetcher 経由の失敗は UI 上は静かにしつつ console へログ。致命的であればルート側 action が 4xx/5xx を返す。
+ *   - ブラウザ専用。コメントは明示的に開いたときだけ取得する。
  */
 export function AnswerActionCard({
   answer,
   topic,
-  currentUserId,
-  currentUserName,
   getNameByProfileId,
-  userAnswerData,
-  actionPath,
-  profileIdForVotes,
 }: AnswerActionCardProps) {
   const [open, setOpen] = useState(false);
-  const [realTimeCommentCount, setRealTimeCommentCount] = useState(
-    answer.commentCount || 0
-  );
 
   // Calculate score from answer.votes
   const score = (() => {
@@ -88,8 +70,7 @@ export function AnswerActionCard({
           <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center">
               <div
-                className={`text-sm font-medium cursor-pointer ${score === 0 ? 'text-gray-500' : 'text-foreground'}`}
-                onClick={() => setOpen(prev => !prev)}
+                className={`text-sm font-medium ${score === 0 ? 'text-gray-500' : 'text-foreground'}`}
               >
                 Score: {score}
               </div>
@@ -101,13 +82,12 @@ export function AnswerActionCard({
             </div>
             <div className="flex justify-between items-center">
               <div
-                className={`text-sm font-medium cursor-pointer ${realTimeCommentCount === 0 ? 'text-gray-500' : 'text-foreground'}`}
+                className={`text-sm font-medium cursor-pointer ${(answer.commentCount || 0) === 0 ? 'text-gray-500' : 'text-foreground'}`}
                 onClick={() => setOpen(prev => !prev)}
               >
-                コメント: {realTimeCommentCount}
+                コメント: {answer.commentCount || 0}
               </div>
               <div className="flex items-center gap-2">
-                <FavoriteSection answer={answer} />
                 <Button
                   variant="linkNoHover"
                   style={{ color: 'hsl(var(--primary))' }}
@@ -115,7 +95,7 @@ export function AnswerActionCard({
                   onClick={() => setOpen(prev => !prev)}
                   aria-expanded={open}
                 >
-                  {open ? '閉じる' : 'コメント / 採点'}
+                  {open ? '閉じる' : 'コメントを見る'}
                 </Button>
               </div>
             </div>
@@ -124,26 +104,11 @@ export function AnswerActionCard({
 
         {open && (
           <div className="pt-3 border-t border-border space-y-4">
-            <VoteSection
-              answer={answer}
-              userAnswerData={userAnswerData}
-              actionPath={actionPath}
-              profileIdForVotes={profileIdForVotes}
-              currentUserId={currentUserId}
-              getNameByProfileId={getNameByProfileId}
-              currentUserName={currentUserName}
-            />
-
             <CommentSection
               comments={[]}
               answerId={answer.id}
-              currentUserId={currentUserId}
-              currentUserName={currentUserName}
               getNameByProfileId={getNameByProfileId}
-              actionPath={actionPath}
-              onCommentCountChange={setRealTimeCommentCount}
               enabled={open}
-              initialCommentCount={answer.commentCount || 0}
             />
           </div>
         )}

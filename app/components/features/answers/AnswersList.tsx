@@ -8,11 +8,6 @@ interface AnswersListProps {
   topicsById?: Record<string, Topic>;
   topic?: Topic; // topics.$id.tsx 用
   getNameByProfileId: (pid?: string | null) => string | undefined;
-  currentUserName: string | null;
-  currentUserId: string | null;
-  userAnswerData: { votes: Record<number, number> };
-  actionPath: string;
-  profileIdForVotes?: string | null;
   pagination?: {
     currentPage: number;
     pageCount: number;
@@ -26,11 +21,6 @@ export function AnswersList({
   topicsById,
   topic,
   getNameByProfileId,
-  currentUserName,
-  currentUserId,
-  userAnswerData,
-  actionPath,
-  profileIdForVotes,
   pagination,
   emptyMessage = '表示される回答がありません。',
 }: AnswersListProps) {
@@ -55,12 +45,7 @@ export function AnswersList({
                   topic ||
                   (topicsById ? topicsById[answer.topicId || ''] : null)
                 }
-                currentUserId={currentUserId}
-                currentUserName={currentUserName}
                 getNameByProfileId={getNameByProfileId}
-                userAnswerData={userAnswerData}
-                actionPath={actionPath}
-                profileIdForVotes={profileIdForVotes}
               />
             );
           })}

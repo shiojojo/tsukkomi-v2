@@ -39,7 +39,7 @@ export function AnswersRoute({ mode, topicId }: AnswersRouteProps) {
 
   return (
     <Suspense fallback={<LoadingState message="Loading answers page..." />}>
-      <AnswersPage data={data} mode={mode} topicId={topicId} topic={topic} />
+      <AnswersPage data={data} mode={mode} topic={topic} />
     </Suspense>
   );
 }

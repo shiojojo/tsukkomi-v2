@@ -1,31 +1,20 @@
-import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, useFetcher } from 'react-router';
-import { consumeRequestToken } from '~/lib/rateLimiter';
-import { getItem, setItem, removeItem } from '~/lib/identityStorage';
+import type { LoaderFunctionArgs } from 'react-router';
+import { useLoaderData } from 'react-router';
+import { setItem, removeItem } from '~/lib/identityStorage';
 import React, { useEffect, useState } from 'react';
 import { useIdentity } from '~/hooks/common/useIdentity';
-import { SubUserCreateSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
-import { SubUserRemoveSchema } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
 import { useThemeStore } from '~/lib/store';
 import { ListPageLayout } from '~/components/layout/ListPageLayout';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '~/components/ui/dialog';
 
 /**
- * 概要: /me ページ - 開発向けにサブユーザーの作成 / 削除 / 切替 を提供する。
+ * 概要: /me ページ - 既存ユーザー / サブユーザーのローカル切替を提供する。
  * Intent: ローカルの currentUser / currentSubUser を操作できる簡易 UI。
  * Contract:
  *  - loader: { users: User[] }
- *  - action: intent=add-subuser | remove-subuser -> returns { ok, sub?, parentId?, subId? }
+ *  - DB書き込みは提供しない。
  * Environment: dev は in-memory mock を使う (lib/db の分岐に従う)
  * Errors: バリデーションエラーは { ok: false, errors } を返す
  */
@@ -33,53 +22,6 @@ export async function loader(_args: LoaderFunctionArgs) {
   const { getUsers } = await import('~/lib/db');
   const users = await getUsers();
   return Response.json({ users });
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-  if (!consumeRequestToken(request, 1, 'me-action')) {
-    return new Response(JSON.stringify({ ok: false, error: 'rate_limited' }), {
-      status: 429,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-  const form = await request.formData();
-  const intent = form.get('intent') ? String(form.get('intent')) : '';
-
-  if (intent === 'add-subuser') {
-    const name = String(form.get('name') || '');
-    const parentId = String(form.get('parentId') || '');
-    const parsed = SubUserCreateSchema.safeParse({ name, parentId });
-    if (!parsed.success)
-      return new Response(
-        JSON.stringify({ ok: false, errors: parsed.error.format() }),
-        {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' },
-        },
-      );
-    const { addSubUser } = await import('~/lib/db');
-    const sub = await addSubUser(parsed.data);
-    return Response.json({ ok: true, sub, parentId });
-  }
-
-  if (intent === 'remove-subuser') {
-    const parsed = SubUserRemoveSchema.safeParse({
-      parentId: form.get('parentId'),
-      subId: form.get('subId'),
-    });
-    if (!parsed.success) {
-      return Response.json(
-        { ok: false, error: 'Invalid sub-user request' },
-        { status: 400 },
-      );
-    }
-    const { removeSubUser } = await import('~/lib/db');
-    const { parentId, subId } = parsed.data;
-    const ok = await removeSubUser({ id: subId, parentId });
-    return Response.json({ ok, parentId, subId });
-  }
-
-  return Response.json({ ok: false }, { status: 400 });
 }
 
 export default function MeRoute() {
@@ -117,54 +59,6 @@ export default function MeRoute() {
     setIsHydrated(true);
   }, []);
 
-  // 削除確認ダイアログの状態
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [subUserToDelete, setSubUserToDelete] = useState<SubUser | null>(null);
-  const [confirmName, setConfirmName] = useState('');
-
-  // fetchers for mutate actions
-  const add = useFetcher();
-  const remove = useFetcher();
-
-  type ActionData = {
-    ok: boolean;
-    sub?: SubUser;
-    parentId?: string;
-  };
-
-  // Handle add result: set the created sub-user as active
-  useEffect(() => {
-    if (
-      add.state === 'idle' &&
-      add.data &&
-      (add.data as ActionData).ok &&
-      (add.data as ActionData).sub
-    ) {
-      const sub = (add.data as ActionData).sub!;
-      const parentId = String((add.data as ActionData).parentId || '');
-      setItem('currentUserId', parentId);
-      const parent = users.find(u => u.id === parentId);
-      if (parent) setItem('currentUserName', parent.name ?? '');
-      setItem('currentSubUserId', sub.id);
-      setItem('currentSubUserName', sub.name);
-      // Trigger identity change event instead of reload
-      window.dispatchEvent(new Event('identity-change'));
-    }
-  }, [add.state, add.data]);
-
-  // Handle remove result: if removed sub was active, clear sub selection
-  useEffect(() => {
-    if (remove.state === 'idle' && remove.data && remove.data.ok) {
-      const removedId = String(remove.data.subId || '');
-      if (getItem('currentSubUserId') === removedId) {
-        removeItem('currentSubUserId');
-        removeItem('currentSubUserName');
-      }
-      // Trigger identity change event instead of reload
-      window.dispatchEvent(new Event('identity-change'));
-    }
-  }, [remove.state, remove.data]);
-
   function selectMain(user: User) {
     setItem('currentUserId', user.id);
     setItem('currentUserName', user.name ?? '');
@@ -190,46 +84,6 @@ export default function MeRoute() {
     removeItem('currentSubUserName');
     // Trigger identity change event instead of reload
     window.dispatchEvent(new Event('identity-change'));
-  }
-
-  // 削除確認ダイアログを開く
-  function openDeleteDialog(sub: SubUser) {
-    setSubUserToDelete(sub);
-    setConfirmName('');
-    setDeleteDialogOpen(true);
-  }
-
-  // 削除確定
-  function handleDeleteConfirm() {
-    if (subUserToDelete && confirmName === subUserToDelete.name) {
-      // フォームをプログラム的にサブミット
-      const form = document.createElement('form');
-      form.method = 'post';
-      form.style.display = 'none';
-
-      const intentInput = document.createElement('input');
-      intentInput.name = 'intent';
-      intentInput.value = 'remove-subuser';
-      form.appendChild(intentInput);
-
-      const parentIdInput = document.createElement('input');
-      parentIdInput.name = 'parentId';
-      parentIdInput.value = currentUserId ?? '';
-      form.appendChild(parentIdInput);
-
-      const subIdInput = document.createElement('input');
-      subIdInput.name = 'subId';
-      subIdInput.value = subUserToDelete.id;
-      form.appendChild(subIdInput);
-
-      document.body.appendChild(form);
-      form.submit();
-      document.body.removeChild(form);
-
-      setDeleteDialogOpen(false);
-      setSubUserToDelete(null);
-      setConfirmName('');
-    }
   }
 
   return (
@@ -297,32 +151,6 @@ export default function MeRoute() {
             </section>
 
             <section>
-              <h2 className="text-sm font-semibold">サブユーザーを追加</h2>
-              {currentUserId ? (
-                <add.Form method="post" className="flex gap-2 mt-2">
-                  <input type="hidden" name="intent" value="add-subuser" />
-                  <input
-                    type="hidden"
-                    name="parentId"
-                    value={currentUserId ?? ''}
-                  />
-                  <input
-                    name="name"
-                    className="form-input flex-1"
-                    placeholder="サブユーザー名"
-                  />
-                  <button className="btn-inline" type="submit">
-                    作成
-                  </button>
-                </add.Form>
-              ) : (
-                <div className="text-xs text-muted-foreground mt-2">
-                  まずメインアカウントを選択してください。
-                </div>
-              )}
-            </section>
-
-            <section>
               <h2 className="text-sm font-semibold">既存のサブユーザー</h2>
               {currentUserId ? (
                 <ul className="mt-2 space-y-2">
@@ -348,14 +176,6 @@ export default function MeRoute() {
                               }
                             >
                               切替
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="text-sm"
-                              onClick={() => openDeleteDialog(s)}
-                            >
-                              削除
                             </Button>
                           </div>
                         </li>
@@ -389,46 +209,6 @@ export default function MeRoute() {
         }
       />
 
-      {/* 削除確認ダイアログ */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>サブユーザーの削除</DialogTitle>
-            <DialogDescription>
-              本当に <strong>{subUserToDelete?.name}</strong> を削除しますか？
-              この操作は取り消せません。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <label className="block text-sm font-medium mb-2">
-              削除を確認するために、サブユーザー名を入力してください:
-            </label>
-            <input
-              type="text"
-              value={confirmName}
-              onChange={e => setConfirmName(e.target.value)}
-              className="form-input w-full"
-              placeholder={subUserToDelete?.name}
-              autoComplete="off"
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              キャンセル
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={confirmName !== subUserToDelete?.name}
-            >
-              削除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </React.Fragment>
   );
 }

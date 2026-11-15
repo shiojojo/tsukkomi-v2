@@ -1,8 +1,7 @@
-import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
+import type { LoaderFunctionArgs } from 'react-router';
 import { useLoaderData, Form, useNavigate } from 'react-router';
 import { useEffect, lazy, Suspense } from 'react';
 import { useIdentity } from '~/hooks/common/useIdentity';
-import { handleAnswerActions } from '~/lib/actionHandlers';
 import { Button } from '~/components/ui/Button';
 import { LoadingState } from '~/components/common/LoadingState';
 import { createAnswersLoader } from '~/lib/loaders/answersLoader';
@@ -17,10 +16,6 @@ const AnswersRoute = lazy(() =>
 
 export async function loader(args: LoaderFunctionArgs) {
   return createAnswersLoader(args, { requiresAuth: true, favorite: true });
-}
-
-export async function action(args: ActionFunctionArgs) {
-  return handleAnswerActions(args);
 }
 
 export default function FavoriteAnswersRoute() {

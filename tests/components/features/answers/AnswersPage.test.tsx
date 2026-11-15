@@ -135,7 +135,6 @@ describe('AnswersPage', () => {
         <AnswersPage
           data={mockData}
           mode="topic"
-          topicId="1"
           topic={mockTopic}
         />
       </QueryClientProvider>

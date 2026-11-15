@@ -44,21 +44,17 @@ interface AnswersPageProps {
     profileId?: string;
   };
   mode: 'all' | 'topic' | 'favorites';
-  topicId?: string;
   topic?: Topic;
 }
 
-export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
-  const { pageData, userAnswerData } = useAnswersPageData(data);
+export function AnswersPage({ data, mode, topic }: AnswersPageProps) {
+  const { pageData } = useAnswersPageData(data);
   const {
     topicsById,
     users,
     answers,
     total,
     getNameByProfileId,
-    currentUserId,
-    currentUserName,
-    profileId,
     filters,
     updateFilter,
     showAdvancedFilters,
@@ -113,17 +109,6 @@ export function AnswersPage({ data, mode, topicId, topic }: AnswersPageProps) {
         answers={answers}
         topicsById={topicsById}
         getNameByProfileId={getNameByProfileId}
-        currentUserName={currentUserName}
-        currentUserId={currentUserId}
-        userAnswerData={userAnswerData}
-        actionPath={
-          mode === 'topic'
-            ? `/topics/${topicId}`
-            : mode === 'favorites'
-              ? '/answers/favorites'
-              : '/answers'
-        }
-        profileIdForVotes={profileId}
         pagination={
           pageCount > 1
             ? {

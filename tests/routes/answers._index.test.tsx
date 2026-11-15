@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
-import { loader, action } from '~/routes/answers._index';
+import { type LoaderFunctionArgs } from 'react-router';
+import { loader } from '~/routes/answers._index';
 
 // Mock loaders and actionHandlers
 vi.mock('~/lib/loaders', () => ({
@@ -10,10 +10,6 @@ vi.mock('~/lib/loaders', () => ({
 vi.mock('~/lib/loaders/answersLoader', () => ({
   createAnswersLoader: vi.fn(),
 }));
-vi.mock('~/lib/actionHandlers', () => ({
-  handleAnswerActions: vi.fn(),
-}));
-
 describe('answers._index route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -67,20 +63,8 @@ describe('answers._index route', () => {
     });
   });
 
-  describe('action', () => {
-    it('should call handleAnswerActions', async () => {
-      const mockArgs = {
-        request: new Request('http://localhost/answers', { method: 'POST' }),
-      } as ActionFunctionArgs;
-      const mockResponse = new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-      });
-      const { handleAnswerActions } = await import('~/lib/actionHandlers');
-      vi.mocked(handleAnswerActions).mockResolvedValue(mockResponse);
-
-      const result = await action(mockArgs);
-      expect(handleAnswerActions).toHaveBeenCalledWith(mockArgs);
-      expect(result).toEqual(mockResponse);
-    });
+  it('does not expose a write action', async () => {
+    const route = await import('~/routes/answers._index');
+    expect('action' in route).toBe(false);
   });
 });

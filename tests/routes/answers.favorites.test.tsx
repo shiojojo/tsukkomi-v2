@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { type LoaderFunctionArgs, type ActionFunctionArgs } from 'react-router';
-import { loader, action } from '~/routes/answers.favorites';
+import { type LoaderFunctionArgs } from 'react-router';
+import { loader } from '~/routes/answers.favorites';
 
 // Mock db
 vi.mock('~/lib/loaders', () => ({
@@ -10,10 +10,6 @@ vi.mock('~/lib/loaders', () => ({
 vi.mock('~/lib/loaders/answersLoader', () => ({
   createAnswersLoader: vi.fn(),
 }));
-vi.mock('~/lib/actionHandlers', () => ({
-  handleAnswerActions: vi.fn(),
-}));
-
 describe('answers.favorites route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -107,21 +103,8 @@ describe('answers.favorites route', () => {
     });
   });
 
-  describe('action', () => {
-    it('should call handleAnswerActions with args', async () => {
-      const mockResult = new Response(JSON.stringify({ success: true }), {
-        status: 200,
-      });
-      const { handleAnswerActions } = await import('~/lib/actionHandlers');
-      vi.mocked(handleAnswerActions).mockResolvedValue(mockResult);
-
-      const args = {
-        request: new Request('http://localhost:3000/answers/favorites'),
-      } as ActionFunctionArgs;
-      const result = await action(args);
-
-      expect(handleAnswerActions).toHaveBeenCalledWith(args);
-      expect(result).toBe(mockResult);
-    });
+  it('does not expose a write action', async () => {
+    const route = await import('~/routes/answers.favorites');
+    expect('action' in route).toBe(false);
   });
 });

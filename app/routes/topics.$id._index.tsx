@@ -1,9 +1,8 @@
-import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
+import type { LoaderFunctionArgs } from 'react-router';
 import { useParams } from 'react-router';
 import { lazy, Suspense } from 'react';
 import { LoadingState } from '~/components/common/LoadingState';
 import { createAnswersLoader } from '~/lib/loaders/answersLoader';
-import { handleAnswerActions } from '~/lib/actionHandlers';
 
 // Lazy load the main component to reduce initial bundle size
 const AnswersRoute = lazy(() =>
@@ -22,10 +21,6 @@ export async function loader(args: LoaderFunctionArgs) {
   const params = args.params;
   const topicId = params.id ? String(params.id) : undefined;
   return createAnswersLoader(args, { topicId });
-}
-
-export async function action(args: ActionFunctionArgs) {
-  return handleAnswerActions(args);
 }
 
 export default function TopicDetailRoute() {

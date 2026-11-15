@@ -156,25 +156,26 @@ describe('AnswerActionCard', () => {
     expect(screen.getByText('Test answer text')).toBeInTheDocument();
   });
 
-  it('shows "コメント / 採点" button initially', () => {
+  it('shows a read-only comments button initially', () => {
     render(<AnswerActionCard {...defaultProps} />, {
       wrapper: createTestWrapper(),
     });
 
-    expect(screen.getByText('コメント / 採点')).toBeInTheDocument();
+    expect(screen.getByText('コメントを見る')).toBeInTheDocument();
   });
 
-  it('toggles comment/vote section visibility when button is clicked', () => {
+  it('shows existing comments without vote or favorite controls', () => {
     render(<AnswerActionCard {...defaultProps} />, {
       wrapper: createTestWrapper(),
     });
 
-    const toggleButton = screen.getByText('コメント / 採点');
+    const toggleButton = screen.getByText('コメントを見る');
     fireEvent.click(toggleButton);
 
     expect(screen.getByText('閉じる')).toBeInTheDocument();
-    // Test that expanded content is shown
     expect(screen.getByText('Test comment')).toBeInTheDocument();
+    expect(screen.queryByTestId('vote-section')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('favorite-section')).not.toBeInTheDocument();
   });
 
   it('renders without topic (フリー回答)', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RouterContextProvider } from 'react-router';
-import { loader, action } from '~/routes/topics.$id._index';
+import { loader } from '~/routes/topics.$id._index';
 
 // Mock db
 vi.mock('~/lib/loaders', () => ({
@@ -10,10 +10,6 @@ vi.mock('~/lib/loaders', () => ({
 vi.mock('~/lib/loaders/answersLoader', () => ({
   createAnswersLoader: vi.fn(),
 }));
-vi.mock('~/lib/actionHandlers', () => ({
-  handleAnswerActions: vi.fn(),
-}));
-
 describe('topics.$id._index route', () => {
   const context = new RouterContextProvider();
 
@@ -91,26 +87,8 @@ describe('topics.$id._index route', () => {
     });
   });
 
-  describe('action', () => {
-    it('should call handleAnswerActions with args', async () => {
-      const mockResult = new Response(JSON.stringify({ success: true }), {
-        status: 200,
-      });
-      const { handleAnswerActions } = await import('~/lib/actionHandlers');
-      vi.mocked(handleAnswerActions).mockResolvedValue(mockResult);
-
-      const request = new Request('http://localhost/topics/123');
-      const args = {
-        request,
-        params: {},
-        context,
-        pattern: '/topics/$id',
-        url: new URL(request.url),
-      };
-      const result = await action(args);
-
-      expect(handleAnswerActions).toHaveBeenCalledWith(args);
-      expect(result).toBe(mockResult);
-    });
+  it('does not expose a write action', async () => {
+    const route = await import('~/routes/topics.$id._index');
+    expect('action' in route).toBe(false);
   });
 });

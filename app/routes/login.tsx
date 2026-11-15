@@ -1,10 +1,8 @@
-import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { useLoaderData, useFetcher } from 'react-router';
-import { useEffect, useState } from 'react';
+import type { LoaderFunctionArgs } from 'react-router';
+import { useLoaderData } from 'react-router';
+import { useState } from 'react';
 import * as identityStorage from '~/lib/identityStorage';
-import { consumeRequestToken } from '~/lib/rateLimiter';
 import { useIdentity } from '~/hooks/common/useIdentity';
-import { SubUserCreateSchema } from '~/lib/schemas/user';
 import type { User, SubUser } from '~/lib/schemas/user';
 import { Button } from '~/components/ui/Button';
 import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/ErrorBoundary';
@@ -14,7 +12,7 @@ import { ErrorBoundary as ErrorBoundaryComponent } from '~/components/common/Err
  * Intent: localStorage ベースの簡易ログイン状態 (currentUserId / currentSubUserId 等) を操作し、他ページで参照可能にする。
  * Contract:
  *   - loader: { users: User[] }
- *   - action (intent=add-subuser): { ok: true, sub, parentId } | { ok: false, errors }
+ *   - 書き込み操作は提供せず、既存ユーザーの選択のみを行う。
  * Environment: prod/dev 共通で DB (profiles) を参照。書込みは Supabase 経由 (lib/db.ts 内部)。
  * Errors: バリデーション失敗時は { ok:false, errors }。DB エラーは 500 例外 -> ルートエラー境界へ。
  */
@@ -31,48 +29,9 @@ export async function loader(_args: LoaderFunctionArgs) {
   return Response.json({ users });
 }
 
-export async function action({ request }: ActionFunctionArgs) {
-  try {
-    if (!consumeRequestToken(request, 1, 'login-action')) {
-      return Response.json(
-        { ok: false, error: 'Too Many Requests' },
-        { status: 429 },
-      );
-    }
-
-    const form = await request.formData();
-    const intent = String(form.get('intent') || '');
-    if (intent === 'add-subuser') {
-      const parentId = String(form.get('parentId') || '');
-      const name = String(form.get('name') || '');
-      const parsed = SubUserCreateSchema.safeParse({ parentId, name });
-      if (!parsed.success)
-        return new Response(
-          JSON.stringify({ ok: false, errors: parsed.error.format() }),
-          { status: 400, headers: { 'Content-Type': 'application/json' } },
-        );
-      const { addSubUser } = await import('~/lib/db');
-      const sub = await addSubUser(parsed.data);
-      return Response.json({ ok: true, sub, parentId });
-    }
-    return Response.json({ ok: false }, { status: 400 });
-  } catch (error) {
-    console.error('Failed to handle login action:', error);
-    throw new Response('Internal server error', { status: 500 });
-  }
-}
-
 export default function LoginRoute() {
   const data = useLoaderData() as { users: User[] };
   const users = data.users;
-  const createFetcher = useFetcher();
-
-  type ActionData = {
-    ok: boolean;
-    sub?: { id: string; name: string };
-    parentId?: string;
-    errors?: { [key: string]: { _errors: string[] } };
-  };
 
   const {
     mainId: currentUserId,
@@ -81,28 +40,6 @@ export default function LoginRoute() {
     subName: currentSubUserName,
   } = useIdentity();
   const [selectedMainId, setSelectedMainId] = useState<string | null>(null);
-
-  // サブユーザー作成完了時: 直ちにそのサブをアクティブ化しトップへ遷移
-  useEffect(() => {
-    if (
-      createFetcher.state === 'idle' &&
-      createFetcher.data &&
-      (createFetcher.data as ActionData).ok &&
-      (createFetcher.data as ActionData).sub
-    ) {
-      const sub = (createFetcher.data as ActionData).sub!;
-      const parentId = String(
-        (createFetcher.data as ActionData).parentId || '',
-      );
-      const parent = users.find(u => u.id === parentId);
-      identityStorage.setItem('currentUserId', parentId);
-      if (parent) identityStorage.setItem('currentUserName', parent.name);
-      identityStorage.setItem('currentSubUserId', sub.id);
-      identityStorage.setItem('currentSubUserName', sub.name);
-      // refresh() is not needed as storage event will trigger update
-      window.location.href = '/';
-    }
-  }, [createFetcher.state, createFetcher.data, users]);
 
   function selectMain(u: User) {
     identityStorage.setItem('currentUserId', u.id);
@@ -223,42 +160,6 @@ export default function LoginRoute() {
                     ) : (
                       <div className="text-[11px] text-gray-500">サブなし</div>
                     )}
-                  </div>
-                  <div>
-                    <h4 className="text-[11px] font-semibold mb-1">
-                      サブユーザー作成
-                    </h4>
-                    <createFetcher.Form method="post" className="flex gap-2">
-                      <input type="hidden" name="intent" value="add-subuser" />
-                      <input type="hidden" name="parentId" value={u.id} />
-                      <input
-                        name="name"
-                        placeholder="名前"
-                        className="flex-1 border rounded px-2 py-1 text-xs"
-                        aria-label="サブユーザー名"
-                        required
-                        maxLength={100}
-                      />
-                      <Button
-                        variant="small"
-                        active={true}
-                        type="submit"
-                        disabled={createFetcher.state !== 'idle'}
-                      >
-                        追加
-                      </Button>
-                    </createFetcher.Form>
-                    {createFetcher.state !== 'idle' && (
-                      <div className="text-[10px] text-gray-500 mt-1">
-                        作成中…
-                      </div>
-                    )}
-                    {createFetcher.data &&
-                      (createFetcher.data as ActionData).ok === false && (
-                        <div className="text-[10px] text-red-600 mt-1">
-                          エラー: 入力を確認してください。
-                        </div>
-                      )}
                   </div>
                 </div>
               )}
