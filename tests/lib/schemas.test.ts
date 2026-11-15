@@ -127,9 +127,11 @@ describe('Schemas', () => {
       subUsers: [{ id: 'sub-1', name: 'Sub User', line_id: 'sub-line' }],
     };
 
-    it('should accept valid user', () => {
+    it('accepts user details but strips private LINE identifiers', () => {
       const parsed = UserSchema.parse(validUser);
       expect(parsed.name).toBe('User Name');
+      expect(parsed).not.toHaveProperty('line_id');
+      expect(parsed.subUsers?.[0]).not.toHaveProperty('line_id');
     });
 
     it('should reject empty name', () => {
